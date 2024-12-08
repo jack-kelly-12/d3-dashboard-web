@@ -43,7 +43,7 @@ A comprehensive analytics platform designed specifically for NCAA Division III b
 - `GET /api/pitching_team_war/<year>` - Team pitching statistics
 - `GET /api/guts` - League constants
 - `GET /api/park-factors` - Park factors
-- - `GET /api/run-expectancy` - Run expectancy
+- `GET /api/run-expectancy` - Run expectancy
     
 ### Teams
 - `GET /api/teams-2024` - All teams
