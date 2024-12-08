@@ -2,8 +2,6 @@
 
 A comprehensive analytics platform designed specifically for NCAA Division III baseball, providing advanced statistics, scouting tools, and performance insights.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-
 ## Features
 
 ### Advanced Statistics
