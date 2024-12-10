@@ -274,7 +274,7 @@ const Data = () => {
             width: "100px",
           },
           {
-            name: "Adj",
+            name: "Pos. Adj",
             selector: (row) => roundTo(row["Adjustment"], 1),
             sortable: true,
             width: "100px",

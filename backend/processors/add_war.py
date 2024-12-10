@@ -41,6 +41,7 @@ class BaseballStats:
             'Baserunning': 'sum', 'Adjustment': 'sum', 'WAR': 'sum',
             'K': 'sum', 'CS': 'sum', 'RBI': 'sum', 'GS': 'max'
         }
+
         self.gdp_run_value = -.5
 
     def get_connection(self):
@@ -205,7 +206,7 @@ class BaseballStats:
         gdp_opps = pbp_df[(pbp_df['r1_name'] != '') & (
             pbp_df['outs_before'].astype(int) < 2)].copy()
 
-        gdp_events = gdp_opps[gdp_opps['description'].str.contains('into double play',
+        gdp_events = gdp_opps[gdp_opps['description'].str.contains('double play',
                                                                    case=False,
                                                                    na=False)]
 
@@ -223,7 +224,7 @@ class BaseballStats:
 
         return gdp_stats
 
-    def process_batting_stats(self, df, weights_df, runs_df, pbp_df):
+    def process_batting_stats(self, df, weights_df, runs_df, pbp_df, fielding_df):
         if df.empty:
             return df
 
@@ -278,9 +279,9 @@ class BaseballStats:
         denominator = df['AB'] + df['BB'] - df['IBB'] + df['SF'] + df['HBP']
         df['wOBA'] = numerator / denominator
 
-        return self._compute_batting_war(df, weights_df)
+        return self._compute_batting_war(df, weights_df, fielding_df)
 
-    def _compute_batting_war(self, df, weights):
+    def _compute_batting_war(self, df, weights, fielding_df):
         df['PF'].fillna(100, inplace=True)
         pf = df['PF'] / 100
 
@@ -338,8 +339,8 @@ class BaseballStats:
                 lg_positional = conf_df['Adjustment'].sum()
                 lg_pa = conf_df['PA'].sum()
                 if lg_pa > 0:
-                    conf_adjustments[conf] = (-1 * (lg_batting +
-                                                    lg_baserunning + lg_positional) / lg_pa)
+                    conf_adjustments[conf] = (-1 * (lg_batting + lg_baserunning +
+                                                    lg_positional) / lg_pa)
 
         df['league_adjustment'] = df.apply(
             lambda x: conf_adjustments.get(x['conference'], 0) * x['PA'], axis=1
@@ -358,7 +359,7 @@ class BaseballStats:
 
     def get_data(self):
         conn = self.get_connection()
-        pitching, batting, pbp = [], [], []
+        pitching, batting, fielding, pbp = [], [], [], []
 
         try:
             for year in [2021, 2022, 2023, 2024]:
@@ -369,6 +370,10 @@ class BaseballStats:
                 batting_df = pd.read_sql(f"SELECT * FROM batting_{year}", conn)
                 batting.append(batting_df)
 
+                fielding_df = pd.read_sql(
+                    f"SELECT * FROM fielding_{year}", conn)
+                fielding.append(fielding_df)
+
                 pbp_df = pd.read_csv(
                     f'{self.data_dir}/parsed_pbp_new_{year}.csv')
                 pbp.append(pbp_df)
@@ -376,7 +381,7 @@ class BaseballStats:
             park_factors = pd.read_csv(f'{self.data_dir}/park_factors.csv')
             guts = pd.read_csv(f'{self.data_dir}/guts_constants.csv')
 
-            return batting, pitching, pbp, guts, park_factors
+            return batting, pitching, fielding, pbp, guts, park_factors
         finally:
             conn.close()
 
@@ -465,7 +470,7 @@ class BaseballStats:
     def process_and_save_stats(self, start_year=2021, end_year=2024):
         conn = self.get_connection()
         try:
-            batting, pitching, pbp, self.guts, self.park_factors = self.get_data()
+            batting, pitching, fielding, pbp, self.guts, self.park_factors = self.get_data()
             self.guts = self.guts.reset_index(drop=True)
 
             for i, year in enumerate(range(start_year, end_year + 1)):
@@ -480,7 +485,7 @@ class BaseballStats:
                 year_guts = year_guts.iloc[0]
 
                 bat_war = self.process_batting_stats(batting[i], year_guts,
-                                                     self.park_factors, pbp[i])
+                                                     self.park_factors, pbp[i], fielding[i])
                 bat_war = bat_war.rename(columns={
                     'player_name': 'Player',
                     'team_name': 'Team', 'SH': 'Sac',

@@ -7,20 +7,35 @@ const getBaseUrl = () => {
 
 export const API_BASE_URL = getBaseUrl();
 
-export const fetchAPI = async (endpoint) => {
+export const fetchAPI = async (endpoint, options = {}) => {
   const normalizedEndpoint = endpoint.startsWith("/api/")
     ? endpoint
     : `/api${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
 
   const url = `${API_BASE_URL}${normalizedEndpoint}`;
 
+  const defaultOptions = {
+    mode: "cors",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  };
+
+  if (options.body instanceof FormData) {
+    delete defaultOptions.headers["Content-Type"];
+  }
+
+  const fetchOptions = {
+    ...defaultOptions,
+    ...options,
+    headers: {
+      ...defaultOptions.headers,
+      ...options.headers,
+    },
+  };
+
   try {
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      mode: "cors",
-    });
+    const response = await fetch(url, fetchOptions);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
