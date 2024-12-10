@@ -27,7 +27,6 @@
 .ipynb_checkpoints
 .csv
 
-data/
+backend/data/*.csv
 scrapers/
 notebooks/
-processors/

@@ -82,6 +82,8 @@ class ChartManager {
   processChartDocuments(snapshot) {
     return snapshot.docs.map((doc) => {
       const data = doc.data();
+      console.log("Raw chart data:", data); // Add this line
+      console.log("Source value:", data.source); // Add this line
 
       const createdAt =
         data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString();
@@ -93,6 +95,7 @@ class ChartManager {
         ...data,
         createdAt,
         updatedAt,
+        source: data.source || "d3",
         date,
         totalPitches: data.totalPitches || data.pitches?.length || 0,
         pitches: data.pitches || [],
@@ -107,21 +110,26 @@ class ChartManager {
     const userId = this.currentUser?.uid;
     if (!userId) throw new Error("User must be authenticated");
 
+    // Make sure we're keeping all the pitch data
     const chart = {
       ...chartData,
       userId,
-      pitches: [],
+      pitches: chartData.pitches || [], // Preserve the pitches array
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      totalPitches: 0,
+      totalPitches: chartData.pitches?.length || 0,
     };
 
     const docRef = await addDoc(this.chartsRef, chart);
+
+    // Return the complete chart data
     return {
       id: docRef.id,
       ...chart,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      pitches: chartData.pitches || [], // Include pitches in return value
+      totalPitches: chartData.pitches?.length || 0,
     };
   }
 
@@ -145,6 +153,7 @@ class ChartManager {
     return {
       id: chartDoc.id,
       ...chartData,
+      source: chartData.source || "d3", // Add default source
       createdAt: chartData.createdAt?.toDate?.()?.toISOString() || null,
       updatedAt: chartData.updatedAt?.toDate?.()?.toISOString() || null,
     };

@@ -5,6 +5,10 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 import sqlite3
 import pandas as pd
+from io import StringIO
+import json
+from werkzeug.utils import secure_filename
+import os
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 
@@ -384,6 +388,119 @@ def search_players():
 
     finally:
         conn.close()
+
+
+@app.route('/api/upload/rapsodo', methods=['POST'])
+def upload_rapsodo():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    try:
+        content = file.read().decode('utf-8')
+
+        player_name_index = content.find('Player Name:')
+        if player_name_index != -1:
+            player_name = content[player_name_index +
+                                  len('Player Name:'):].split('\n')[0].strip()
+        else:
+            player_name = "Unknown Player"
+
+        lines = content.split('\n')[4:]
+        modified_content = '\n'.join(lines)
+        csv_file = StringIO(modified_content)
+
+        df = pd.read_csv(
+            csv_file,
+            delimiter=',',
+            encoding='utf-8',
+            on_bad_lines='skip'
+        )
+
+        processed_pitches = []
+        for idx, row in df.iterrows():
+            try:
+                pitch_type = row.get('Pitch Type', '')
+                if pd.isna(pitch_type) or str(pitch_type).strip() == '-':
+                    continue
+
+                pitch = {
+                    'player': player_name,
+                    'timestamp': pd.to_datetime(row['Date']).isoformat() if pd.notna(row.get('Date')) else None,
+                    'type': str(pitch_type).lower(),
+                    'velocity': float(row['Velocity']) if pd.notna(row.get('Velocity')) else None,
+                    'spinRate': float(row['Total Spin']) if pd.notna(row.get('Total Spin')) else None,
+                    'source': 'rapsodo'
+                }
+                processed_pitches.append(pitch)
+
+            except Exception as e:
+                continue
+
+        if not processed_pitches:
+            return jsonify({"error": "No valid pitches found in file"}), 400
+
+        return jsonify({
+            'pitches': processed_pitches
+        })
+
+    except Exception as e:
+        print(f"Major error processing file: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error processing file: {str(e)}"}), 500
+
+
+@app.route('/api/upload/trackman', methods=['POST'])
+def upload_trackman():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    try:
+        # Read file based on extension
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(file)
+        elif file.filename.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file)
+        else:
+            return jsonify({"error": "Unsupported file format"}), 400
+
+        # Process each pitch
+        processed_pitches = []
+        for _, row in df.iterrows():
+            pitch = {
+                'timestamp': pd.Timestamp.now().isoformat(),
+                'type': str(row.get('TaggedPitchType', '')).lower(),
+                'velocity': float(row.get('RelSpeed')) if pd.notna(row.get('RelSpeed')) else None,
+                'spinRate': float(row.get('SpinRate')) if pd.notna(row.get('SpinRate')) else None,
+                'spinAxis': float(row.get('SpinAxis')) if pd.notna(row.get('SpinAxis')) else None,
+                'horizontalBreak': float(row.get('HorzBreak')) if pd.notna(row.get('HorzBreak')) else None,
+                'verticalBreak': float(row.get('InducedVertBreak')) if pd.notna(row.get('InducedVertBreak')) else None,
+                'plateLocHeight': float(row.get('PlateLocHeight')) if pd.notna(row.get('PlateLocHeight')) else None,
+                'plateLocSide': float(row.get('PlateLocSide')) if pd.notna(row.get('PlateLocSide')) else None,
+                'extension': float(row.get('Extension')) if pd.notna(row.get('Extension')) else None,
+                'source': 'trackman'
+            }
+            processed_pitches.append(pitch)
+
+        return jsonify({
+            'pitches': processed_pitches,
+            'playerInfo': {
+                'pitcher': df['Pitcher'].iloc[0] if 'Pitcher' in df.columns else None,
+                'team': df['PitcherTeam'].iloc[0] if 'PitcherTeam' in df.columns else None
+            }
+        })
+
+    except Exception as e:
+        return jsonify({"error": f"Error processing file: {str(e)}"}), 500
 
 
 if __name__ == '__main__':

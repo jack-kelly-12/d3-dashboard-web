@@ -5,13 +5,14 @@ import { Plus, Trash2, FileDown } from "lucide-react";
 const ChartsList = ({
   charts,
   onCreateClick,
+  onUploadClick,
   onChartSelect,
   onDeleteChart,
 }) => {
   const getTimeAgo = (dateString) => {
-    if (!dateString) return "-";
+    if (!dateString) return "—";
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "-";
+    if (isNaN(date.getTime())) return "—";
 
     const now = new Date();
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
@@ -28,55 +29,109 @@ const ChartsList = ({
     });
   };
 
-  const formatPitchesForExport = (pitches) => {
-    const headers = [
-      "Time",
-      "Pitcher",
-      "Pitcher Hand",
-      "Batter",
-      "Batter Hand",
-      "Pitch Type",
-      "Velocity",
-      "Result",
-      "Hit Result",
-      "EV Type",
-      "Pitch X",
-      "Pitch Y",
-      "Hit X",
-      "Hit Y",
-      "Notes",
-      "Catcher",
-      "Umpire",
-    ];
+  const formatPitchesForExport = (pitches, source = "d3") => {
+    let headers;
+    let rows;
 
-    // Format pitch data
-    const rows = pitches.map((pitch) => [
-      new Date(pitch.timestamp).toLocaleString(),
-      pitch.pitcher?.name || "",
-      pitch.pitcher?.pitchHand || "",
-      pitch.batter?.name || "",
-      pitch.batter?.batHand || "",
-      pitch.type || "",
-      pitch.velocity || "",
-      pitch.result?.replace(/_/g, " ") || "",
-      pitch.hitResult?.replace(/_/g, " ") || "",
-      pitch.evType?.replace(/_/g, " ") || "",
-      pitch.x?.toFixed(1) || "",
-      pitch.y?.toFixed(1) || "",
-      pitch.hitX?.toFixed(1) || "",
-      pitch.hitY?.toFixed(1) || "",
-      pitch.hitY?.toFixed(1) || "",
-      pitch.hitY?.toFixed(1) || "",
-      pitch.notes || "",
-      pitch.catcher?.name || "",
-      pitch.umpire?.name || "",
-    ]);
+    switch (source.toLowerCase()) {
+      case "trackman":
+        headers = [
+          "Time",
+          "Pitch Type",
+          "Velocity",
+          "Spin Rate",
+          "Spin Axis",
+          "Horizontal Break",
+          "Vertical Break",
+          "Extension",
+          "Plate Location Height",
+          "Plate Location Side",
+        ];
+
+        rows = pitches.map((pitch) => [
+          new Date(pitch.timestamp).toLocaleString(),
+          pitch.type || "",
+          pitch.velocity || "",
+          pitch.spinRate || "",
+          pitch.spinAxis || "",
+          pitch.horizontalBreak || "",
+          pitch.verticalBreak || "",
+          pitch.extension || "",
+          pitch.plateLocHeight || "",
+          pitch.plateLocSide || "",
+        ]);
+        break;
+
+      case "rapsodo":
+        headers = [
+          "Time",
+          "Pitch Type",
+          "Velocity",
+          "Spin Rate",
+          "Spin Axis",
+          "Horizontal Break",
+          "Vertical Break",
+          "Release Height",
+          "Release Side",
+          "Release Extension",
+        ];
+
+        rows = pitches.map((pitch) => [
+          new Date(pitch.timestamp).toLocaleString(),
+          pitch.type || "",
+          pitch.velocity || "",
+          pitch.spinRate || "",
+          pitch.spinAxis || "",
+          pitch.horzBreak || "",
+          pitch.vertBreak || "",
+          pitch.releaseHeight || "",
+          pitch.releaseSide || "",
+          pitch.extension || "",
+        ]);
+        break;
+
+      default: // D3 Dashboard format
+        headers = [
+          "Time",
+          "Pitcher",
+          "Pitcher Hand",
+          "Batter",
+          "Batter Hand",
+          "Pitch Type",
+          "Velocity",
+          "Result",
+          "Hit Result",
+          "Pitch X",
+          "Pitch Y",
+          "Hit X",
+          "Hit Y",
+          "Notes",
+        ];
+
+        rows = pitches.map((pitch) => [
+          new Date(pitch.timestamp).toLocaleString(),
+          pitch.pitcher?.name || "",
+          pitch.pitcher?.pitchHand || "",
+          pitch.batter?.name || "",
+          pitch.batter?.batHand || "",
+          pitch.type || "",
+          pitch.velocity || "",
+          pitch.result?.replace(/_/g, " ") || "",
+          pitch.hitResult?.replace(/_/g, " ") || "",
+          pitch.x?.toFixed(1) || "",
+          pitch.y?.toFixed(1) || "",
+          pitch.hitX?.toFixed(1) || "",
+          pitch.hitY?.toFixed(1) || "",
+          pitch.notes || "",
+        ]);
+    }
 
     return [headers, ...rows];
   };
 
   const handleExport = (chart) => {
-    const csvContent = formatPitchesForExport(chart.pitches || [])
+    // Pass the chart's source to formatPitchesForExport
+    const csvContent = formatPitchesForExport(chart.pitches || [], chart.source)
       .map((row) => row.join(","))
       .join("\n");
 
@@ -94,19 +149,29 @@ const ChartsList = ({
   };
 
   const formatDescription = (row) => {
-    if (!row.chartType) return "-";
+    if (!row.chartType) return "—";
 
-    if (row.chartType === "bullpen") {
+    if (row.source !== "d3") {
       return (
         <div className="space-y-1">
           <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
-            Bullpen Session: {row.pitcher.name}
+            User uploaded data
           </span>
         </div>
       );
     }
 
-    if (!row.homeTeam || !row.awayTeam) return "-";
+    if (row.chartType === "bullpen") {
+      return (
+        <div className="space-y-1">
+          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+            Bullpen Session: {row.pitcher?.name || "No Pitcher"}
+          </span>
+        </div>
+      );
+    }
+
+    if (!row.homeTeam || !row.awayTeam) return "—";
 
     return (
       <div className="space-y-1">
@@ -117,13 +182,41 @@ const ChartsList = ({
     );
   };
 
+  const SourceBadge = ({ source }) => {
+    const sourceConfig = {
+      d3: {
+        styles: "bg-blue-50 text-blue-700 border-blue-200",
+        label: "D3 Dashboard",
+      },
+      rapsodo: {
+        styles: "bg-green-50 text-green-700 border-green-200",
+        label: "Rapsodo",
+      },
+      trackman: {
+        styles: "bg-purple-50 text-purple-700 border-purple-200",
+        label: "Trackman",
+      },
+    };
+
+    const normalizedSource = (source || "d3").toLowerCase();
+    const config = sourceConfig[normalizedSource] || sourceConfig.d3;
+
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-medium border ${config.styles}`}
+      >
+        {config.label}
+      </span>
+    );
+  };
+
   const columns = [
     {
       name: "Date",
-      selector: (row) => row.date || "-",
+      selector: (row) => row.date || "—",
       sortable: true,
-      width: "15%",
-      cell: (row) => (row.date ? new Date(row.date).toLocaleDateString() : "-"),
+      width: "10%",
+      cell: (row) => (row.date ? new Date(row.date).toLocaleDateString() : "—"),
     },
     {
       name: "Description",
@@ -132,10 +225,17 @@ const ChartsList = ({
       cell: formatDescription,
     },
     {
+      name: "Source",
+      selector: (row) => row.source,
+      sortable: true,
+      width: "15%",
+      cell: (row) => <SourceBadge source={row.source} />,
+    },
+    {
       name: "Pitches",
       selector: (row) => row.totalPitches || 0,
       sortable: true,
-      width: "15%",
+      width: "10%",
       cell: (row) => (
         <span className="font-medium text-blue-600">
           {row.totalPitches || 0}
@@ -144,25 +244,27 @@ const ChartsList = ({
     },
     {
       name: "Last Updated",
-      selector: (row) => row.updatedAt || "-",
+      selector: (row) => row.updatedAt || "—",
       sortable: true,
       width: "15%",
       cell: (row) => getTimeAgo(row.updatedAt),
     },
     {
       name: "Actions",
-      width: "30%",
+      width: "25%",
       cell: (row) => (
         <div className="flex gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onChartSelect(row);
-            }}
-            className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-          >
-            View Chart
-          </button>
+          {(row.source || "d3").toLowerCase() === "d3" && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onChartSelect(row);
+              }}
+              className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+            >
+              View Chart
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -195,13 +297,22 @@ const ChartsList = ({
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Game Charts
           </h1>
-          <button
-            onClick={onCreateClick}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
-          >
-            <Plus size={14} />
-            New Chart
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onCreateClick}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
+            >
+              <Plus size={14} />
+              New Chart
+            </button>
+            <button
+              onClick={onUploadClick}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              <Plus size={14} />
+              Upload Data
+            </button>
+          </div>
         </div>
 
         <BaseballTable

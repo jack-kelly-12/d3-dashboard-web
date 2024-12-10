@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import ChartsList from "../components/charting/ChartsList";
 import ChartModal from "../components/modals/ChartModal";
+import UploadModal from "../components/modals/UploadModal";
 import { ChartingView } from "../components/charting/ChartingView";
 import ChartManager from "../managers/ChartManager";
 import AuthManager from "../managers/AuthManager";
@@ -13,10 +14,10 @@ const Charting = () => {
   const [charts, setCharts] = useState([]);
   const [selectedChart, setSelectedChart] = useState(null);
   const [isChartModalOpen, setIsChartModalOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
   useAnonymousToast();
-
   useEffect(() => {
     const unsubscribe = AuthManager.onAuthStateChanged(async (user) => {
       setUser(user);
@@ -137,6 +138,51 @@ const Charting = () => {
     }
   };
 
+  const handleUploadData = async (chartData) => {
+    const user = await AuthManager.ensureUser("charts");
+    if (!user) {
+      navigate("/signin");
+      return;
+    }
+
+    const loadingToast = toast.loading("Processing uploaded data...");
+    try {
+      // Verify the data structure
+      console.log("Received chart data:", {
+        ...chartData,
+        pitches: `${chartData.pitches.length} pitches`,
+      });
+
+      const newChart = await ChartManager.createChart({
+        chartType: "bullpen",
+        date: chartData.date,
+        source: chartData.source,
+        pitches: chartData.pitches,
+        totalPitches: chartData.pitches.length,
+        userId: user.uid,
+        isAnonymous: user.isAnonymous,
+      });
+
+      // Verify the created chart
+      console.log("Created chart:", {
+        ...newChart,
+        pitches: `${newChart.pitches.length} pitches`,
+      });
+
+      setCharts((prevCharts) => [newChart, ...prevCharts]);
+      setIsUploadModalOpen(false);
+      toast.success(
+        `Uploaded ${chartData.pitches.length} pitches successfully`,
+        { id: loadingToast }
+      );
+    } catch (err) {
+      console.error("Upload error:", err);
+      toast.error(`Failed to process uploaded data: ${err.message}`, {
+        id: loadingToast,
+      });
+    }
+  };
+
   if (isLoading) {
     return <LoadingState />;
   }
@@ -156,6 +202,7 @@ const Charting = () => {
       <ChartsList
         charts={charts}
         onCreateClick={() => setIsChartModalOpen(true)}
+        onUploadClick={() => setIsUploadModalOpen(true)}
         onChartSelect={setSelectedChart}
         onDeleteChart={handleDeleteChart}
       />
@@ -163,6 +210,11 @@ const Charting = () => {
         isOpen={isChartModalOpen}
         onClose={() => setIsChartModalOpen(false)}
         onSubmit={handleCreateChart}
+      />
+      <UploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUpload={handleUploadData}
       />
     </div>
   );
