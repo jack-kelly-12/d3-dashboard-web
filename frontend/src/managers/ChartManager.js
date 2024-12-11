@@ -82,9 +82,6 @@ class ChartManager {
   processChartDocuments(snapshot) {
     return snapshot.docs.map((doc) => {
       const data = doc.data();
-      console.log("Raw chart data:", data); // Add this line
-      console.log("Source value:", data.source); // Add this line
-
       const createdAt =
         data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString();
       const updatedAt = data.updatedAt?.toDate?.()?.toISOString() || createdAt;

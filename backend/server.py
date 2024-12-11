@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Union
 from flask import jsonify
 from flask import Flask, jsonify, request
-from flask_cors import CORS
+from flask_cors import CORS, cross_origin
 import sqlite3
 import pandas as pd
 from io import StringIO
@@ -390,10 +390,20 @@ def search_players():
         conn.close()
 
 
-@app.route('/api/upload/rapsodo', methods=['POST'])
+@app.route('/api/upload/rapsodo', methods=['POST', 'OPTIONS'])
+@cross_origin(supports_credentials=True)  # Add this decorator
 def upload_rapsodo():
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+
     if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        response = jsonify({"error": "No file provided"})
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 400
 
     file = request.files['file']
     if not file.filename:
@@ -455,11 +465,20 @@ def upload_rapsodo():
         return jsonify({"error": f"Error processing file: {str(e)}"}), 500
 
 
-@app.route('/api/upload/trackman', methods=['POST'])
+@app.route('/api/upload/trackman', methods=['POST', 'OPTIONS'])
+@cross_origin(supports_credentials=True)  # Add this decorator
 def upload_trackman():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
 
+    if 'file' not in request.files:
+        response = jsonify({"error": "No file provided"})
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 400
     file = request.files['file']
     if not file.filename:
         return jsonify({"error": "No file selected"}), 400

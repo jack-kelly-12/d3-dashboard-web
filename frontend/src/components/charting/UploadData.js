@@ -22,6 +22,7 @@ const DataUpload = ({ onUpload, chartType }) => {
       const data = await fetchAPI(`/upload/${dataSource}`, {
         method: "POST",
         body: formData,
+        credentials: "include",
       });
 
       return {
