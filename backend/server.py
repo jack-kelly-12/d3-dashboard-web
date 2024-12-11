@@ -436,6 +436,7 @@ def upload_rapsodo():
                 pitch_type = row.get('Pitch Type', '')
                 if pd.isna(pitch_type) or str(pitch_type).strip() == '-':
                     continue
+                df.loc[idx] = row.replace('-', pd.NA)
 
                 pitch = {
                     'player': player_name,
@@ -443,6 +444,13 @@ def upload_rapsodo():
                     'type': str(pitch_type).lower(),
                     'velocity': float(row['Velocity']) if pd.notna(row.get('Velocity')) else None,
                     'spinRate': float(row['Total Spin']) if pd.notna(row.get('Total Spin')) else None,
+                    'spinEff':  float(row['Spin Efficiency (release)']) if pd.notna(row.get('Spin Efficiency (release)')) else None,
+                    'horzBreak': float(row['HB (trajectory)']) if pd.notna(row.get('HB (trajectory)')) else None,
+                    'horzBreak': float(row['VB (trajectory)']) if pd.notna(row.get('VB (trajectory)')) else None,
+                    'strikeZoneX': float(row['Strike Zone Side']) if pd.notna(row.get('Strike Zone Side')) else None,
+                    'strikeZoneZ': float(row['Strike Zone Height']) if pd.notna(row.get('Strike Zone Height')) else None,
+                    'relSide': float(row['Release Side']) if pd.notna(row.get('Release Side')) else None,
+                    'relHeight': float(row['Release Height']) if pd.notna(row.get('Release Height')) else None,
                     'source': 'rapsodo'
                 }
                 processed_pitches.append(pitch)

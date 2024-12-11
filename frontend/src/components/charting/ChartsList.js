@@ -68,12 +68,13 @@ const ChartsList = ({
           "Pitch Type",
           "Velocity",
           "Spin Rate",
-          "Spin Axis",
+          "Spin Efficiency",
           "Horizontal Break",
           "Vertical Break",
           "Release Height",
           "Release Side",
-          "Release Extension",
+          "Strike Zone X",
+          "Strike Zone Z",
         ];
 
         rows = pitches.map((pitch) => [
@@ -81,12 +82,13 @@ const ChartsList = ({
           pitch.type || "",
           pitch.velocity || "",
           pitch.spinRate || "",
-          pitch.spinAxis || "",
+          pitch.spinEff || "",
           pitch.horzBreak || "",
           pitch.vertBreak || "",
-          pitch.releaseHeight || "",
-          pitch.releaseSide || "",
-          pitch.extension || "",
+          pitch.relHeight || "",
+          pitch.relSide || "",
+          pitch.strikeZoneX || "",
+          pitch.strikeZoneZ || "",
         ]);
         break;
 
