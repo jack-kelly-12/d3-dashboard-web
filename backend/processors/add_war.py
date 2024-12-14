@@ -1,6 +1,7 @@
 import sqlite3
 import pandas as pd
 import numpy as np
+from fuzzywuzzy import fuzz, process
 
 
 class BaseballStats:
@@ -18,13 +19,15 @@ class BaseballStats:
             'BB', 'CS', 'GS', 'HBP', 'IBB', 'K', 'RBI', 'SF', 'AB',
             'PA', 'H', '2B', '3B', 'HR', 'R', 'SB', 'OPS+', 'Picked',
             'Sac', 'BA', 'SlgPct', 'OBPct', 'ISO', 'wOBA', 'K%', 'BB%',
-            'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR', 'player_id', 'player_url'
+            'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR', 'player_id', 'player_url',
+            'Clutch', 'WPA', 'REA', 'WPA/LI'
         ]
         self.pitching_columns = [
             'Player', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
             'BB', 'SO', 'HR-A', '2B-A', '3B-A', 'HB', 'BF', 'FO', 'GO', 'Pitches',
             'gmLI', 'K9', 'BB9', 'HR9', 'RA9', 'H9', 'IR-A%', 'K%', 'BB%', 'K-BB%', 'HR/FB', 'FIP',
-            'xFIP', 'ERA+', 'WAR', 'Season', 'Yr', 'Inh Run', 'Inh Run Score', 'player_id', 'player_url'
+            'xFIP', 'ERA+', 'WAR', 'Season', 'Yr', 'Inh Run', 'Inh Run Score', 'player_id', 'player_url',
+            'Clutch', 'pWPA', 'pREA', 'pWPA/LI'
         ]
         self.team_pitching_agg = {
             'App': 'sum', 'Conference': 'first', 'IP': 'sum', 'H': 'sum',
@@ -47,20 +50,6 @@ class BaseballStats:
     def get_connection(self):
         return sqlite3.connect(self.db_path)
 
-    def calculate_pitching_metrics(self, df):
-        lg_era = (df['ER'].sum() * 9) / df['IP'].sum()
-        fip_components = ((13 * df['HR-A'].sum() + 3 * (df['BB'].sum() + df['HB'].sum()) -
-                          2 * df['SO'].sum()) / df['IP'].sum())
-        f_constant = lg_era - fip_components
-
-        fip = f_constant + ((13 * df['HR-A'] + 3 * (df['BB'] + df['HB']) -
-                            2 * df['SO']) / df['IP'])
-        lg_hr_fb_rate = df['HR-A'].sum() / (df['HR-A'].sum() + df['FO'].sum())
-        xfip = f_constant + ((13 * ((df['FO'] + df['HR-A']) * lg_hr_fb_rate) +
-                             3 * (df['BB'] + df['HB']) - 2 * df['SO']) / df['IP'])
-
-        return fip, xfip
-
     def process_pitching_stats(self, df, pbp_df, runs_df):
         if df.empty:
             return df
@@ -71,44 +60,96 @@ class BaseballStats:
         fill_cols = ['HR-A', 'FO', 'IP', 'BB',
                      'SO', 'SV', 'GS', 'HB', 'BF', 'H', 'R']
         df[fill_cols] = df[fill_cols].fillna(0)
-        df.loc[df['IP'] == 0, 'IP'] = 0.0000001
 
-        df['RA9'] = (df['R'] / df['IP']) * 9
-        df['IR-A%'] = ((df['Inh Run Score'] / df['Inh Run']) * 100).fillna(0)
-        df['K9'] = (df['SO'] / df['IP']) * 9
-        df['H9'] = (df['H'] / df['IP']) * 9
-        df['BB9'] = (df['BB'] / df['IP']) * 9
-        df['HR9'] = (df['HR-A'] / df['IP']) * 9
-        df['BB%'] = (df['BB'] / df['BF']) * 100
-        df['K%'] = (df['SO'] / df['BF']) * 100
+        # Calculate rate stats safely handling zero IP
+        def safe_per_nine(numerator, ip):
+            return np.where(ip > 0, (numerator / ip) * 9, 0)
+
+        def safe_percentage(numerator, denominator):
+            return np.where(denominator > 0, (numerator / denominator) * 100, 0)
+
+        # Apply safe calculations
+        df['RA9'] = safe_per_nine(df['R'], df['IP'])
+        df['K9'] = safe_per_nine(df['SO'], df['IP'])
+        df['H9'] = safe_per_nine(df['H'], df['IP'])
+        df['BB9'] = safe_per_nine(df['BB'], df['IP'])
+        df['HR9'] = safe_per_nine(df['HR-A'], df['IP'])
+
+        # Percentage calculations using BF as denominator
+        df['BB%'] = safe_percentage(df['BB'], df['BF'])
+        df['K%'] = safe_percentage(df['SO'], df['BF'])
         df['K-BB%'] = df['K%'] - df['BB%']
-        df['HR/FB'] = (df['HR-A'] / (df['HR-A'] + df['FO'])) * 100
 
-        df['FIP'], df['xFIP'] = self.calculate_pitching_metrics(df)
+        # Handle HR/FB calculation
+        fb_total = df['HR-A'] + df['FO']
+        df['HR/FB'] = safe_percentage(df['HR-A'], fb_total)
+
+        # Handle inherited runners
+        df['IR-A%'] = safe_percentage(df['Inh Run Score'], df['Inh Run'])
+
+        # Calculate FIP components only for pitchers with IP > 0
+        valid_ip_mask = df['IP'] > 0
+        df.loc[valid_ip_mask, ['FIP', 'xFIP']
+               ] = self.calculate_pitching_metrics(df[valid_ip_mask])
+        df.loc[~valid_ip_mask, ['FIP', 'xFIP']] = np.nan
+
+        # Handle park factors
         df['iPF'] = df['team_name'].map(runs_df.set_index('team_name')['iPF'])
         df['PF'] = ((1 - (1 - df.iPF) * .4) * 100).fillna(100)
 
+        # Calculate ERA+ only for pitchers with IP > 0
+        lg_era = (df.loc[valid_ip_mask, 'ER'].sum() /
+                  df.loc[valid_ip_mask, 'IP'].sum()) * 9
+        df.loc[valid_ip_mask, 'ERA+'] = 100 * \
+            (2 - (df.loc[valid_ip_mask, 'ERA'] / lg_era)
+             * (1 / (df.loc[valid_ip_mask, 'PF'] / 100)))
+        df.loc[~valid_ip_mask, 'ERA+'] = np.nan
+
         return self.compute_pitching_war(df, pbp_df)
+
+    def calculate_pitching_metrics(self, df):
+        """Calculate FIP and xFIP for pitchers with IP > 0"""
+        lg_era = (df['ER'].sum() * 9) / df['IP'].sum()
+
+        fip_components = ((13 * df['HR-A'].sum() + 3 * (df['BB'].sum() + df['HB'].sum()) -
+                           2 * df['SO'].sum()) / df['IP'].sum())
+        f_constant = lg_era - fip_components
+
+        fip = f_constant + ((13 * df['HR-A'] + 3 * (df['BB'] + df['HB']) -
+                            2 * df['SO']) / df['IP'])
+
+        # Calculate league HR/FB rate for xFIP
+        lg_hr_fb_rate = df['HR-A'].sum() / (df['HR-A'].sum() + df['FO'].sum())
+
+        xfip = f_constant + ((13 * ((df['FO'] + df['HR-A']) * lg_hr_fb_rate) +
+                              3 * (df['BB'] + df['HB']) - 2 * df['SO']) / df['IP'])
+
+        return pd.DataFrame({'FIP': fip, 'xFIP': xfip})
 
     def compute_pitching_war(self, df, pbp_df):
         if df.empty:
             return df
 
-        # Calculate gmLI for relievers
         gmli = (pbp_df[pbp_df['description'].str.contains('to p for', na=False)]
-                .groupby(['pitcher_standardized', 'pitch_team'])
+                .groupby(['pitcher_id'])
                 .agg({'li': 'mean'})
                 .reset_index()
                 .rename(columns={'li': 'gmLI', 'pitch_team': 'Team'}))
 
-        # Merge gmLI data
         df = df.merge(gmli, how='left',
-                      left_on=['player_name', 'team_name'],
-                      right_on=['pitcher_standardized', 'Team'])
+                      left_on=['player_id'],
+                      right_on=['pitcher_id'])
         df['gmLI'] = df['gmLI'].fillna(0.0)
-        df = df.drop('pitcher_standardized', axis=1, errors='ignore')
+
+        # Only calculate FIP-based stats for pitchers with IP > 0
+        valid_ip_mask = df['IP'] > 0
 
         def calculate_if_fip_constant(group_df):
+            # Only use records with IP > 0
+            group_df = group_df[group_df['IP'] > 0]
+            if len(group_df) == 0:
+                return np.nan
+
             lg_ip = group_df['IP'].sum()
             lg_hr = group_df['HR-A'].sum()
             lg_bb = group_df['BB'].sum()
@@ -119,88 +160,91 @@ class BaseballStats:
             numerator = ((13 * lg_hr) + (3 * (lg_bb + lg_hbp)) - (2 * lg_k))
             return lg_era - (numerator / lg_ip)
 
-        # Calculate ifFIP for each pitcher
         def calculate_player_if_fip(row, constant):
-            numerator = ((13 * row['HR-A']) + (3 * (row['BB'] + row['HB'])) -
-                         (2 * row['SO']))
+            if row['IP'] == 0:
+                return np.nan
+            numerator = ((13 * row['HR-A']) + (3 *
+                         (row['BB'] + row['HB'])) - (2 * row['SO']))
             return (numerator / row['IP']) + constant
 
         # Calculate FIP constants and ifFIP by conference
-        if_fip_constants = df.groupby('conference').apply(
+        if_fip_constants = df[valid_ip_mask].groupby('conference').apply(
             calculate_if_fip_constant).reset_index()
         if_fip_constants.columns = ['conference', 'if_fip_constant']
         df = df.merge(if_fip_constants, on='conference', how='left')
 
-        # Calculate individual ifFIP
+        # Calculate individual ifFIP only for valid IP
         df['ifFIP'] = df.apply(lambda row: calculate_player_if_fip(
             row, row['if_fip_constant']), axis=1)
 
-        # Calculate RA9-ERA adjustment
-        lgRA9 = (df['R'].sum() / df['IP'].sum()) * 9
-        lgERA = (df['ER'].sum() / df['IP'].sum()) * 9
-        adjustment = lgRA9 - lgERA
+        # Calculate RA9-ERA adjustment using only valid IP records
+        valid_df = df[valid_ip_mask]
+        if len(valid_df) > 0:
+            lgRA9 = (valid_df['R'].sum() / valid_df['IP'].sum()) * 9
+            lgERA = (valid_df['ER'].sum() / valid_df['IP'].sum()) * 9
+            adjustment = lgRA9 - lgERA
+        else:
+            adjustment = 0
 
         # Calculate individual FIPR9 and park adjust it
-        df['FIPR9'] = df['ifFIP'] + adjustment
+        df['FIPR9'] = np.where(valid_ip_mask, df['ifFIP'] + adjustment, np.nan)
         df['PF'] = df['PF'].fillna(100)
-        df['pFIPR9'] = df['FIPR9'] / (df['PF'] / 100)
+        df['pFIPR9'] = np.where(
+            valid_ip_mask, df['FIPR9'] / (df['PF'] / 100), np.nan)
 
         def calculate_league_adjustments(group_df):
-            # Get league totals
-            lg_ip = group_df['IP'].sum()
-            lg_hr = group_df['HR-A'].sum()
-            lg_bb = group_df['BB'].sum()
-            lg_hbp = group_df['HB'].sum()
-            lg_k = group_df['SO'].sum()
+            valid_group = group_df[group_df['IP'] > 0]
+            if len(valid_group) == 0:
+                return np.nan
 
-            # Calculate league ifFIP
+            lg_ip = valid_group['IP'].sum()
+            lg_hr = valid_group['HR-A'].sum()
+            lg_bb = valid_group['BB'].sum()
+            lg_hbp = valid_group['HB'].sum()
+            lg_k = valid_group['SO'].sum()
+
             lg_ifFIP = ((13 * lg_hr) + (3 * (lg_bb + lg_hbp)) -
-                        (2 * lg_k)) / lg_ip + group_df['if_fip_constant'].iloc[0]
+                        (2 * lg_k)) / lg_ip + valid_group['if_fip_constant'].iloc[0]
 
-            # Get RA9-ERA adjustment
-            lgRA9 = (group_df['R'].sum() / lg_ip) * 9
-            lgERA = (group_df['ER'].sum() / lg_ip) * 9
+            lgRA9 = (valid_group['R'].sum() / lg_ip) * 9
+            lgERA = (valid_group['ER'].sum() / lg_ip) * 9
             adjustment = lgRA9 - lgERA
 
-            # League FIPR9 is league ifFIP plus adjustment
             return lg_ifFIP + adjustment
 
-        league_adjustments = df.groupby('conference').apply(
+        league_adjustments = df[valid_ip_mask].groupby('conference').apply(
             calculate_league_adjustments).reset_index()
         league_adjustments.columns = ['conference', 'conf_fipr9']
         df = df.merge(league_adjustments, on='conference', how='left')
 
-        # Calculate runs above average per 9
-        df['RAAP9'] = df['conf_fipr9'] - df['pFIPR9']
+        # Calculate remaining stats only for valid IP
+        df['RAAP9'] = np.where(
+            valid_ip_mask, df['conf_fipr9'] - df['pFIPR9'], 0)
+        df['IP/G'] = np.where(df['App'] > 0, df['IP'] / df['App'], 0)
+        df['dRPW'] = np.where(valid_ip_mask,
+                              (((18 - df['IP/G']) * df['conf_fipr9'] +
+                               df['IP/G'] * df['pFIPR9']) / 18 + 2) * 1.5,
+                              0)
 
-        # Calculate IP/G and dynamic runs per win
-        df['IP/G'] = df['IP'] / df['App']
-        df['dRPW'] = (((18 - df['IP/G']) * df['conf_fipr9'] +
-                       df['IP/G'] * df['pFIPR9']) / 18 + 2) * 1.5
-
-        # Convert to wins per game
-        df['WPGAA'] = df['RAAP9'] / df['dRPW']
-
-        # Calculate replacement level
-        df['gs/g'] = df['GS'] / df['App']
+        # Set WAR components to 0 for pitchers with no IP
+        df['WPGAA'] = np.where(valid_ip_mask, df['RAAP9'] / df['dRPW'], 0)
+        df['gs/g'] = np.where(df['App'] > 0, df['GS'] / df['App'], 0)
         df['replacement_level'] = (
             0.03 * (1 - df['gs/g'])) + (0.12 * df['gs/g'])
+        df['WPGAR'] = np.where(
+            valid_ip_mask, df['WPGAA'] + df['replacement_level'], 0)
+        df['WAR'] = np.where(valid_ip_mask, df['WPGAR'] * (df['IP'] / 9), 0)
 
-        # Calculate WPGAR and initial WAR
-        df['WPGAR'] = df['WPGAA'] + df['replacement_level']
-        df['WAR'] = df['WPGAR'] * (df['IP'] / 9)
-
+        # Apply relief pitcher adjustment
         relief_mask = df['GS'] <= 2
-        df.loc[relief_mask, 'WAR'] *= (1 + df.loc[relief_mask, 'gmLI']) / 2
+        df.loc[relief_mask & valid_ip_mask,
+               'WAR'] *= (1 + df.loc[relief_mask & valid_ip_mask, 'gmLI']) / 2
 
         # Apply final correction
         warip = -0.0010
-        df['WAR'] += warip * df['IP']
+        df.loc[valid_ip_mask, 'WAR'] += warip * df.loc[valid_ip_mask, 'IP']
 
-        df['ERA+'] = 100 * \
-            (2 - (df.ERA / ((df.ER.sum() / df.IP.sum()) * 9)) * (1 / (df.PF / 100)))
-
-        return df.dropna(subset=['WAR'])
+        return df
 
     def calculate_wgdp(self, pbp_df):
         gdp_opps = pbp_df[(pbp_df['r1_name'] != '') & (
@@ -224,6 +268,135 @@ class BaseballStats:
 
         return gdp_stats
 
+    def calculate_extra_bases(self, df, batting_df, weights):
+        extra_bases = {}
+        opportunities = {}
+        outs_on_bases = {}
+
+        batting_lookup = {
+            team: group.set_index('player_name')['player_id'].to_dict()
+            for team, group in batting_df.groupby('team_name')
+        }
+
+        singles = df[df['event_cd'] == 20].copy()
+        next_plays = singles.shift(-1)
+
+        for idx, play in singles.iterrows():
+            next_play = next_plays.loc[idx]
+            team_dict = batting_lookup.get(play.bat_team, {})
+
+            if pd.notna(play.r1_name) and team_dict:
+                try:
+                    matches = process.extractOne(
+                        play.r1_name,
+                        list(team_dict.keys()),
+                        scorer=fuzz.token_sort_ratio,
+                        score_cutoff=65
+                    )
+                    if matches:
+                        standardized_r1 = matches[0]
+                        opportunities[standardized_r1] = opportunities.get(
+                            standardized_r1, 0) + 1
+
+                        if play.outs_on_play > 0 and play.r1_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name]:
+                            outs_on_bases[standardized_r1] = outs_on_bases.get(
+                                standardized_r1, 0) + 1
+                        elif (play.r1_name == next_play.r3_name or
+                              (play.r1_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name] and
+                               play.runs_on_play > 0 and
+                               play.outs_on_play == 0)):
+                            extra_bases[standardized_r1] = extra_bases.get(
+                                standardized_r1, 0) + 1
+                except Exception:
+                    pass
+
+            # Similar logic for r2_name...
+            if pd.notna(play.r2_name) and team_dict:
+                try:
+                    matches = process.extractOne(
+                        play.r2_name,
+                        list(team_dict.keys()),
+                        scorer=fuzz.token_sort_ratio,
+                        score_cutoff=65
+                    )
+                    if matches:
+                        standardized_r2 = matches[0]
+                        opportunities[standardized_r2] = opportunities.get(
+                            standardized_r2, 0) + 1
+
+                        if play.outs_on_play > 0 and play.r2_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name]:
+                            outs_on_bases[standardized_r2] = outs_on_bases.get(
+                                standardized_r2, 0) + 1
+                        elif (play.r2_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name] and
+                              play.runs_on_play > 0 and
+                              play.outs_on_play == 0):
+                            extra_bases[standardized_r2] = extra_bases.get(
+                                standardized_r2, 0) + 1
+                except Exception:
+                    pass
+
+        # Process doubles similar to singles...
+        doubles = df[df['event_cd'] == 21].copy()
+        next_plays = doubles.shift(-1)
+
+        for idx, play in doubles.iterrows():
+            next_play = next_plays.loc[idx]
+            team_dict = batting_lookup.get(play.bat_team, {})
+
+            for runner_name in [play.r1_name, play.r2_name]:
+                if pd.notna(runner_name) and team_dict:
+                    try:
+                        matches = process.extractOne(
+                            runner_name,
+                            list(team_dict.keys()),
+                            scorer=fuzz.token_sort_ratio,
+                            score_cutoff=65
+                        )
+                        if matches:
+                            standardized_name = matches[0]
+                            opportunities[standardized_name] = opportunities.get(
+                                standardized_name, 0) + 1
+
+                            if play.outs_on_play > 0 and runner_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name]:
+                                outs_on_bases[standardized_name] = outs_on_bases.get(
+                                    standardized_name, 0) + 1
+                            elif (runner_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name] and
+                                  play.runs_on_play > 0 and
+                                  play.outs_on_play == 0):
+                                extra_bases[standardized_name] = extra_bases.get(
+                                    standardized_name, 0) + 1
+                    except Exception:
+                        pass
+
+        results = pd.DataFrame({
+            'Extra_Bases_Taken': pd.Series(extra_bases),
+            'Outs_On_Bases': pd.Series(outs_on_bases),
+            'Opportunities': pd.Series(opportunities)
+        }).fillna(0)
+
+        # Calculate Success Rate
+        results['Success_Rate'] = (
+            results['Extra_Bases_Taken'] / results['Opportunities']).round(3)
+
+        # Calculate league average rates
+        lg_teb_rate = results['Extra_Bases_Taken'].sum(
+        ) / results['Opportunities'].sum()
+        lg_out_rate = results['Outs_On_Bases'].sum() / \
+            results['Opportunities'].sum()
+
+        run_extra_base = 0.3
+        runs_per_out = weights['runsOut']
+        run_out = -1 * (2 * runs_per_out + 0.075)
+
+        results['wTEB'] = (
+            (results['Extra_Bases_Taken'] * run_extra_base) +
+            (results['Outs_On_Bases'] * run_out) -
+            (results['Opportunities'] * (lg_teb_rate *
+             run_extra_base + lg_out_rate * run_out))
+        )
+
+        return results.sort_values('Extra_Bases_Taken', ascending=False)
+
     def process_batting_stats(self, df, weights_df, runs_df, pbp_df, fielding_df):
         if df.empty:
             return df
@@ -233,12 +406,22 @@ class BaseballStats:
             x) else str(x).split('/')[0].upper())
 
         gdp_stats = self.calculate_wgdp(pbp_df)
+        teb_stats = self.calculate_extra_bases(pbp_df, df, weights_df)
+
         df = df.merge(
             gdp_stats,
             left_on='player_name',
             right_index=True,
             how='left'
         )
+
+        df = df.merge(
+            teb_stats,
+            left_on='player_name',
+            right_index=True,
+            how='left'
+        )
+
         df[['wGDP', 'GDP_opps', 'GDP']] = df[[
             'wGDP', 'GDP_opps', 'GDP']].fillna(0)
 
@@ -326,7 +509,7 @@ class BaseballStats:
                                 (team_count * games_played * 0.294))
         df['replacement_level_runs'] = replacement_constant * \
             (rpw / pa.sum()) * rpw
-        df['baserunning'] = df['wSB'] + df['wGDP']
+        df['baserunning'] = df['wSB'] + df['wGDP'] + df['wTEB']
         df['Adjustment'] = (df['Pos'].map(self.position_adjustments).fillna(0) *
                             (df['GP'] / games_played))
 
@@ -467,6 +650,74 @@ class BaseballStats:
 
         return df
 
+    def get_clutch_stats(self, pbp_df):
+        player_stats = pbp_df.groupby(['player_standardized', 'bat_team']).agg({
+            'REA': 'sum',
+            'WPA': 'sum',
+            'WPA/LI': 'sum',
+            'li': 'mean'
+        }).reset_index().sort_values('WPA/LI', ascending=False).reset_index(drop=True)
+
+        player_stats['Clutch'] = np.where(
+            player_stats['li'] == 0,
+            np.nan,
+            (player_stats['WPA'] / player_stats['li']) - player_stats['WPA/LI']
+        )
+
+        team_stats = pbp_df.groupby('bat_team').agg({
+            'REA': 'sum',
+            'WPA': 'sum',
+            'WPA/LI': 'sum',
+            'li': 'mean'
+        }).reset_index().sort_values('WPA/LI', ascending=False).reset_index(drop=True)
+
+        team_stats['Clutch'] = np.where(
+            team_stats['li'] == 0,
+            np.nan,
+            (team_stats['WPA'] / team_stats['li']) - team_stats['WPA/LI']
+        )
+
+        return player_stats, team_stats
+
+    def get_pitcher_clutch_stats(self, pbp_df):
+        pbp_df['pREA'] = (-pbp_df['run_expectancy_delta'] -
+                          pbp_df['runs_on_play'])
+        pbp_df['pWPA'] = np.where(pbp_df['pitch_team'] == pbp_df['home_team'],
+                                  pbp_df['delta_home_win_exp'],
+                                  -pbp_df['delta_home_win_exp'])
+        pbp_df['pWPA/LI'] = pbp_df['pWPA'].div(
+            pbp_df['li'].replace(0, float('nan')))
+
+        pitcher_stats = pbp_df.groupby(['pitcher_standardized', 'pitch_team']).agg({
+            'pREA': 'sum',
+            'pWPA': 'sum',
+            'pWPA/LI': 'sum',
+            'li': 'mean'
+        }).reset_index().sort_values('pWPA/LI', ascending=False).reset_index(drop=True)
+
+        pitcher_stats['Clutch'] = np.where(
+            pitcher_stats['li'] == 0,
+            np.nan,
+            (pitcher_stats['pWPA'] / pitcher_stats['li']) -
+            pitcher_stats['pWPA/LI']
+        )
+
+        team_stats = pbp_df.groupby(['pitch_team']).agg({
+            'pREA': 'sum',
+            'pWPA': 'sum',
+            'pWPA/LI': 'sum',
+            'li': 'mean'
+        }).reset_index().sort_values('pWPA/LI', ascending=False).reset_index(drop=True)
+
+        team_stats['Clutch'] = np.where(
+            team_stats['li'] == 0,
+            np.nan,
+            (team_stats['pWPA'] / team_stats['li']) -
+            team_stats['pWPA/LI']
+        )
+
+        return pitcher_stats, team_stats
+
     def process_and_save_stats(self, start_year=2021, end_year=2024):
         conn = self.get_connection()
         try:
@@ -492,16 +743,28 @@ class BaseballStats:
                     'batting_runs': 'Batting', 'baserunning': 'Baserunning',
                     'conference': 'Conference'
                 })
+
+                player_stats, team_stats = self.get_clutch_stats(pbp[i])
+
+                bat_war = bat_war.merge(
+                    player_stats, left_on=['Player', 'Team'], right_on=['player_standardized', 'bat_team'], how='left')
                 bat_war = bat_war[self.batting_columns]
                 bat_war['Season'] = year
-                bat_war['SB%'] = bat_war['SB%'].fillna(0)
+
+                bat_war[['Player', 'Team', 'Conference', 'Yr']] = bat_war[[
+                    'Player', 'Team', 'Conference', 'Yr']].fillna('-')
+                bat_war = bat_war.fillna(0)
 
                 bat_war.to_sql(f'batting_war_{year}', conn, if_exists='replace',
                                index=False)
                 bat_team_war = self.create_batting_team_war_table(
                     bat_war, year)
+                bat_team_war = bat_team_war.merge(
+                    team_stats, left_on='Team', right_on='bat_team', how='left')
                 bat_team_war.to_sql(f'batting_team_war_{year}', conn,
                                     if_exists='replace', index=False)
+                bat_team_war.to_csv(
+                    f'../data/batting_team_war_{year}.csv', index=False)
                 bat_war.to_csv(
                     f'../data/batting_war_{year}.csv', index=False)
 
@@ -509,8 +772,10 @@ class BaseballStats:
                     pitch_war = self.process_pitching_stats(pitching[i], pbp[i],
                                                             self.park_factors)
 
+                    pitch_war[['Player', 'Team', 'Conference', 'Yr']] = pitch_war[[
+                        'Player', 'Team', 'Conference', 'Yr']].fillna('-')
                     pitch_war = pitch_war.fillna(0)
-                    pitch_war['ERA+'] = pitch_war['ERA+'].replace(
+                    pitch_war = pitch_war.replace(
                         {np.inf: 0, -np.inf: 0})
 
                     if 'Team' in pitch_war.columns and 'team_name' in pitch_war.columns:
@@ -524,6 +789,12 @@ class BaseballStats:
 
                     pitch_war['Season'] = year
 
+                    pitcher_stats, team_stats = self.get_pitcher_clutch_stats(
+                        pbp[i])
+
+                    pitch_war = pitch_war.merge(
+                        pitcher_stats, left_on=['Player', 'Team'], right_on=['pitcher_standardized', 'pitch_team'], how='left')
+
                     pitch_war = pitch_war[self.pitching_columns]
 
                     pitch_war.to_sql(f'pitching_war_{year}', conn,
@@ -532,8 +803,12 @@ class BaseballStats:
                         f'../data/pitching_war_{year}.csv', index=False)
                     pitch_team_war = self.create_pitching_team_war_table(pitch_war,
                                                                          year)
+                    pitch_team_war = pitch_team_war.merge(
+                        team_stats, left_on='Team', right_on='pitch_team', how='left')
                     pitch_team_war.to_sql(f'pitching_team_war_{year}', conn,
                                           if_exists='replace', index=False)
+                    pitch_team_war.to_csv(
+                        f'../data/pitching_team_war_{year}.csv', index=False)
         finally:
             conn.close()
 
