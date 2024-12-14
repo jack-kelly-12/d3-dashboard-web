@@ -1,6 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
-import { Plus, Trash2, FileDown } from "lucide-react";
+import { Plus, Trash2, FileDown, FileText } from "lucide-react";
+import AdvanceReportModal from "../modals/AdvanceReportModal";
+import PitchArsenalReport from "../../reports/PitchArsenalReport";
+import { pdf } from "@react-pdf/renderer";
 
 const ChartsList = ({
   charts,
@@ -9,6 +12,8 @@ const ChartsList = ({
   onChartSelect,
   onDeleteChart,
 }) => {
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
   const getTimeAgo = (dateString) => {
     if (!dateString) return "—";
     const date = new Date(dateString);
@@ -27,6 +32,70 @@ const ChartsList = ({
       minute: "2-digit",
       hour12: true,
     });
+  };
+
+  const validatePitchData = (charts, reportType) => {
+    const requirements = {
+      "pitch-arsenal": [
+        "velocity",
+        "spinRate",
+        "horizontalBreak",
+        "verticalBreak",
+      ],
+    };
+
+    // Valid source types for different reports
+    const validSources = {
+      "pitch-arsenal": ["trackman", "rapsodo", "d3"],
+    };
+
+    // Get requirements for this report type
+    const reqFields = requirements[reportType];
+    const allowedSources = validSources[reportType];
+
+    if (!reqFields || !allowedSources) {
+      console.error("Invalid report type");
+      return [];
+    }
+
+    return charts.filter((chart) => {
+      // Check if chart source is valid
+      const source = (chart.source || "d3").toLowerCase();
+      if (!allowedSources.includes(source)) return false;
+
+      // Check if pitches have required data
+      return chart.pitches?.some((pitch) =>
+        reqFields.every((field) => {
+          const value = pitch[field];
+          return value !== undefined && value !== null && !isNaN(value);
+        })
+      );
+    });
+  };
+
+  const handleGenerateReport = async ({ charts, reportType, pitchers }) => {
+    // Validate charts
+    const validCharts = validatePitchData(charts, reportType);
+
+    // Combine all pitch data
+    const allPitches = validCharts.flatMap((chart) => chart.pitches);
+
+    // Generate PDF
+    const blob = await pdf(
+      <PitchArsenalReport pitchers={pitchers} data={allPitches} />
+    ).toBlob();
+
+    // Download
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `pitch_arsenal_report_${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const formatPitchesForExport = (pitches, source = "d3") => {
@@ -132,7 +201,6 @@ const ChartsList = ({
   };
 
   const handleExport = (chart) => {
-    // Pass the chart's source to formatPitchesForExport
     const csvContent = formatPitchesForExport(chart.pitches || [], chart.source)
       .map((row) => row.join(","))
       .join("\n");
@@ -308,6 +376,13 @@ const ChartsList = ({
               New Chart
             </button>
             <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              <FileText size={14} />
+              Generate Report
+            </button>
+            <button
               onClick={onUploadClick}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
             >
@@ -330,6 +405,12 @@ const ChartsList = ({
               </p>
             </div>
           }
+        />
+        <AdvanceReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          charts={charts}
+          onGenerate={handleGenerateReport}
         />
       </div>
     </div>

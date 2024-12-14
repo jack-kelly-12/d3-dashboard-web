@@ -27,7 +27,6 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
     )
       return;
 
-    // Create a new date object with the current time
     const now = new Date();
     const dateWithTime = new Date(formData.date);
     dateWithTime.setHours(now.getHours());
