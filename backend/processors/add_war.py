@@ -772,12 +772,6 @@ class BaseballStats:
                     pitch_war = self.process_pitching_stats(pitching[i], pbp[i],
                                                             self.park_factors)
 
-                    pitch_war[['Player', 'Team', 'Conference', 'Yr']] = pitch_war[[
-                        'Player', 'Team', 'Conference', 'Yr']].fillna('-')
-                    pitch_war = pitch_war.fillna(0)
-                    pitch_war = pitch_war.replace(
-                        {np.inf: 0, -np.inf: 0})
-
                     if 'Team' in pitch_war.columns and 'team_name' in pitch_war.columns:
                         pitch_war = pitch_war.drop('Team', axis=1)
 
@@ -788,6 +782,12 @@ class BaseballStats:
                     })
 
                     pitch_war['Season'] = year
+
+                    pitch_war[['Player', 'Team', 'Conference', 'Yr']] = pitch_war[[
+                        'Player', 'Team', 'Conference', 'Yr']].fillna('-')
+                    pitch_war = pitch_war.fillna(0)
+                    pitch_war = pitch_war.replace(
+                        {np.inf: 0, -np.inf: 0})
 
                     pitcher_stats, team_stats = self.get_pitcher_clutch_stats(
                         pbp[i])
