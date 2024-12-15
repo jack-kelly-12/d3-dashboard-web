@@ -47,8 +47,8 @@ A comprehensive analytics platform designed specifically for NCAA Division III b
     
 ### Teams
 - `GET /api/teams-2024` - All teams
-- `GET /api/players-hit-2024/<team_id>` - Team hitting roster
-- `GET /api/players-pitch-2024/<team_id>` - Team pitching roster
+- `GET /api/players-hit-2024/<team_id>` - Hitting data for all players on a specific team
+- `GET /api/players-pitch-2024/<team_id>` - Pitching data for all players on a specific team
 
 ## Contributing
 
