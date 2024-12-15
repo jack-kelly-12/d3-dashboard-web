@@ -20,7 +20,7 @@ class BaseballStats:
             'PA', 'H', '2B', '3B', 'HR', 'R', 'SB', 'OPS+', 'Picked',
             'Sac', 'BA', 'SlgPct', 'OBPct', 'ISO', 'wOBA', 'K%', 'BB%',
             'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR', 'player_id', 'player_url',
-            'Clutch', 'WPA', 'REA', 'WPA/LI'
+            'Clutch', 'WPA', 'REA', 'WPA/LI', 'wSB', 'wGDP', 'wTEB'
         ]
         self.pitching_columns = [
             'Player', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
@@ -50,7 +50,7 @@ class BaseballStats:
     def get_connection(self):
         return sqlite3.connect(self.db_path)
 
-    def process_pitching_stats(self, df, pbp_df, runs_df):
+    def process_pitching_stats(self, df, pbp_df, runs_df, bat_war_total):
         if df.empty:
             return df
 
@@ -105,7 +105,7 @@ class BaseballStats:
              * (1 / (df.loc[valid_ip_mask, 'PF'] / 100)))
         df.loc[~valid_ip_mask, 'ERA+'] = np.nan
 
-        return self.compute_pitching_war(df, pbp_df)
+        return self.compute_pitching_war(df, pbp_df, bat_war_total)
 
     def calculate_pitching_metrics(self, df):
         """Calculate FIP and xFIP for pitchers with IP > 0"""
@@ -126,7 +126,7 @@ class BaseballStats:
 
         return pd.DataFrame({'FIP': fip, 'xFIP': xfip})
 
-    def compute_pitching_war(self, df, pbp_df):
+    def compute_pitching_war(self, df, pbp_df, bat_war_total):
         if df.empty:
             return df
 
@@ -240,9 +240,13 @@ class BaseballStats:
         df.loc[relief_mask & valid_ip_mask,
                'WAR'] *= (1 + df.loc[relief_mask & valid_ip_mask, 'gmLI']) / 2
 
-        # Apply final correction
-        warip = -0.0010
-        df.loc[valid_ip_mask, 'WAR'] += warip * df.loc[valid_ip_mask, 'IP']
+        total_pitching_war = df['WAR'].sum()
+        target_pitching_war = (bat_war_total * 0.43) / 0.57  # 43% of total WAR
+        war_adjustment = (target_pitching_war - total_pitching_war) / \
+            df.loc[valid_ip_mask, 'IP'].sum()
+
+        df.loc[valid_ip_mask, 'WAR'] += war_adjustment * \
+            df.loc[valid_ip_mask, 'IP']
 
         return df
 
@@ -737,6 +741,7 @@ class BaseballStats:
 
                 bat_war = self.process_batting_stats(batting[i], year_guts,
                                                      self.park_factors, pbp[i], fielding[i])
+                batting_war_total = bat_war.WAR.sum()
                 bat_war = bat_war.rename(columns={
                     'player_name': 'Player',
                     'team_name': 'Team', 'SH': 'Sac',
@@ -770,7 +775,7 @@ class BaseballStats:
 
                 if i < len(pitching):
                     pitch_war = self.process_pitching_stats(pitching[i], pbp[i],
-                                                            self.park_factors)
+                                                            self.park_factors, batting_war_total)
 
                     if 'Team' in pitch_war.columns and 'team_name' in pitch_war.columns:
                         pitch_war = pitch_war.drop('Team', axis=1)
