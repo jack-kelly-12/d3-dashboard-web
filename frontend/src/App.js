@@ -12,6 +12,7 @@ import { Toaster } from "react-hot-toast";
 import SprayChart from "./components/charting/SprayChart";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
 import PlayerPage from "./pages/PlayerPage.js";
+import Documentation from "./pages/Documentation.js";
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
             <Route path="/spraychart" element={<SprayChart />} />
             <Route path="/subscriptions" element={<SubscriptionPlans />} />
             <Route path="/player/:playerId" element={<PlayerPage />} />
+            <Route path="/documentation" element={<Documentation />} />
           </Routes>
         </div>
         <Toaster

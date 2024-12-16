@@ -1,5 +1,6 @@
 import React from "react";
-import { Search } from "lucide-react";
+import { Search, BookOpen } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const dataTypes = [
   { id: "player_hitting", label: "Player Hitting" },
@@ -36,6 +37,9 @@ const DataControls = ({
   setMinIP,
   searchTerm,
   setSearchTerm,
+  conference,
+  setConference,
+  conferences,
 }) => {
   const QualifierFilter = () => {
     if (!dataType.includes("player")) return null;
@@ -88,6 +92,9 @@ const DataControls = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-4">
+          <label className="text-sm font-medium text-gray-700">
+            Years to include:
+          </label>
           <div className="flex gap-2">
             {[2024, 2023, 2022, 2021].map((year) => (
               <label
@@ -118,27 +125,56 @@ const DataControls = ({
             ))}
           </div>
 
-          <div className="flex items-center gap-4 ml-auto">
-            {/* Qualifier Filter */}
-            <QualifierFilter />
+          <Link
+            to="/documentation"
+            className="flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <BookOpen size={16} />
+            <span>View Statistics Guide</span>
+          </Link>
+        </div>
 
-            {/* Search Input */}
-            <div className="relative">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={18}
-              />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder={`Search ${
-                  dataType.includes("player") ? "players" : "teams"
-                }...`}
-                className="w-64 pl-10 pr-4 py-2 border border-gray-200 rounded-lg
-                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Conference Filter */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">
+              Conference:
+            </label>
+            <select
+              value={conference}
+              onChange={(e) => setConference(e.target.value)}
+              className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                hover:border-gray-300 transition-colors min-w-[200px]"
+            >
+              <option value="">All Conferences</option>
+              {conferences.map((conf) => (
+                <option key={conf} value={conf}>
+                  {conf}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Qualifier Filter */}
+          <QualifierFilter />
+
+          {/* Search Input */}
+          <div className="relative ml-auto">
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={`Search ${
+                dataType.includes("player") ? "players" : "teams"
+              }...`}
+              className="w-64 pl-10 pr-4 py-2 border border-gray-200 rounded-lg
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
         </div>
       </div>
