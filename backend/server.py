@@ -530,5 +530,34 @@ def upload_trackman():
         return jsonify({"error": f"Error processing file: {str(e)}"}), 500
 
 
+@app.route('/api/conferences', methods=['GET'])
+def get_conferences():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Get unique conferences from both batting and pitching tables for the current year
+        cursor.execute("""
+            SELECT DISTINCT Conference 
+            FROM (
+                SELECT Conference FROM batting_war_2024
+                UNION
+                SELECT Conference FROM pitching_war_2024
+            )
+            WHERE Conference IS NOT NULL
+            ORDER BY Conference
+        """)
+
+        conferences = [row[0] for row in cursor.fetchall()]
+        return jsonify(conferences)
+
+    except Exception as e:
+        print(f"Error fetching conferences: {e}")
+        return jsonify({"error": "Failed to fetch conferences"}), 500
+
+    finally:
+        conn.close()
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
