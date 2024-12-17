@@ -30,3 +30,5 @@
 backend/data/*.csv
 scrapers/
 notebooks/
+
+backend/images

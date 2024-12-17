@@ -39,27 +39,36 @@ const Guts = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 sm:px-2 md:px-6 lg:px-8 py-8">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#007BA7] border-t-transparent"></div>
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="space-y-8">
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">Guts</h1>
-              <p className="text-gray-600 mb-6">
+          <div className="space-y-6 sm:space-y-4 md:space-y-8">
+            <div className="bg-white p-6 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200">
+              <h1 className="text-xl sm:text-lg md:text-2xl font-bold text-gray-800 mb-2">
+                Guts
+              </h1>
+              <p className="text-sm sm:text-xs md:text-base text-gray-600 mb-6">
                 Explore league-wide constants and park factors that influence
                 player and team performance.
               </p>
-              <div className="space-y-8">
-                <GutsTable data={gutsData} />
-                <ExpectedRunsTable data={erData} />
-                <ParkFactorsTable
-                  data={pfData}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                />
+              <div className="space-y-6 sm:space-y-4 md:space-y-8">
+                {/* Make tables scrollable on smaller screens */}
+                <div className="overflow-auto">
+                  <GutsTable data={gutsData} />
+                </div>
+                <div className="overflow-auto">
+                  <ExpectedRunsTable data={erData} />
+                </div>
+                <div className="overflow-auto">
+                  <ParkFactorsTable
+                    data={pfData}
+                    searchTerm={searchTerm}
+                    onSearchChange={setSearchTerm}
+                  />
+                </div>
               </div>
             </div>
           </div>

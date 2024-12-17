@@ -9,6 +9,10 @@ from io import StringIO
 import json
 from werkzeug.utils import secure_filename
 import os
+from PIL import Image
+import io
+from flask import Response
+
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 
@@ -40,7 +44,14 @@ def get_batting_war(year):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM batting_war_{year}")
+
+    # Join with ids_for_images to get both team and conference IDs
+    cursor.execute(f"""
+        SELECT b.*, i.prev_team_id, i.conference_id 
+        FROM batting_war_{year} b
+        LEFT JOIN ids_for_images i ON b.Team = i.team_name
+    """)
+
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(data)
@@ -53,7 +64,14 @@ def get_pitching_war(year):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM pitching_war_{year}")
+
+    # Join with ids_for_images to get both team and conference IDs
+    cursor.execute(f"""
+        SELECT p.*, i.prev_team_id, i.conference_id 
+        FROM pitching_war_{year} p
+        LEFT JOIN ids_for_images i ON p.Team = i.team_name
+    """)
+
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(data)
@@ -66,7 +84,14 @@ def get_batting_team_war_war(year):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM batting_team_war_{year}")
+
+    # Join with ids_for_images to get both team and conference IDs
+    cursor.execute(f"""
+        SELECT b.*, i.prev_team_id, i.conference_id 
+        FROM batting_war_team_{year} b
+        LEFT JOIN ids_for_images i ON b.Team = i.team_name
+    """)
+
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(data)
@@ -79,7 +104,13 @@ def get_pitching_team_war(year):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM pitching_team_war_{year}")
+
+    cursor.execute(f"""
+        SELECT p.*, i.prev_team_id, i.conference_id 
+        FROM pitching_war_team_{year} p
+        LEFT JOIN ids_for_images i ON p.Team = i.team_name
+    """)
+
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(data)
@@ -273,16 +304,20 @@ def get_player_stats(player_id):
         player_name = None
         current_team = None
         current_conference = None
+        current_prev_team_id = None
+        current_conference_id = None
         is_pitcher = False
         batting_stats = []
         pitching_stats = []
 
         # Get stats for all years
         for year in range(2021, 2025):
-            # Check batting stats
+            # Check batting stats with team/conference IDs
             cursor.execute(f"""
-                SELECT * FROM batting_war_{year} 
-                WHERE player_id = ?
+                SELECT b.*, i.prev_team_id, i.conference_id
+                FROM batting_war_{year} b
+                LEFT JOIN ids_for_images i ON b.Team = i.team_name
+                WHERE b.player_id = ?
             """, (player_id,))
             bat_stats = cursor.fetchone()
             if bat_stats:
@@ -293,11 +328,15 @@ def get_player_stats(player_id):
                     player_name = bat_stats["Player"]
                     current_team = bat_stats["Team"]
                     current_conference = bat_stats["Conference"]
+                    current_prev_team_id = bat_stats["prev_team_id"]
+                    current_conference_id = bat_stats["conference_id"]
 
-            # Check pitching stats
+            # Check pitching stats with team/conference IDs
             cursor.execute(f"""
-                SELECT * FROM pitching_war_{year} 
-                WHERE player_id = ?
+                SELECT p.*, i.prev_team_id, i.conference_id
+                FROM pitching_war_{year} p
+                LEFT JOIN ids_for_images i ON p.Team = i.team_name
+                WHERE p.player_id = ?
             """, (player_id,))
             pitch_stats = cursor.fetchone()
             if pitch_stats:
@@ -308,6 +347,8 @@ def get_player_stats(player_id):
                     player_name = pitch_stats["Player"]
                     current_team = pitch_stats["Team"]
                     current_conference = pitch_stats["Conference"]
+                    current_prev_team_id = pitch_stats["prev_team_id"]
+                    current_conference_id = pitch_stats["conference_id"]
                     is_pitcher = True
 
         if not player_found:
@@ -322,6 +363,8 @@ def get_player_stats(player_id):
             "playerName": player_name,
             "currentTeam": current_team,
             "conference": current_conference,
+            "prev_team_id": current_prev_team_id,
+            "conference_id": current_conference_id,
             "isPitcher": is_pitcher,
             "isActive": is_active,
             "battingStats": batting_stats,
@@ -557,6 +600,85 @@ def get_conferences():
 
     finally:
         conn.close()
+
+
+@app.route('/api/teams/logos/<team_id>.png')
+def get_team_logo(team_id):
+    try:
+        image_path = os.path.join(app.root_path, 'images', f'{team_id}.gif')
+
+        if not os.path.exists(image_path):
+            return '', 404
+
+        with Image.open(image_path) as img:
+            img = img.convert('RGBA')
+
+            data = img.getdata()
+            new_data = []
+            for item in data:
+                if item[0] > 245 and item[1] > 245 and item[2] > 245:
+                    new_data.append((255, 255, 255, 0))
+                else:
+                    new_data.append(item)
+
+            img.putdata(new_data)
+
+            img_io = io.BytesIO()
+            img.save(img_io, 'PNG')
+            img_io.seek(0)
+
+            return Response(
+                img_io.getvalue(),
+                mimetype='image/png',
+                headers={
+                    'Cache-Control': 'public, max-age=31536000',
+                    'Content-Type': 'image/png'
+                }
+            )
+
+    except Exception as e:
+        print(f"Error serving logo: {e}")
+        return '', 404
+
+
+@app.route('/api/conferences/logos/<conference_id>.png')
+def get_conference_logo(conference_id):
+    try:
+        image_path = os.path.join(
+            app.root_path, 'images', f'{conference_id}.gif')
+
+        if not os.path.exists(image_path):
+            return '', 404
+
+        with Image.open(image_path) as img:
+            img = img.convert('RGBA')
+
+            data = img.getdata()
+            new_data = []
+            for item in data:
+                if item[0] > 245 and item[1] > 245 and item[2] > 245:
+                    new_data.append((255, 255, 255, 0))
+                else:
+                    new_data.append(item)
+
+            img.putdata(new_data)
+
+            img_io = io.BytesIO()
+            img.save(img_io, 'PNG')
+            img_io.seek(0)
+
+            return Response(
+                img_io.getvalue(),
+                mimetype='image/png',
+                headers={
+                    'Cache-Control': 'public, max-age=31536000',
+                    'Content-Type': 'image/png'
+                }
+            )
+
+    except Exception as e:
+        print(f"Error serving conference logo: {e}")
+        return '', 404
 
 
 if __name__ == '__main__':

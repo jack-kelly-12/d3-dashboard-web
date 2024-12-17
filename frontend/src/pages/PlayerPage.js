@@ -4,6 +4,7 @@ import { fetchAPI } from "../config/api";
 import { PercentileSection } from "../components/player/PercentileRankings";
 import StatTable from "../components/player/StatTable";
 import PlayerHeader from "../components/player/PlayerHeader";
+import TeamLogo from "../components/data/TeamLogo";
 
 const PlayerPage = () => {
   const { playerId } = useParams();
@@ -18,15 +19,96 @@ const PlayerPage = () => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        // First fetch player data
         const playerResponse = await fetchAPI(
           `/api/player/${decodeURIComponent(playerId)}`
         );
-        setPlayerData(playerResponse);
+
+        const enhancedPlayerData = {
+          ...playerResponse,
+          renderedTeam: playerResponse.currentTeam ? (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={playerResponse.prev_team_id}
+                conferenceId={playerResponse.conference_id}
+                teamName={playerResponse.currentTeam}
+                className="h-8 w-8"
+              />
+              <span className="ml-2">{playerResponse.currentTeam}</span>
+            </div>
+          ) : null,
+          renderedConference: playerResponse.conference ? (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={playerResponse.prev_team_id}
+                conferenceId={playerResponse.conference_id}
+                teamName={playerResponse.conference}
+                showConference={true}
+                className="h-6 w-6"
+              />
+              <span className="ml-2">{playerResponse.conference}</span>
+            </div>
+          ) : null,
+          battingStats: playerResponse.battingStats?.map((stat) => ({
+            ...stat,
+            renderedTeam: (
+              <div className="w-full flex justify-center items-center">
+                <TeamLogo
+                  teamId={stat.prev_team_id}
+                  conferenceId={stat.conference_id}
+                  teamName={stat.Team}
+                  className="h-8 w-8"
+                />
+              </div>
+            ),
+            renderedConference: (
+              <div className="w-full flex justify-center items-center">
+                <TeamLogo
+                  teamId={stat.prev_team_id}
+                  conferenceId={stat.conference_id}
+                  teamName={stat.Conference}
+                  showConference={true}
+                  className="h-8 w-8"
+                />
+              </div>
+            ),
+          })),
+          pitchingStats: playerResponse.pitchingStats?.map((stat) => ({
+            ...stat,
+            renderedTeam: (
+              <div className="w-full flex justify-center items-center">
+                <TeamLogo
+                  teamId={stat.prev_team_id}
+                  conferenceId={stat.conference_id}
+                  teamName={stat.Team}
+                  className="h-8 w-8"
+                />
+                <span className="ml-2">{stat.Team}</span>
+              </div>
+            ),
+            renderedConference: (
+              <div className="w-full flex justify-center items-center">
+                <TeamLogo
+                  teamId={stat.prev_team_id}
+                  conferenceId={stat.conference_id}
+                  teamName={stat.Conference}
+                  showConference={true}
+                  className="h-6 w-6"
+                />
+                <span className="ml-2">{stat.Conference}</span>
+              </div>
+            ),
+          })),
+        };
+
+        setPlayerData(enhancedPlayerData);
 
         const has2024Stats =
-          playerResponse.battingStats?.some((stat) => stat.Season === 2024) ||
-          playerResponse.pitchingStats?.some((stat) => stat.Season === 2024);
+          enhancedPlayerData.battingStats?.some(
+            (stat) => stat.Season === 2024
+          ) ||
+          enhancedPlayerData.pitchingStats?.some(
+            (stat) => stat.Season === 2024
+          );
         setIsActive(has2024Stats);
 
         if (has2024Stats) {
@@ -39,8 +121,8 @@ const PlayerPage = () => {
         }
 
         if (
-          !playerResponse.battingStats?.length &&
-          playerResponse.pitchingStats?.length
+          !enhancedPlayerData.battingStats?.length &&
+          enhancedPlayerData.pitchingStats?.length
         ) {
           setActiveTab("pitching");
         }
