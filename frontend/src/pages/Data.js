@@ -4,6 +4,7 @@ import InfoBanner from "../components/data/InfoBanner";
 import DataControls from "../components/data/DataControls";
 import { fetchAPI } from "../config/api";
 import { getDataColumns } from "../config/tableColumns";
+import TeamLogo from "../components/data/TeamLogo";
 
 const Data = () => {
   const [dataType, setDataType] = useState("player_hitting");
@@ -16,6 +17,7 @@ const Data = () => {
   const [error, setError] = useState(null);
   const [conferences, setConferences] = useState([]);
   const [selectedConference, setSelectedConference] = useState("");
+
   useEffect(() => {
     const fetchConferences = async () => {
       try {
@@ -62,7 +64,32 @@ const Data = () => {
           return;
         }
 
-        setData(combinedData);
+        const transformedData = combinedData.map((row) => ({
+          ...row,
+          renderedTeam: (
+            <div className="flex items-center gap-2">
+              <TeamLogo
+                teamId={row.prev_team_id}
+                conferenceId={row.conference_id}
+                teamName={row.Team}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+          renderedConference: (
+            <div className="w-full flex justify-center items-center gap-2">
+              <TeamLogo
+                teamId={row.prev_team_id}
+                conferenceId={row.conference_id}
+                teamName={row.Conference}
+                showConference={true}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+        }));
+
+        setData(transformedData);
       } catch (err) {
         console.error("Error fetching data:", err);
         setError(err.message);
@@ -96,8 +123,8 @@ const Data = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+    <div className="flex-1 overflow-x-hidden container">
+      <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
         <InfoBanner dataType={dataType} />
 
         <DataControls

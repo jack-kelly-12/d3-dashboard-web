@@ -22,7 +22,7 @@ const customStyles = {
       fontSize: "12px",
       fontWeight: "600",
       letterSpacing: "0.05em",
-      padding: "16px 5px",
+      padding: "8px 5px",
       justifyContent: "center",
     },
     activeSortStyle: {
@@ -36,8 +36,7 @@ const customStyles = {
     style: {
       fontSize: "14px",
       color: "#334155",
-      padding: "12px 16px",
-      flex: "0 0 auto",
+      padding: "10px 12px",
     },
   },
   rows: {
@@ -64,26 +63,41 @@ export const BaseballTable = ({
   filename,
   searchComponent,
 }) => {
+  const stickyColumnKey = columns.some((col) => col.selector === "Player")
+    ? "Player"
+    : columns.some((col) => col.selector === "Team")
+    ? "Team"
+    : null;
+
   const formattedColumns = columns.map((column) => ({
     ...column,
-    grow: 0,
-    width: column.width || "auto", // Use specified width or auto
-    sortable: column.sortable !== false, // Make sortable by default
-    style: column.numeric ? { justifyContent: "flex-end" } : {},
+    grow: column.selector === stickyColumnKey ? 0 : column.grow || 1,
+    width:
+      column.selector === stickyColumnKey ? "150px" : column.width || "auto",
+    style: {
+      ...column.style,
+      position: column.selector === stickyColumnKey ? "sticky" : "unset",
+      left: column.selector === stickyColumnKey ? 0 : "unset",
+      zIndex: column.selector === stickyColumnKey ? 1 : "unset",
+      backgroundColor:
+        column.selector === stickyColumnKey ? "#ffffff" : "inherit",
+    },
   }));
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
       {(title || searchComponent) && (
-        <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex justify-between items-center">
+        <div className="px-6 sm:px-2 py-4 border-b border-gray-200">
+          <div className="flex flex-wrap justify-between items-center gap-4">
             {title && (
               <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 {title}
               </h2>
             )}
             {searchComponent && (
-              <div className="flex items-center gap-4">{searchComponent}</div>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                {searchComponent}
+              </div>
             )}
           </div>
         </div>

@@ -99,14 +99,15 @@ export const getDataColumns = (dataType) => {
         {
           name: "Team",
           selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
           sortable: true,
-          width: "150px",
         },
         {
           name: "Conference",
           selector: (row) => row.Conference,
+          cell: (row) => row.renderedConference,
           sortable: true,
-          width: "150px",
+          width: "110px",
         },
         {
           name: "Season",
@@ -327,14 +328,15 @@ export const getDataColumns = (dataType) => {
         {
           name: "Team",
           selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
           sortable: true,
-          width: "150px",
         },
         {
           name: "Conference",
           selector: (row) => row.Conference,
+          cell: (row) => row.renderedConference,
           sortable: true,
-          width: "150px",
+          width: "110px",
         },
         {
           name: "Season",
@@ -547,14 +549,15 @@ export const getDataColumns = (dataType) => {
         {
           name: "Team",
           selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
           sortable: true,
-          width: "150px",
         },
         {
           name: "Conference",
           selector: (row) => row.Conference,
+          cell: (row) => row.renderedConference,
           sortable: true,
-          width: "150px",
+          width: "110px",
         },
         {
           name: "Season",
@@ -725,14 +728,15 @@ export const getDataColumns = (dataType) => {
         {
           name: "Team",
           selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
           sortable: true,
-          width: "150px",
         },
         {
           name: "Conference",
           selector: (row) => row.Conference,
+          cell: (row) => row.renderedConference,
           sortable: true,
-          width: "150px",
+          width: "110px",
         },
         {
           name: "Season",
