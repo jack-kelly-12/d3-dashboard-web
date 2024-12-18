@@ -123,10 +123,10 @@ const Data = () => {
   });
 
   return (
-    <div className="flex-1 overflow-x-hidden container">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
+        {" "}
         <InfoBanner dataType={dataType} />
-
         <DataControls
           dataType={dataType}
           setDataType={setDataType}
@@ -142,7 +142,6 @@ const Data = () => {
           setConference={setSelectedConference}
           conferences={conferences}
         />
-
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />

@@ -27,9 +27,9 @@ const HomePage = () => {
       </div>
 
       {/* Features Grid - Responsive grid and spacing */}
-      <div className="flex-grow flex items-center px-4 sm:px-6 lg:px-10 py-8">
-        <div className="w-full max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="flex-grow flex items-center px-10 sm:px-6 lg:px-10 py-8">
+        <div className="w-full max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-6">
             <FeatureCard
               icon={<LineChart className="w-6 h-6" />}
               title="Advanced Charting"
@@ -68,7 +68,7 @@ const FeatureCard = ({ icon, title, description, linkTo, color }) => {
   return (
     <Link
       to={linkTo}
-      className="group rounded-xl bg-white p-4 md:p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full"
+      className="group rounded-lg bg-white p-4 md:p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full"
     >
       <div
         className={`inline-flex rounded-lg ${colorClasses[color]} p-3 text-white shadow-sm self-start`}

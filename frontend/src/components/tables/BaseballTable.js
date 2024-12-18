@@ -85,7 +85,7 @@ export const BaseballTable = ({
   }));
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
       {(title || searchComponent) && (
         <div className="px-6 sm:px-2 py-4 border-b border-gray-200">
           <div className="flex flex-wrap justify-between items-center gap-4">
@@ -103,7 +103,8 @@ export const BaseballTable = ({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      {/* Apply custom scrollbar styles to the DataTable container */}
+      <div className="custom-scrollbar">
         <DataTable
           columns={formattedColumns}
           data={data}

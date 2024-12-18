@@ -45,7 +45,7 @@ const InfoBanner = ({ dataType }) => {
   const info = getMessage();
 
   return (
-    <div className="bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 rounded-lg shadow-sm mb-6">
+    <div className="bg-white border-l-4 border-blue-500 rounded-lg shadow-sm mb-6">
       <div className="px-6 py-4">
         <h1 className="text-xl font-semibold text-gray-800 mb-2">
           {info.title}
