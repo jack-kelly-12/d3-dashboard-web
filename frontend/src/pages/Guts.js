@@ -3,6 +3,7 @@ import GutsTable from "../components/tables/GutsTable";
 import ParkFactorsTable from "../components/tables/ParkFactorsTable";
 import ExpectedRunsTable from "../components/tables/ExpectedRunsTable";
 import { fetchAPI } from "../config/api";
+import InfoBanner from "../components/data/InfoBanner";
 
 const Guts = () => {
   const [gutsData, setGutsData] = useState([]);
@@ -46,14 +47,9 @@ const Guts = () => {
           </div>
         ) : (
           <div className="space-y-6 sm:space-y-4 md:space-y-8">
+            <InfoBanner dataType={"guts"}></InfoBanner>
+
             <div className="bg-white p-6 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200">
-              <h1 className="text-xl sm:text-lg md:text-2xl font-bold text-gray-800 mb-2">
-                Guts
-              </h1>
-              <p className="text-sm sm:text-xs md:text-base text-gray-600 mb-6">
-                Explore league-wide constants and park factors that influence
-                player and team performance.
-              </p>
               <div className="space-y-6 sm:space-y-4 md:space-y-8">
                 {/* Make tables scrollable on smaller screens */}
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">

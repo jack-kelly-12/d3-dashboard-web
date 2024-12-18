@@ -1,6 +1,12 @@
 const InfoBanner = ({ dataType }) => {
   const getMessage = () => {
     switch (dataType) {
+      case "guts":
+        return {
+          title: "Guts",
+          description:
+            "Explore league-wide constants and park factors that influence player and team performance.",
+        };
       case "player_hitting":
         return {
           title: "Player Hitting Statistics",
