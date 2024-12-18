@@ -717,7 +717,7 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "WAR",
-          selector: (row) => roundTo(row["WAR%"], 1),
+          selector: (row) => roundTo(row["WAR"], 1),
           sortable: true,
           width: "80px",
           cell: (row) => <WARCell value={row.WAR} isTeam={true} />,

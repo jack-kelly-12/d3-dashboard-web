@@ -56,13 +56,13 @@ const Guts = () => {
               </p>
               <div className="space-y-6 sm:space-y-4 md:space-y-8">
                 {/* Make tables scrollable on smaller screens */}
-                <div className="overflow-auto">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <GutsTable data={gutsData} />
                 </div>
-                <div className="overflow-auto">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <ExpectedRunsTable data={erData} />
                 </div>
-                <div className="overflow-auto">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <ParkFactorsTable
                     data={pfData}
                     searchTerm={searchTerm}

@@ -1,22 +1,34 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BaseballTable } from "../components/tables/BaseballTable";
 import InfoBanner from "../components/data/InfoBanner";
 import DataControls from "../components/data/DataControls";
 import { fetchAPI } from "../config/api";
 import { getDataColumns } from "../config/tableColumns";
 import TeamLogo from "../components/data/TeamLogo";
+import debounce from "lodash/debounce";
+import { useSearchParams } from "react-router-dom";
 
 const Data = () => {
-  const [dataType, setDataType] = useState("player_hitting");
-  const [selectedYears, setSelectedYears] = useState([2024]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [minPA, setMinPA] = useState(50);
-  const [minIP, setMinIP] = useState(10);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [dataType, setDataType] = useState(
+    searchParams.get("dataType") || "player_hitting"
+  );
+  const [selectedYears, setSelectedYears] = useState(
+    searchParams.get("years")?.split(",").map(Number) || [2024]
+  );
+  const [searchTerm, setSearchTerm] = useState(
+    searchParams.get("search") || ""
+  );
+  const [minPA, setMinPA] = useState(Number(searchParams.get("minPA")) || 50);
+  const [minIP, setMinIP] = useState(Number(searchParams.get("minIP")) || 10);
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [conferences, setConferences] = useState([]);
-  const [selectedConference, setSelectedConference] = useState("");
+  const [selectedConference, setSelectedConference] = useState(
+    searchParams.get("conference") || ""
+  );
 
   useEffect(() => {
     const fetchConferences = async () => {
@@ -30,6 +42,7 @@ const Data = () => {
     fetchConferences();
   }, []);
 
+  // Fetch data based on selected filters
   useEffect(() => {
     const endpointMap = {
       player_hitting: (year) => `/api/batting_war/${year}`,
@@ -101,31 +114,59 @@ const Data = () => {
     fetchData();
   }, [dataType, selectedYears]);
 
-  const filteredData = data.filter((item) => {
-    const searchStr = searchTerm.toLowerCase();
-    const name = item.Player?.toLowerCase() || item.Team?.toLowerCase() || "";
-    const team = item.Team?.toLowerCase() || "";
-    const meetsQualifier =
-      dataType === "player_pitching"
-        ? item.IP >= minIP
-        : dataType === "player_hitting"
-        ? item.PA >= minPA
-        : true;
-    const meetsConference = selectedConference
-      ? item.Conference === selectedConference
-      : true;
+  const handleSearchChange = useMemo(
+    () =>
+      debounce((value) => {
+        setSearchTerm(value);
+      }, 300),
+    []
+  );
 
-    return (
-      meetsQualifier &&
-      meetsConference &&
-      (name.includes(searchStr) || team.includes(searchStr))
-    );
-  });
+  const filteredData = useMemo(() => {
+    return data.filter((item) => {
+      const searchStr = searchTerm.toLowerCase();
+      const name = item.Player?.toLowerCase() || item.Team?.toLowerCase() || "";
+      const team = item.Team?.toLowerCase() || "";
+      const meetsQualifier =
+        dataType === "player_pitching"
+          ? item.IP >= minIP
+          : dataType === "player_hitting"
+          ? item.PA >= minPA
+          : true;
+      const meetsConference = selectedConference
+        ? item.Conference === selectedConference
+        : true;
+
+      return (
+        meetsQualifier &&
+        meetsConference &&
+        (name.includes(searchStr) || team.includes(searchStr))
+      );
+    });
+  }, [data, searchTerm, minPA, minIP, selectedConference, dataType]);
+
+  useEffect(() => {
+    setSearchParams({
+      dataType,
+      years: selectedYears.join(","),
+      search: searchTerm,
+      minPA: minPA.toString(),
+      minIP: minIP.toString(),
+      conference: selectedConference,
+    });
+  }, [
+    dataType,
+    selectedYears,
+    searchTerm,
+    minPA,
+    minIP,
+    selectedConference,
+    setSearchParams,
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
-        {" "}
         <InfoBanner dataType={dataType} />
         <DataControls
           dataType={dataType}

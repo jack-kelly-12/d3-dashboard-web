@@ -14,6 +14,7 @@ import SubscriptionPlans from "./pages/SubscriptionPlans";
 import PlayerPage from "./pages/PlayerPage.js";
 import Documentation from "./pages/Documentation.js";
 import Leaderboards from "./pages/Leaderboards.js";
+import GamePage from "./pages/GamePage.js";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/player/:playerId" element={<PlayerPage />} />
             <Route path="/documentation" element={<Documentation />} />
             <Route path="/leaderboards" element={<Leaderboards />} />
+            <Route path="/games/:year/:gameId" element={<GamePage />} />
           </Routes>
         </div>
         <Toaster
