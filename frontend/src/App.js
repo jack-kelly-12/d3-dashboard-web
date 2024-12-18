@@ -13,6 +13,7 @@ import SprayChart from "./components/charting/SprayChart";
 import SubscriptionPlans from "./pages/SubscriptionPlans";
 import PlayerPage from "./pages/PlayerPage.js";
 import Documentation from "./pages/Documentation.js";
+import Leaderboards from "./pages/Leaderboards.js";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
             <Route path="/subscriptions" element={<SubscriptionPlans />} />
             <Route path="/player/:playerId" element={<PlayerPage />} />
             <Route path="/documentation" element={<Documentation />} />
+            <Route path="/leaderboards" element={<Leaderboards />} />
           </Routes>
         </div>
         <Toaster

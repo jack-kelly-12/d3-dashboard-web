@@ -20,7 +20,7 @@ class BaseballStats:
             'PA', 'H', '2B', '3B', 'HR', 'R', 'SB', 'OPS+', 'Picked',
             'Sac', 'BA', 'SlgPct', 'OBPct', 'ISO', 'wOBA', 'K%', 'BB%',
             'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR', 'player_id', 'player_url',
-            'Clutch', 'WPA', 'REA', 'WPA/LI', 'wSB', 'wGDP', 'wTEB'
+            'Clutch', 'WPA', 'REA', 'WPA/LI', 'wSB', 'wGDP', 'wTEB', 'Extra_Bases_Taken', "Opportunities", 'Outs_On_Bases'
         ]
         self.pitching_columns = [
             'Player', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
@@ -641,9 +641,7 @@ class BaseballStats:
         df['K-BB%'] = df['K%'] - df['BB%']
         df['HR/FB'] = (df['HR-A'] / (df['HR-A'] + df['FO'])) * 100
 
-        fip, xfip = self.calculate_pitching_metrics(df)
-        df['FIP'] = fip
-        df['xFIP'] = xfip
+        df['FIP'], df['xFIP'] = self.calculate_pitching_metrics(df)
 
         df['iPF'] = df['Team'].map(
             self.park_factors.set_index('team_name')['iPF'])

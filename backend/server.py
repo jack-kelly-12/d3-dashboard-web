@@ -45,7 +45,6 @@ def get_batting_war(year):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Join with ids_for_images to get both team and conference IDs
     cursor.execute(f"""
         SELECT b.*, i.prev_team_id, i.conference_id 
         FROM batting_war_{year} b
@@ -88,7 +87,7 @@ def get_batting_team_war_war(year):
     # Join with ids_for_images to get both team and conference IDs
     cursor.execute(f"""
         SELECT b.*, i.prev_team_id, i.conference_id 
-        FROM batting_war_team_{year} b
+        FROM batting_team_war_{year} b
         LEFT JOIN ids_for_images i ON b.Team = i.team_name
     """)
 
@@ -106,8 +105,9 @@ def get_pitching_team_war(year):
     cursor = conn.cursor()
 
     cursor.execute(f"""
-        SELECT p.*, i.prev_team_id, i.conference_id 
-        FROM pitching_war_team_{year} p
+        SELECT p.*,
+        i.prev_team_id, i.conference_id 
+        FROM pitching_team_war_{year} p
         LEFT JOIN ids_for_images i ON p.Team = i.team_name
     """)
 
@@ -679,6 +679,178 @@ def get_conference_logo(conference_id):
     except Exception as e:
         print(f"Error serving conference logo: {e}")
         return '', 404
+
+
+@app.route('/api/leaderboards/value', methods=['GET'])
+def get_value_leaderboard():
+    start_year = request.args.get('start_year', '2024')
+    end_year = request.args.get('end_year', '2024')
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+    except ValueError:
+        return jsonify({"error": "Invalid year format"}), 400
+
+    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+        return jsonify({"error": "Invalid year range"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    results = []
+
+    try:
+        for year in range(start_year, end_year + 1):
+            # Fetch batting data
+            cursor.execute(f"""
+                SELECT 
+                    b.Player, b.Team, b.Conference, b.Pos, b.PA,
+                    b.Batting, b.Adjustment, b.Baserunning, b.WAR AS bWAR,
+                    i.prev_team_id, i.conference_id, b.player_id
+                FROM batting_war_{year} b
+                LEFT JOIN ids_for_images i ON b.Team = i.team_name
+            """)
+            batting_data = {(row['Player'], row['Team']): dict(row)
+                            for row in cursor.fetchall()}
+
+            # Fetch pitching data
+            cursor.execute(f"""
+                SELECT 
+                    p.Player, p.Team, p.Conference, 'P' AS Pos, p.IP,
+                    p.WAR AS pWAR,
+                    i.prev_team_id, i.conference_id, p.player_id
+                FROM pitching_war_{year} p
+                LEFT JOIN ids_for_images i ON p.Team = i.team_name
+            """)
+            pitching_data = {(row['Player'], row['Team']): dict(row)
+                             for row in cursor.fetchall()}
+
+            # Combine batting and pitching data
+            all_players = set(batting_data.keys()) | set(pitching_data.keys())
+
+            for player, team in all_players:
+                bat_stats = batting_data.get((player, team), {})
+                pitch_stats = pitching_data.get((player, team), {})
+
+                # Combine player stats
+                combined_stats = {
+                    'Player': player,
+                    'Team': team,
+                    'player_id': bat_stats.get('player_id') or pitch_stats.get('player_id'),
+                    'Conference': bat_stats.get('Conference') or pitch_stats.get('Conference') or '-',
+                    'prev_team_id': bat_stats.get('prev_team_id') or pitch_stats.get('prev_team_id'),
+                    'conference_id': bat_stats.get('conference_id') or pitch_stats.get('conference_id'),
+                    'Year': year,
+                    'Pos': bat_stats.get('Pos', '-') if 'Pos' in bat_stats else pitch_stats.get('Pos', '-'),
+                    'PA': bat_stats.get('PA', 0),
+                    'IP': pitch_stats.get('IP', 0),
+                    'Batting': bat_stats.get('Batting', 0),
+                    'Adjustment': bat_stats.get('Adjustment', 0),
+                    'Baserunning': bat_stats.get('Baserunning', 0),
+                    'bWAR': bat_stats.get('bWAR', 0),
+                    'pWAR': pitch_stats.get('pWAR', 0)
+                }
+
+                # Total WAR (rounded to 1 decimal)
+                combined_stats['WAR'] = round(
+                    combined_stats['bWAR'] + combined_stats['pWAR'], 1)
+
+                results.append(combined_stats)
+
+        # Sort by WAR descending
+        results.sort(key=lambda x: x['WAR'], reverse=True)
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/leaderboards/situational', methods=['GET'])
+def get_situational_leaderboard():
+    start_year = request.args.get('start_year', '2024')
+    end_year = request.args.get('end_year', '2024')
+    min_pa = request.args.get('min_pa', '50')
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+        min_pa = int(min_pa)
+    except ValueError:
+        return jsonify({"error": "Invalid parameters"}), 400
+
+    # Validate year range
+    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+        return jsonify({"error": "Invalid year range"}), 400
+
+    # Initialize database connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    results = []  # To store combined results
+
+    try:
+        for year in range(start_year, end_year + 1):
+            # Use parameterized query to safely include dynamic table names
+            query = f"""
+                WITH situational AS (
+                    SELECT 
+                        p.Player,
+                        p.Team,
+                        p.Conference,
+                        p.player_id,
+                        i.prev_team_id,
+                        i.conference_id,
+                        s.wOBA_Overall,
+                        s.wOBA_RISP,
+                        s.wOBA_High_Leverage,
+                        s.wOBA_Low_Leverage,
+                        s.PA_Overall,
+                        s.PA_RISP,
+                        s.PA_High_Leverage,
+                        s.PA_Low_Leverage,
+                        s.BA_Overall,
+                        s.BA_High_Leverage,
+                        s.BA_Low_Leverage,
+                        s.BA_RISP,
+                        s.REA_Overall,
+                        s.REA_High_Leverage,
+                        s.REA_Low_Leverage,
+                        s.REA_RISP, 
+                        p.Clutch,
+                        p.WPA,
+                        p.[WPA/LI],
+                        p.REA
+                    FROM situational_{year} s
+                    JOIN batting_war_{year} p 
+                        ON s.batter_standardized = p.Player 
+                        AND s.bat_team = p.Team
+                    LEFT JOIN ids_for_images i 
+                        ON p.Team = i.team_name
+                    WHERE s.PA_Overall >= ?
+                    ORDER BY s.wOBA_Overall DESC
+                )
+                SELECT * FROM situational
+            """
+
+            # Execute the query
+            cursor.execute(query, (min_pa,))
+            columns = [col[0] for col in cursor.description]
+            year_results = [dict(zip(columns, row))
+                            for row in cursor.fetchall()]
+            results.extend(year_results)  # Append year results to final list
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
 
 
 if __name__ == '__main__':

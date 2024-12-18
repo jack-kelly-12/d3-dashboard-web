@@ -39,7 +39,7 @@ const Guts = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 sm:px-2 md:px-6 lg:px-8 py-8">
+      <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />

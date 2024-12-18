@@ -13,6 +13,7 @@ import {
   UserPlus,
   Menu,
   X,
+  Trophy,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 
@@ -207,6 +208,13 @@ const Sidebar = () => {
             isActive={isActiveRoute("/guts")}
           >
             Guts
+          </MenuItem>
+          <MenuItem
+            icon={Trophy}
+            to="/leaderboards"
+            isActive={isActiveRoute("/leaderboards")}
+          >
+            Leaderboards
           </MenuItem>
         </div>
 

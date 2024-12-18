@@ -549,8 +549,8 @@ export const getDataColumns = (dataType) => {
         {
           name: "Team",
           selector: (row) => row.Team,
-          cell: (row) => row.renderedTeam,
           sortable: true,
+          width: "150px",
         },
         {
           name: "Conference",
@@ -669,25 +669,25 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "K%",
-          selector: (row) => row["K%"],
+          selector: (row) => roundTo(row["K%"], 1) + "%",
           sortable: true,
           width: "80px",
         },
         {
           name: "BB%",
-          selector: (row) => row["BB%"],
+          selector: (row) => roundTo(row["BB%"], 1) + "%",
           sortable: true,
           width: "80px",
         },
         {
           name: "SB%",
-          selector: (row) => row["SB%"],
+          selector: (row) => roundTo(row["SB%"], 1) + "%",
           sortable: true,
           width: "80px",
         },
         {
           name: "OPS+",
-          selector: (row) => row["OPS+"],
+          selector: (row) => roundTo(row["OPS+"], 0),
           sortable: true,
           width: "80px",
         },
@@ -717,7 +717,7 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "WAR",
-          selector: (row) => row.WAR,
+          selector: (row) => roundTo(row["WAR%"], 1),
           sortable: true,
           width: "80px",
           cell: (row) => <WARCell value={row.WAR} isTeam={true} />,
@@ -728,8 +728,8 @@ export const getDataColumns = (dataType) => {
         {
           name: "Team",
           selector: (row) => row.Team,
-          cell: (row) => row.renderedTeam,
           sortable: true,
+          width: "150px",
         },
         {
           name: "Conference",
