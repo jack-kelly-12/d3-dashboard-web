@@ -641,7 +641,9 @@ class BaseballStats:
         df['K-BB%'] = df['K%'] - df['BB%']
         df['HR/FB'] = (df['HR-A'] / (df['HR-A'] + df['FO'])) * 100
 
-        df['FIP'], df['xFIP'] = self.calculate_pitching_metrics(df)
+        fip, xfip = self.calculate_pitching_metrics(df)
+        df['FIP'] = fip
+        df['xFIP'] = xfip
 
         df['iPF'] = df['Team'].map(
             self.park_factors.set_index('team_name')['iPF'])
