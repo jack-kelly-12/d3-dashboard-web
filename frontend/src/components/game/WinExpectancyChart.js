@@ -102,7 +102,7 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
       </div>
 
       {/* Chart */}
-      <div className="px-4 pt-8 pb-4 h-[400px] relative">
+      <div className="px-8 pt-8 pb-4 h-[400px] relative">
         {/* Team Labels overlaid on chart */}
         <div className="absolute left-6 top-2 text-sm font-medium text-gray-500">
           {awayTeam}

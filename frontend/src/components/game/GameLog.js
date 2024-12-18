@@ -8,7 +8,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       name: "Inning",
       selector: (row) => `${row.top_inning} ${row.inning}`,
       sortable: true,
-      width: "10%",
+      width: "7.5%",
       cell: (row) => (
         <div className="text-gray-600">{`${row.top_inning} ${row.inning}`}</div>
       ),
@@ -41,7 +41,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       name: "Play",
       selector: (row) => row.description,
       sortable: false,
-      width: "25%",
+      width: "22.5%",
       cell: (row) => (
         <div className="text-gray-900 font-medium">{row.description}</div>
       ),
@@ -98,7 +98,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       ),
     },
     {
-      name: "Leverage Index",
+      name: "LI",
       selector: (row) => `${roundTo(row.li, 1)}`,
       sortable: false,
       width: "5%",
@@ -113,7 +113,6 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
 
   return (
     <BaseballTable
-      title="Game Log"
       data={plays}
       columns={columns}
       filename="game_log.csv"

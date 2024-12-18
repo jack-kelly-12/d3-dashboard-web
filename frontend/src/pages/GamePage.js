@@ -53,7 +53,7 @@ const GamePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-8 py-8 max-w-7xl">
         {/* Game Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
           <div className="flex justify-between items-center">
@@ -78,16 +78,20 @@ const GamePage = () => {
 
         {/* Content */}
         <div className="space-y-8">
-          <WinExpectancyChart
-            homeTeam={gameData.home_team}
-            awayTeam={gameData.away_team}
-            plays={gameData.plays || []}
-          />
-          <GameLog
-            plays={gameData.plays || []}
-            homeTeam={gameData.home_team}
-            awayTeam={gameData.away_team}
-          />
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+            <WinExpectancyChart
+              homeTeam={gameData.home_team}
+              awayTeam={gameData.away_team}
+              plays={gameData.plays || []}
+            />
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 overflow-hidden">
+            <GameLog
+              plays={gameData.plays || []}
+              homeTeam={gameData.home_team}
+              awayTeam={gameData.away_team}
+            />
+          </div>
         </div>
       </div>
     </div>

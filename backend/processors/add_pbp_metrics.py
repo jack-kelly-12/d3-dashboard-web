@@ -2,8 +2,8 @@ from fuzzywuzzy import fuzz, process
 import pandas as pd
 import numpy as np
 from multiprocessing import Pool, cpu_count
-import os
 from functools import partial
+import sqlite3
 
 
 def get_data(year):
@@ -494,7 +494,20 @@ def process_single_year(year):
         ['game_id', 'inning', 'home_score_after', 'away_score_after', 'home_text', 'away_text'])
     merged_df = calculate_dre_and_dwe(merged_df)
 
-    merged_df.to_csv(f'../data/parsed_pbp_new_{year}.csv', index=False)
+    columns = [
+        'home_team', 'away_team', 'home_score', 'away_score', 'date',
+        'inning', 'top_inning', 'game_id', 'description',
+        'home_win_exp_before', 'WPA', 'run_expectancy_delta',
+        'player_standardized', 'pitcher_standardized', 'li'
+    ]
+    merged_df[columns].to_csv(
+        f'../data/parsed_pbp_new_{year}.csv', index=False)
+
+    conn = sqlite3.connect('../ncaa.db')
+    merged_df[columns].to_sql(
+        merged_df, conn, if_exists='replace', index=False)
+    print(f"{year} successfully saved to the database.")
+    conn.close()
     print(f"Successfully processed data for {year}")
 
 
