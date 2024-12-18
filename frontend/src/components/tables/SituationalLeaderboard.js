@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import { Link } from "react-router-dom";
+import debounce from "lodash/debounce";
+import { useSearchParams } from "react-router-dom";
 
 const SituationalLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -15,7 +17,40 @@ const SituationalLeaderboard = () => {
   const [selectedConference, setSelectedConference] = useState("");
   const [minPA, setMinPA] = useState(50);
   const [conferences, setConferences] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
 
+  useEffect(() => {
+    setSearchParams({
+      table: "situational-leaderboard",
+      search: searchTerm,
+      startYear,
+      endYear,
+      conference: selectedConference,
+      paQual: minPA,
+    });
+  }, [
+    searchTerm,
+    startYear,
+    endYear,
+    selectedConference,
+    minPA,
+    setSearchParams,
+  ]);
+
+  // Fetch conferences only once
+  useEffect(() => {
+    const fetchConferences = async () => {
+      try {
+        const response = await fetchAPI("/conferences");
+        setConferences(response.sort());
+      } catch (err) {
+        console.error("Error fetching conferences:", err);
+      }
+    };
+    fetchConferences();
+  }, []);
+
+  // Fetch leaderboard data based on filters
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -38,7 +73,6 @@ const SituationalLeaderboard = () => {
               />
             </div>
           ),
-
           renderedConference: (
             <div className="flex items-center gap-2">
               <TeamLogo
@@ -63,160 +97,168 @@ const SituationalLeaderboard = () => {
     fetchData();
   }, [startYear, endYear, minPA]);
 
-  useEffect(() => {
-    const fetchConferences = async () => {
-      try {
-        const response = await fetchAPI("/conferences");
-        setConferences(response.sort());
-      } catch (err) {
-        console.error("Error fetching conferences:", err);
-      }
-    };
-    fetchConferences();
-  }, []);
+  // Debounced search input
+  const handleSearchChange = useMemo(
+    () =>
+      debounce((value) => {
+        setSearchTerm(value);
+      }, 300),
+    []
+  );
 
-  const filteredData = data.filter((player) => {
-    const searchStr = searchTerm.toLowerCase();
-    const nameMatch = player.Player.toLowerCase().includes(searchStr);
-    const teamMatch = player.Team.toLowerCase().includes(searchStr);
-    const conferenceMatch = selectedConference
-      ? player.Conference === selectedConference
-      : true;
-    return (nameMatch || teamMatch) && conferenceMatch;
-  });
+  // Filter data based on search term and selected conference
+  const filteredData = useMemo(() => {
+    return data.filter((player) => {
+      const searchStr = searchTerm.toLowerCase();
+      const nameMatch = player.Player.toLowerCase().includes(searchStr);
+      const teamMatch = player.Team.toLowerCase().includes(searchStr);
+      const conferenceMatch = selectedConference
+        ? player.Conference === selectedConference
+        : true;
+      return (nameMatch || teamMatch) && conferenceMatch;
+    });
+  }, [data, searchTerm, selectedConference]);
 
-  const columns = [
-    {
-      name: "#",
-      selector: (row) => row.rank,
-      sortable: true,
-      width: "60px",
-    },
-    {
-      name: "Player",
-      selector: (row) => row.Player,
-      sortable: true,
-      width: "150px",
-      cell: (row) => (
-        <Link
-          to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-        >
-          {row.Player}
-        </Link>
-      ),
-    },
-    {
-      name: "Team",
-      selector: (row) => row.Team,
-      cell: (row) => row.renderedTeam,
-      sortable: true,
-      width: "60px",
-    },
-    {
-      name: "Conference",
-      selector: (row) => row.Conference,
-      cell: (row) => row.renderedConference,
-      sortable: true,
-      width: "110px",
-    },
-    {
-      name: "PA",
-      selector: (row) => row.PA_Overall,
-      sortable: true,
-      width: "80px",
-    },
-    {
-      name: "BA",
-      selector: (row) => row.BA_Overall,
-      sortable: true,
-      width: "110px",
-      cell: (row) => row.BA_Overall?.toFixed(3) || "—",
-    },
-    {
-      name: "wOBA",
-      selector: (row) => row.wOBA_Overall,
-      sortable: true,
-      width: "120px",
-      cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
-    },
-
-    {
-      name: "PA w/ RISP",
-      selector: (row) => row.PA_RISP,
-      sortable: true,
-      width: "110px",
-    },
-    {
-      name: "BA w/ RISP",
-      selector: (row) => row.BA_RISP,
-      sortable: true,
-      width: "110px",
-      cell: (row) => row.BA_RISP?.toFixed(3) || "—",
-    },
-    {
-      name: "wOBA w/ RISP",
-      selector: (row) => row.wOBA_RISP,
-      sortable: true,
-      width: "120px",
-      cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
-    },
-
-    {
-      name: "LI+ PA",
-      selector: (row) => row.PA_High_Leverage,
-      sortable: true,
-      width: "110px",
-    },
-    {
-      name: "LI+ BA",
-      selector: (row) => row.BA_High_Leverage,
-      sortable: true,
-      width: "110px",
-      cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
-    },
-    {
-      name: "LI+ wOBA",
-      selector: (row) => row.wOBA_High_Leverage,
-      sortable: true,
-      width: "120px",
-      cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
-    },
-    {
-      name: "LI- PA",
-      selector: (row) => row.PA_Low_Leverage,
-      sortable: true,
-      width: "110px",
-    },
-    {
-      name: "LI- BA",
-      selector: (row) => row.BA_Low_Leverage,
-      sortable: true,
-      width: "110px",
-      cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
-    },
-    {
-      name: "LI- wOBA",
-      selector: (row) => row.wOBA_Low_Leverage,
-      sortable: true,
-      width: "120px",
-      cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
-    },
-    {
-      name: "Clutch",
-      selector: (row) => row.Clutch,
-      sortable: true,
-      width: "120px",
-      cell: (row) => row.Clutch?.toFixed(3) || "—",
-    },
-  ];
+  // Table columns
+  const columns = useMemo(
+    () => [
+      {
+        name: "#",
+        selector: (row) => row.rank,
+        sortable: true,
+        width: "60px",
+      },
+      {
+        name: "Player",
+        selector: (row) => row.Player,
+        sortable: true,
+        width: "150px",
+        cell: (row) => (
+          <Link
+            to={`/player/${row.player_id}`}
+            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+          >
+            {row.Player}
+          </Link>
+        ),
+      },
+      {
+        name: "Team",
+        selector: (row) => row.Team,
+        cell: (row) => row.renderedTeam,
+        sortable: true,
+        width: "60px",
+      },
+      {
+        name: "Conference",
+        selector: (row) => row.Conference,
+        cell: (row) => row.renderedConference,
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "Year",
+        selector: (row) => row.Year,
+        sortable: true,
+        width: "80px",
+      },
+      {
+        name: "PA",
+        selector: (row) => row.PA_Overall,
+        sortable: true,
+        width: "80px",
+      },
+      {
+        name: "BA",
+        selector: (row) => row.BA_Overall,
+        sortable: true,
+        width: "110px",
+        cell: (row) => row.BA_Overall?.toFixed(3) || "—",
+      },
+      {
+        name: "wOBA",
+        selector: (row) => row.wOBA_Overall,
+        sortable: true,
+        width: "120px",
+        cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
+      },
+      {
+        name: "PA w/ RISP",
+        selector: (row) => row.PA_RISP,
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "BA w/ RISP",
+        selector: (row) => row.BA_RISP,
+        sortable: true,
+        width: "110px",
+        cell: (row) => row.BA_RISP?.toFixed(3) || "—",
+      },
+      {
+        name: "wOBA w/ RISP",
+        selector: (row) => row.wOBA_RISP,
+        sortable: true,
+        width: "120px",
+        cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
+      },
+      {
+        name: "LI+ PA",
+        selector: (row) => row.PA_High_Leverage,
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "LI+ BA",
+        selector: (row) => row.BA_High_Leverage,
+        sortable: true,
+        width: "110px",
+        cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
+      },
+      {
+        name: "LI+ wOBA",
+        selector: (row) => row.wOBA_High_Leverage,
+        sortable: true,
+        width: "120px",
+        cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
+      },
+      {
+        name: "LI- PA",
+        selector: (row) => row.PA_Low_Leverage,
+        sortable: true,
+        width: "110px",
+      },
+      {
+        name: "LI- BA",
+        selector: (row) => row.BA_Low_Leverage,
+        sortable: true,
+        width: "110px",
+        cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
+      },
+      {
+        name: "LI- wOBA",
+        selector: (row) => row.wOBA_Low_Leverage,
+        sortable: true,
+        width: "120px",
+        cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
+      },
+      {
+        name: "Clutch",
+        selector: (row) => row.Clutch,
+        sortable: true,
+        width: "120px",
+        cell: (row) => row.Clutch?.toFixed(3) || "—",
+      },
+    ],
+    []
+  );
 
   return (
     <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
       {/* Explanation Banner */}
       <div className="bg-white border-l-4 border-blue-500 rounded-lg p-6 mb-6">
         <h3 className="text-base font-semibold text-blue-800 mb-2">
-          What is the Value Leaderboard?
+          What is the Situational Leaderboard?
         </h3>
         <p className="text-sm text-gray-700 leading-relaxed">
           This leaderboard helps evaluate how players perform in different game
@@ -237,8 +279,7 @@ const SituationalLeaderboard = () => {
               <input
                 type="text"
                 placeholder="Search players or teams..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

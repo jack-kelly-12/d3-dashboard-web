@@ -823,7 +823,8 @@ def get_situational_leaderboard():
                         p.Clutch,
                         p.WPA,
                         p.[WPA/LI],
-                        p.REA
+                        p.REA,
+                        {year} AS Year
                     FROM situational_{year} s
                     JOIN batting_war_{year} p 
                         ON s.batter_standardized = p.Player 
@@ -851,6 +852,37 @@ def get_situational_leaderboard():
 
     finally:
         conn.close()
+
+
+@app.route('/api/games/<int:year>/<game_id>', methods=['GET'])
+def get_game(year, game_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(f"""
+        SELECT home_team, away_team, home_score, away_score, date as game_date, 
+               inning, top_inning, game_id, description, 
+               home_win_exp_before as home_win_expectancy, WPA, run_expectancy_delta, 
+               player_standardized, pitcher_standardized, li
+        FROM pbp_{year} 
+        WHERE game_id = ? AND description IS NOT NULL
+    """, (game_id,))
+
+    plays = [dict(row) for row in cursor.fetchall()]
+
+    if not plays:
+        return jsonify({"error": "Game not found"}), 404
+
+    game_info = {
+        'home_team': plays[0]['home_team'],
+        'away_team': plays[0]['away_team'],
+        'game_date': plays[0]['game_date'],
+        'game_id': plays[0]['game_id'],
+        'plays': plays
+    }
+
+    conn.close()
+    return jsonify(game_info)
 
 
 if __name__ == '__main__':
