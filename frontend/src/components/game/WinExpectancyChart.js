@@ -48,10 +48,9 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
   }
 
   const getWinProbabilityText = (data) => {
-    if (!data) return "";
-    const winProb = data.probability;
-    const leadingTeam = winProb > 50 ? homeTeam : awayTeam;
-    const probability = Math.max(winProb, 100 - winProb);
+    if (!data || data.probability === undefined) return "";
+    const probability = data.probability;
+    const leadingTeam = probability >= 50 ? homeTeam : awayTeam;
     return `${leadingTeam}: ${probability.toFixed(1)}%`;
   };
 
