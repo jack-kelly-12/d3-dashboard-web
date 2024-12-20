@@ -4,6 +4,7 @@ import { Plus, Trash2, FileDown, FileText } from "lucide-react";
 import AdvanceReportModal from "../modals/AdvanceReportModal";
 import PitchArsenalReport from "../../reports/PitchArsenalReport";
 import { pdf } from "@react-pdf/renderer";
+import InfoBanner from "../data/InfoBanner";
 
 const ChartsList = ({
   charts,
@@ -362,11 +363,10 @@ const ChartsList = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <InfoBanner dataType={"charting"}></InfoBanner>
+
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Game Charts
-          </h1>
           <div className="flex gap-3">
             <button
               onClick={onCreateClick}
