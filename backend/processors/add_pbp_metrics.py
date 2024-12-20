@@ -25,7 +25,7 @@ def get_data(year):
     return batting, pitching, pbp_df, le, we, re
 
 
-def standardize_names(pbp_df, pitching_df, batting_df, threshold=65):
+def standardize_names(pbp_df, pitching_df, batting_df, threshold=45):
     pitching_lookup = {
         team: group.set_index('player_name')['player_id'].to_dict()
         for team, group in pitching_df.groupby('team_name')
@@ -79,6 +79,11 @@ def standardize_names(pbp_df, pitching_df, batting_df, threshold=65):
     match_players(pbp_df, batting_lookup, 'player',
                   'bat_team', 'player_id', 'player_standardized')
 
+    pbp_df['times_through_order'] = pbp_df.groupby(
+        ['game_id', 'pitcher', 'bat_name', 'bat_team', 'pitch_team']).cumcount() + 1
+    pbp_df.pitcher_standardized = pbp_df.pitcher_standardized.replace({
+                                                                      None: 'Starter'})
+
     return pbp_df
 
 
@@ -109,28 +114,43 @@ def extract_player_from_description(row):
 
 def process_pitchers(df):
     df = df.copy()
+
+    df['bat_team'] = np.where(
+        df['top_inning'], df['away_team'], df['home_team'])
+    df['pitch_team'] = np.where(
+        df['top_inning'], df['home_team'], df['away_team'])
     df['pitcher'] = None
 
-    for _, game_df in df.groupby('game_id'):
+    for game_id, game_df in df.groupby('game_id'):
+        game_idx = game_df.index
+
         home_pitcher = None
         away_pitcher = None
 
+        starter_pitchers = {}
         for idx, row in game_df.iterrows():
             check_text = row['away_text'] if row['top_inning'] else row['home_text']
 
             if isinstance(check_text, str) and 'to p for' in check_text:
                 parts = check_text.split('to p for')
-                new_pitcher = parts[0].strip()
+                current_pitcher = parts[0].strip()
+                previous_pitcher = parts[1].strip()
+
                 if row['top_inning']:
-                    home_pitcher = new_pitcher
+                    home_pitcher = current_pitcher
+                    starter_pitchers['home'] = previous_pitcher
                 else:
-                    away_pitcher = new_pitcher
+                    away_pitcher = current_pitcher
+                    starter_pitchers['away'] = previous_pitcher
 
             df.loc[idx, 'pitcher'] = home_pitcher if row['top_inning'] else away_pitcher
 
-    df['times_through_order'] = df.groupby(
-        ['game_id', 'pitcher', 'bat_name']).cumcount() + 1
-
+        for idx, row in game_df.iterrows():
+            if pd.isna(df.loc[idx, 'pitcher']):
+                if row['top_inning']:
+                    df.loc[idx, 'pitcher'] = starter_pitchers.get('home', None)
+                else:
+                    df.loc[idx, 'pitcher'] = starter_pitchers.get('away', None)
     return df
 
 
@@ -385,7 +405,7 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         how='left'
     ).drop(columns=['outs', 'base_state']).rename(columns={'run_expectancy': 'run_expectancy_before'})
 
-    return merged_df.drop(columns=['Unnamed: 0'])
+    return merged_df.drop(columns=['Unnamed: 0']).dropna(subset=['description'])
 
 
 def process_matchups(pbp_df, batting, pitching):
@@ -412,38 +432,31 @@ def process_matchups(pbp_df, batting, pitching):
 
 
 def calculate_dre_and_dwe(df):
-    df = df[~((df['inning'] >= 9) & (df.home_team == df.bat_team)
-              & (df.away_score_before < df.home_score_before))]
     game_changes = df['game_id'] != df['game_id'].shift(-1)
     df['is_game_over'] = game_changes.astype(int)
+    df = df[
+        ~((df['is_game_over'] == 1) &
+          (df['home_score'] < df['away_score']) & (df['top_inning'] == 'Top'))
+    ]
 
-    df['home_win_exp_before'] = np.where(df.li == 0,
-                                         0, df.home_win_exp_before)
+    df['run_expectancy_after'] = df.groupby(
+        'game_id')['run_expectancy_before'].shift(-1)
+    df['run_expectancy_after'] = np.where(
+        df['inn_end'] == 1, df['run_expectancy_before'], df['run_expectancy_after'])
+    df['run_expectancy_delta'] = df.run_expectancy_after - df.run_expectancy_before
 
-    df['run_expectancy_delta'] = df.groupby(
-        'game_id')['run_expectancy_before'].shift(-1) - df['run_expectancy_before']
-    df['run_expectancy_delta'] = np.where(df['inn_end'] == 1,
-                                          -df['run_expectancy_before'],
-                                          df['run_expectancy_delta'])
-    df['run_expectancy_delta'] = np.where(df['is_game_over'] == 1,
-                                          -df['run_expectancy_before'],
-                                          df['run_expectancy_delta'])
-
-    df['home_win_exp_next'] = df.groupby(
+    df['home_win_exp_after'] = df.groupby(
         'game_id')['home_win_exp_before'].shift(-1)
-    df['home_win_exp_next'] = np.where(df['is_game_over'] == 1,
-                                       np.where(df['home_score'] >
-                                                df['away_score'], 1, 0),
-                                       df['home_win_exp_next'])
-    df['delta_home_win_exp'] = df['home_win_exp_next'] - df['home_win_exp_before']
+    df['home_win_exp_after'] = np.where(df['is_game_over'] == 1, np.where(
+        df['home_score'] > df.away_score, 1, 0), df.home_win_exp_after)
+    df['delta_home_win_exp'] = df['home_win_exp_after'] - \
+        df['home_win_exp_before']
 
     df['REA'] = df['run_expectancy_delta'] + df['runs_on_play']
     df['WPA'] = np.where(df['bat_team'] == df['home_team'],
                          df['delta_home_win_exp'],
                          -df['delta_home_win_exp'])
     df['WPA/LI'] = df['WPA'].div(df['li'].replace(0, float('nan')))
-
-    df = df[(df['delta_home_win_exp'] > -.85) & (df.delta_home_win_exp < .85)]
 
     return df
 
@@ -491,8 +504,10 @@ def process_single_year(year):
         pbp_processed = process_matchups(pbp_processed, batting, pitching)
 
     merged_df = merge_baseball_stats(pbp_processed, leverage_melted, win_expectancy, re_melted).drop_duplicates(
-        ['game_id', 'inning', 'home_score_after', 'away_score_after', 'home_text', 'away_text'])
+        ['game_id', 'inning', 'home_score_after', 'away_score_after', 'home_text', 'away_text']).dropna(subset=['description'])
     merged_df = calculate_dre_and_dwe(merged_df)
+    merged_df.to_csv(
+        f'../data/parsed_pbp_new_{year}.csv', index=False)
 
     columns = [
         'home_team', 'away_team', 'home_score', 'away_score', 'date',
@@ -500,13 +515,10 @@ def process_single_year(year):
         'home_win_exp_before', 'WPA', 'run_expectancy_delta',
         'player_standardized', 'pitcher_standardized', 'li'
     ]
-    merged_df[columns].to_csv(
-        f'../data/parsed_pbp_new_{year}.csv', index=False)
+    merged_df = merged_df[columns]
 
     conn = sqlite3.connect('../ncaa.db')
-    merged_df[columns].to_sql(
-        merged_df, conn, if_exists='replace', index=False)
-    print(f"{year} successfully saved to the database.")
+    merged_df.to_sql(f'pbp_{year}', conn, if_exists='replace', index=False)
     conn.close()
     print(f"Successfully processed data for {year}")
 

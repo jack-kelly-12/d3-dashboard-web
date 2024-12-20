@@ -8,6 +8,7 @@ import { ChartingView } from "../components/charting/ChartingView";
 import ChartManager from "../managers/ChartManager";
 import AuthManager from "../managers/AuthManager";
 import { LoadingState, useAnonymousToast } from "../components/alerts/Alerts";
+import InfoBanner from "../components/data/InfoBanner";
 
 const Charting = () => {
   const navigate = useNavigate();

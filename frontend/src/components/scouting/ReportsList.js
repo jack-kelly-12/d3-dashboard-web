@@ -5,6 +5,7 @@ import toast from "react-hot-toast";
 import ScoutingReportManager from "../../managers/ScoutingReportsManager";
 import ReportPDF from "./ReportPDF";
 import { pdf } from "@react-pdf/renderer";
+import InfoBanner from "../data/InfoBanner";
 
 const ReportsList = ({ reports, onCreateClick, onReportSelect }) => {
   const handleDeleteReport = (report) => {
@@ -134,11 +135,9 @@ const ReportsList = ({ reports, onCreateClick, onReportSelect }) => {
 
   return (
     <div className="container mx-auto px-4 py-6">
+      <InfoBanner dataType={"scouting"}></InfoBanner>
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Scouting Reports
-          </h1>
           <button
             onClick={onCreateClick}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"

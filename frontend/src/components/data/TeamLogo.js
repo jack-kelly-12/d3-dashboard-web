@@ -18,7 +18,6 @@ const TeamLogo = ({
 
     const getLogoUrl = async () => {
       try {
-        // Use different API paths for conference vs team logos
         const endpoint = showConference ? "conferences" : "teams";
         const response = await fetch(
           `${API_BASE_URL}/api/${endpoint}/logos/${id}.png`
@@ -47,7 +46,6 @@ const TeamLogo = ({
   }, [teamId, conferenceId, showConference, imageUrl]);
 
   const InitialsDisplay = () => {
-    // For conferences, we might want to show different initials or styling
     const name = showConference ? teamName : teamName;
     const initials =
       name

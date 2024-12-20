@@ -7,6 +7,24 @@ const InfoBanner = ({ dataType }) => {
           description:
             "Explore league-wide constants and park factors that influence player and team performance.",
         };
+      case "charting":
+        return {
+          title: "Charting",
+          description:
+            "Chart games, bullpens, scrimmages, allowing D3 coaches, analysts, and players the ability to access pitch-level data. Build custom advance scouting reports complete with heatmaps, tendencies, etc.",
+        };
+      case "scoreboard":
+        return {
+          title: "Scoreboard",
+          description:
+            "Explore the outcomes of every Division 3 game from 2021 to the present. Analyze changes in win expectancy shifts and relive every pivotal moment from each game.",
+        };
+      case "scouting":
+        return {
+          title: "Scouting Reports",
+          description:
+            "Automatically build spray charts that query up-to-date data from any Division 3 team in the country. Export to PDF when finished and share with your team.",
+        };
       case "player_hitting":
         return {
           title: "Player Hitting Statistics",

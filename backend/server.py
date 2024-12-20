@@ -885,5 +885,60 @@ def get_game(year, game_id):
     return jsonify(game_info)
 
 
+@app.route('/api/games', methods=['GET'])
+def get_games_by_date():
+    # Get query parameters for month, day, and year
+    month = request.args.get('month')
+    day = request.args.get('day')
+    year = request.args.get('year')
+
+    # Validate that all required parameters are provided
+    if not month or not day or not year:
+        return jsonify({"error": "Missing required query parameters: month, day, year"}), 400
+
+    try:
+        # Convert the year to an integer
+        year = int(year)
+
+        # Validate the year range
+        if not (2021 <= year < 2025):
+            return jsonify({"error": "Year must be between 2021 and 2024"}), 400
+
+        game_date = f"{month}/{day}/{year}"
+
+        table_name = f"pbp_{year}"
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(f"""
+            SELECT DISTINCT 
+                p.game_id,
+                p.home_team,
+                p.away_team,
+                MAX(p.home_score) as home_score,
+                MAX(p.away_score) as away_score,
+                p.date as game_date,
+                {year} as year,
+                i_home.prev_team_id as home_team_logo_id,
+                i_away.prev_team_id as away_team_logo_id
+            FROM {table_name} p
+            LEFT JOIN ids_for_images i_home 
+                ON p.home_team = i_home.team_name
+            LEFT JOIN ids_for_images i_away 
+                ON p.away_team = i_away.team_name
+            WHERE p.date = ?
+            GROUP BY p.game_id, p.home_team, p.away_team, p.date
+        """, (game_date,))
+
+        games = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return jsonify(games)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
