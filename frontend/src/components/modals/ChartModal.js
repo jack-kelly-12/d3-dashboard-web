@@ -3,7 +3,7 @@ import Modal from "./Modal";
 
 const ChartModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
-    date: new Date().toISOString().split("T")[0],
+    date: new Date().toLocaleDateString("en-CA").split("T")[0],
     chartType: "",
     homeTeam: "",
     awayTeam: "",
@@ -42,7 +42,6 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
 
   const handleDateChange = (e) => {
     const newDate = new Date(e.target.value);
-    // Keep date only, remove time component
     setFormData({
       ...formData,
       date: newDate.toISOString().split("T")[0],

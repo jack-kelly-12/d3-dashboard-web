@@ -46,16 +46,12 @@ const Charting = () => {
   }, []);
 
   const loadCharts = async () => {
-    const loadingToast = toast.loading("Loading charts...");
     try {
       const fetchedCharts = await ChartManager.getUserCharts();
       setCharts(fetchedCharts);
-      toast.success("Charts loaded successfully", { id: loadingToast });
     } catch (err) {
       console.error("Error loading charts:", err);
-      toast.error(err.message || "Failed to load charts", {
-        id: loadingToast,
-      });
+      toast.error(err.message || "Failed to load charts");
     } finally {
       setIsLoading(false);
     }
@@ -68,7 +64,6 @@ const Charting = () => {
       return;
     }
 
-    const loadingToast = toast.loading("Creating chart...");
     try {
       const newChart = await ChartManager.createChart({
         chartType: chartData.chartType,
@@ -78,14 +73,12 @@ const Charting = () => {
         userId: user.uid,
         isAnonymous: user.isAnonymous,
       });
+
       setCharts((prevCharts) => [newChart, ...prevCharts]);
       setSelectedChart(newChart);
       setIsChartModalOpen(false);
-      toast.success("Chart created successfully", { id: loadingToast });
     } catch (err) {
-      toast.error("Failed to create chart. Please try again.", {
-        id: loadingToast,
-      });
+      toast.error("Failed to create chart. Please try again.");
     }
   };
 

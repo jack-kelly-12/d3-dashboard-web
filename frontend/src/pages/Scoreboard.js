@@ -107,8 +107,14 @@ const Scoreboard = () => {
   });
 
   useEffect(() => {
+    const localDate = new Date(
+      currentDate.getTime() - currentDate.getTimezoneOffset() * 60000
+    )
+      .toISOString()
+      .split("T")[0];
+
     setSearchParams({
-      date: currentDate.toISOString().split("T")[0], // Format: YYYY-MM-DD
+      date: localDate,
     });
   }, [currentDate, setSearchParams]);
 

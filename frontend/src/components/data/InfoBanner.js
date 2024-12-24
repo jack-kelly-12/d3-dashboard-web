@@ -30,32 +30,24 @@ const InfoBanner = ({ dataType }) => {
           title: "Player Hitting Statistics",
           description:
             "A comprehensive database of individual batting statistics for players. Includes traditional stats like batting average and home runs, plus advanced metrics like wOBA, wRC+, and WAR.",
-          qualifiers:
-            "Minimum plate appearances filter available to focus on qualified batters.",
         };
       case "player_pitching":
         return {
           title: "Player Pitching Statistics",
           description:
             "Complete pitching statistics for players. Features traditional metrics such as ERA and strikeouts, along with advanced stats like FIP, xFIP, and pitching WAR.",
-          qualifiers:
-            "Minimum innings pitched filter available to focus on qualified pitchers.",
         };
       case "team_hitting":
         return {
           title: "Team Hitting Statistics",
           description:
             "Team-level batting statistics for programs. Compare offensive performance across teams using both traditional and advanced metrics.",
-          qualifiers:
-            "Stats are aggregated for entire teams across full seasons.",
         };
       case "team_pitching":
         return {
           title: "Team Pitching Statistics",
           description:
             "Team-level pitching statistics for programs. Analyze and compare pitching staff performance using comprehensive metrics.",
-          qualifiers:
-            "Stats represent combined performance of entire pitching staffs.",
         };
       default:
         return {

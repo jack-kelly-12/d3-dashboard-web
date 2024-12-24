@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
 import { Plus, Trash2, FileDown, FileText } from "lucide-react";
 import AdvanceReportModal from "../modals/AdvanceReportModal";
-import PitchArsenalReport from "../../reports/PitchArsenalReport";
+import PitchArsenalReport from "../../reports/BullpenReport";
 import { pdf } from "@react-pdf/renderer";
 import InfoBanner from "../data/InfoBanner";
 
@@ -45,12 +45,10 @@ const ChartsList = ({
       ],
     };
 
-    // Valid source types for different reports
     const validSources = {
       "pitch-arsenal": ["trackman", "rapsodo", "d3"],
     };
 
-    // Get requirements for this report type
     const reqFields = requirements[reportType];
     const allowedSources = validSources[reportType];
 
@@ -60,11 +58,9 @@ const ChartsList = ({
     }
 
     return charts.filter((chart) => {
-      // Check if chart source is valid
       const source = (chart.source || "d3").toLowerCase();
       if (!allowedSources.includes(source)) return false;
 
-      // Check if pitches have required data
       return chart.pitches?.some((pitch) =>
         reqFields.every((field) => {
           const value = pitch[field];
@@ -75,22 +71,17 @@ const ChartsList = ({
   };
 
   const handleGenerateReport = async ({ charts, reportType, pitchers }) => {
-    // Validate charts
     const validCharts = validatePitchData(charts, reportType);
-
-    // Combine all pitch data
     const allPitches = validCharts.flatMap((chart) => chart.pitches);
 
-    // Generate PDF
     const blob = await pdf(
       <PitchArsenalReport pitchers={pitchers} data={allPitches} />
     ).toBlob();
 
-    // Download
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `pitch_arsenal_report_${
+    link.download = `bullpen_report_${
       new Date().toISOString().split("T")[0]
     }.pdf`;
     document.body.appendChild(link);
@@ -99,7 +90,11 @@ const ChartsList = ({
     URL.revokeObjectURL(url);
   };
 
-  const formatPitchesForExport = (pitches, source = "d3") => {
+  const formatPitchesForExport = (
+    pitches,
+    source = "d3",
+    chartType = "game"
+  ) => {
     let headers;
     let rows;
 
@@ -148,7 +143,7 @@ const ChartsList = ({
         ];
 
         rows = pitches.map((pitch) => [
-          new Date(pitch.timestamp).toLocaleString(),
+          pitch.timestamp,
           pitch.type || "",
           pitch.velocity || "",
           pitch.spinRate || "",
@@ -162,47 +157,78 @@ const ChartsList = ({
         ]);
         break;
 
-      default: // D3 Dashboard format
-        headers = [
-          "Time",
-          "Pitcher",
-          "Pitcher Hand",
-          "Batter",
-          "Batter Hand",
-          "Pitch Type",
-          "Velocity",
-          "Result",
-          "Hit Result",
-          "Pitch X",
-          "Pitch Y",
-          "Hit X",
-          "Hit Y",
-          "Notes",
-        ];
+      default:
+        if (chartType === "bullpen") {
+          headers = [
+            "time",
+            "pitcher",
+            "pitcherHand",
+            "pitchType",
+            "velocity",
+            "intendedZone",
+            "pitchX",
+            "pitchY",
+            "notes",
+          ];
 
-        rows = pitches.map((pitch) => [
-          new Date(pitch.timestamp).toLocaleString(),
-          pitch.pitcher?.name || "",
-          pitch.pitcher?.pitchHand || "",
-          pitch.batter?.name || "",
-          pitch.batter?.batHand || "",
-          pitch.type || "",
-          pitch.velocity || "",
-          pitch.result?.replace(/_/g, " ") || "",
-          pitch.hitResult?.replace(/_/g, " ") || "",
-          pitch.x?.toFixed(1) || "",
-          pitch.y?.toFixed(1) || "",
-          pitch.hitX?.toFixed(1) || "",
-          pitch.hitY?.toFixed(1) || "",
-          pitch.notes || "",
-        ]);
+          rows = pitches.map((pitch) => [
+            pitch.timestamp,
+            pitch.pitcher?.name || "",
+            pitch.pitcher?.pitchHand || "",
+            pitch.type || "",
+            pitch.velocity || "",
+            pitch.intendedZone || "",
+            pitch.x?.toFixed(1) || "",
+            pitch.y?.toFixed(1) || "",
+            pitch.note || "",
+          ]);
+        } else {
+          console.log(pitches[0]?.chartType);
+          headers = [
+            "time",
+            "pitcher",
+            "pitcherHand",
+            "batter",
+            "batterHand",
+            "pitchType",
+            "velocity",
+            "result",
+            "hitResult",
+            "pitchX",
+            "pitchY",
+            "hitX",
+            "hitY",
+            "notes",
+          ];
+
+          rows = pitches.map((pitch) => [
+            new Date(pitch.timestamp).toLocaleString(),
+            pitch.pitcher?.name || "",
+            pitch.pitcher?.pitchHand || "",
+            pitch.batter?.name || "",
+            pitch.batter?.batHand || "",
+            pitch.type || "",
+            pitch.velocity || "",
+            pitch.result?.replace(/_/g, " ") || "",
+            pitch.hitResult?.replace(/_/g, " ") || "",
+            pitch.x?.toFixed(1) || "",
+            pitch.y?.toFixed(1) || "",
+            pitch.hitX?.toFixed(1) || "",
+            pitch.hitY?.toFixed(1) || "",
+            pitch.note || "",
+          ]);
+        }
     }
 
     return [headers, ...rows];
   };
 
   const handleExport = (chart) => {
-    const csvContent = formatPitchesForExport(chart.pitches || [], chart.source)
+    const csvContent = formatPitchesForExport(
+      chart.pitches || [],
+      chart.source,
+      chart.chartType
+    )
       .map((row) => row.join(","))
       .join("\n");
 

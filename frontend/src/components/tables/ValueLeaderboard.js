@@ -214,6 +214,20 @@ const ValueLeaderboard = () => {
         width: "80px",
         cell: (row) => row.WAR?.toFixed(1) || "—",
       },
+      {
+        name: "WPA",
+        selector: (row) => row.WPA,
+        sortable: true,
+        width: "80px",
+        cell: (row) => row.WPA?.toFixed(1) || "—",
+      },
+      {
+        name: "WPA/LI",
+        selector: (row) => row["WPA/LI"],
+        sortable: true,
+        width: "80px",
+        cell: (row) => row["WPA/LI"]?.toFixed(1) || "—",
+      },
     ],
     []
   );

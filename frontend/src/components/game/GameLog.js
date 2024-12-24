@@ -48,27 +48,29 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
     },
     {
       name: "Score",
-      selector: (row) => `${row.away_score}-${row.home_score}`,
+      selector: (row) => `${row.away_score_after}-${row.home_score_after}`,
       sortable: false,
       width: "10%",
       cell: (row) => (
         <div className="text-center text-gray-600">
-          {`${row.away_score}-${row.home_score}`}
+          {`${row.away_score_after}-${row.home_score_after}`}
         </div>
       ),
     },
     {
       name: "Win Prob",
-      selector: (row) => row.home_win_expectancy,
+      selector: (row) => row.home_win_exp_after,
       sortable: true,
       width: "10%",
       cell: (row) => {
-        const homeWinProb = row.home_win_expectancy * 100;
-        const probability = Math.max(homeWinProb, 100 - homeWinProb);
-        const leadingTeam = probability > 50 ? homeTeam : awayTeam;
+        const homeWinProb = row.home_win_exp_after * 100;
+        const probability = homeWinProb;
+        const leadingTeam = probability >= 50 ? homeTeam : awayTeam;
+        const shownProb =
+          leadingTeam == homeTeam ? probability : 100 - probability;
         return (
           <div className={`text-center`}>
-            {`${leadingTeam}: ${roundTo(probability, 0)}%`}
+            {`${leadingTeam}: ${roundTo(shownProb, 0)}%`}
           </div>
         );
       },

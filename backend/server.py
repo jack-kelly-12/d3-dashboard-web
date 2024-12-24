@@ -46,7 +46,7 @@ def get_batting_war(year):
     cursor = conn.cursor()
 
     cursor.execute(f"""
-        SELECT b.*, i.prev_team_id, i.conference_id 
+        SELECT b.*, i.prev_team_id, i.conference_id
         FROM batting_war_{year} b
         LEFT JOIN ids_for_images i ON b.Team = i.team_name
     """)
@@ -66,7 +66,7 @@ def get_pitching_war(year):
 
     # Join with ids_for_images to get both team and conference IDs
     cursor.execute(f"""
-        SELECT p.*, i.prev_team_id, i.conference_id 
+        SELECT p.*, i.prev_team_id, i.conference_id
         FROM pitching_war_{year} p
         LEFT JOIN ids_for_images i ON p.Team = i.team_name
     """)
@@ -86,7 +86,7 @@ def get_batting_team_war_war(year):
 
     # Join with ids_for_images to get both team and conference IDs
     cursor.execute(f"""
-        SELECT b.*, i.prev_team_id, i.conference_id 
+        SELECT b.*, i.prev_team_id, i.conference_id
         FROM batting_team_war_{year} b
         LEFT JOIN ids_for_images i ON b.Team = i.team_name
     """)
@@ -106,7 +106,7 @@ def get_pitching_team_war(year):
 
     cursor.execute(f"""
         SELECT p.*,
-        i.prev_team_id, i.conference_id 
+        i.prev_team_id, i.conference_id
         FROM pitching_team_war_{year} p
         LEFT JOIN ids_for_images i ON p.Team = i.team_name
     """)
@@ -151,15 +151,15 @@ def get_team_players(team_id):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(f"""
-        SELECT b.Player, 
-               b.Pos, 
-               b.BA, 
-               b.OBPct as OBP, 
-               b.SlgPct as SLG, 
-               b.HR, 
-               b.SB, 
+        SELECT b.Player,
+               b.Pos,
+               b.BA,
+               b.OBPct as OBP,
+               b.SlgPct as SLG,
+               b.HR,
+               b.SB,
                b.WAR
-        FROM batting_war_2024 AS b 
+        FROM batting_war_2024 AS b
         LEFT JOIN batting_2024 AS t ON b.Team = t.team_name
         WHERE t.team_id = {team_id}
     """)
@@ -173,14 +173,14 @@ def get_team_pitchers(team_id):
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(f"""
-        SELECT p.Player, 
-               p.ERA, 
-               p.FIP, 
+        SELECT p.Player,
+               p.ERA,
+               p.FIP,
                p."K%" as "K%",
                p."BB%" as "BB%",
-               p.IP, 
+               p.IP,
                p.WAR
-        FROM pitching_war_2024 AS p 
+        FROM pitching_war_2024 AS p
         LEFT JOIN pitching_2024 AS t ON p.Team = t.team_name
         WHERE t.team_id = {team_id}
     """)
@@ -215,7 +215,7 @@ def get_player_percentiles(player_id):
         if player:
             # Get all batters with PA > 25
             cursor.execute("""
-                SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting", 
+                SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
                        "Baserunning", "Adjustment", WAR, PA, "wRC+"
                 FROM batting_war_2024
                 WHERE PA > 25
@@ -399,21 +399,21 @@ def search_players():
         word_boundary_term = f"% {query}%"
 
         cursor.execute("""
-            SELECT DISTINCT 
-                player_id, 
-                Player as playerName, 
-                Team as team, 
+            SELECT DISTINCT
+                player_id,
+                Player as playerName,
+                Team as team,
                 Conference as conference
             FROM (
-                SELECT player_id, Player, Team, Conference 
+                SELECT player_id, Player, Team, Conference
                 FROM batting_war_2024
                 UNION
-                SELECT player_id, Player, Team, Conference 
+                SELECT player_id, Player, Team, Conference
                 FROM pitching_war_2024
             )
             WHERE Player LIKE ? OR Player LIKE ? OR Player LIKE ? OR Player LIKE ?
-            ORDER BY 
-                CASE 
+            ORDER BY
+                CASE
                     WHEN LOWER(Player) = LOWER(?) THEN 1  -- Exact match (case insensitive)
                     WHEN LOWER(Player) LIKE LOWER(?) THEN 2  -- Starts with query
                     WHEN LOWER(Player) LIKE LOWER(?) THEN 3  -- Starts with query after space
@@ -581,7 +581,7 @@ def get_conferences():
     try:
         # Get unique conferences from both batting and pitching tables for the current year
         cursor.execute("""
-            SELECT DISTINCT Conference 
+            SELECT DISTINCT Conference
             FROM (
                 SELECT Conference FROM batting_war_2024
                 UNION
@@ -689,39 +689,39 @@ def get_value_leaderboard():
     try:
         start_year = int(start_year)
         end_year = int(end_year)
+        if not (2021 <= start_year <= 2024) or not (2021 <= end_year <= 2024) or start_year > end_year:
+            return jsonify({"error": "Invalid year range"}), 400
     except ValueError:
         return jsonify({"error": "Invalid year format"}), 400
 
-    if start_year < 2021 or end_year > 2024 or start_year > end_year:
-        return jsonify({"error": "Invalid year range"}), 400
-
     conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     results = []
 
     try:
         for year in range(start_year, end_year + 1):
             # Fetch batting data
-            cursor.execute(f"""
-                SELECT 
+            cursor.execute("""
+                SELECT
                     b.Player, b.Team, b.Conference, b.Pos, b.PA,
                     b.Batting, b.Adjustment, b.Baserunning, b.WAR AS bWAR,
-                    i.prev_team_id, i.conference_id, b.player_id
-                FROM batting_war_{year} b
+                    i.prev_team_id, i.conference_id, b.player_id, b.WPA, b.[WPA/LI]
+                FROM batting_war_{} b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
-            """)
+            """.format(year))
             batting_data = {(row['Player'], row['Team']): dict(row)
                             for row in cursor.fetchall()}
 
             # Fetch pitching data
-            cursor.execute(f"""
-                SELECT 
+            cursor.execute("""
+                SELECT
                     p.Player, p.Team, p.Conference, 'P' AS Pos, p.IP,
                     p.WAR AS pWAR,
-                    i.prev_team_id, i.conference_id, p.player_id
-                FROM pitching_war_{year} p
+                    i.prev_team_id, i.conference_id, p.player_id, p.pWPA, p.[pWPA/LI]
+                FROM pitching_war_{} p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
-            """)
+            """.format(year))
             pitching_data = {(row['Player'], row['Team']): dict(row)
                              for row in cursor.fetchall()}
 
@@ -732,7 +732,6 @@ def get_value_leaderboard():
                 bat_stats = batting_data.get((player, team), {})
                 pitch_stats = pitching_data.get((player, team), {})
 
-                # Combine player stats
                 combined_stats = {
                     'Player': player,
                     'Team': team,
@@ -748,18 +747,25 @@ def get_value_leaderboard():
                     'Adjustment': bat_stats.get('Adjustment', 0),
                     'Baserunning': bat_stats.get('Baserunning', 0),
                     'bWAR': bat_stats.get('bWAR', 0),
-                    'pWAR': pitch_stats.get('pWAR', 0)
+                    'pWAR': pitch_stats.get('pWAR', 0),
+                    'pWPA/LI': pitch_stats.get('pWPA/LI', 0),
+                    'bWPA/LI': bat_stats.get('WPA/LI', 0),
+                    'pWPA': pitch_stats.get('pWPA', 0),
+                    'bWPA': bat_stats.get('WPA', 0),
                 }
 
-                # Total WAR (rounded to 1 decimal)
                 combined_stats['WAR'] = round(
-                    combined_stats['bWAR'] + combined_stats['pWAR'], 1)
+                    (combined_stats['bWAR'] or 0) + (combined_stats['pWAR'] or 0), 1)
+
+                combined_stats['WPA'] = round(
+                    (combined_stats['bWPA'] or 0) + (combined_stats['pWPA'] or 0), 1)
+
+                combined_stats['WPA/LI'] = round(
+                    (combined_stats['bWPA/LI'] or 0) + (combined_stats['pWPA/LI'] or 0), 1)
 
                 results.append(combined_stats)
 
-        # Sort by WAR descending
         results.sort(key=lambda x: x['WAR'], reverse=True)
-
         return jsonify(results)
 
     except sqlite3.Error as e:
@@ -862,8 +868,8 @@ def get_game(year, game_id):
     cursor.execute(f"""
         SELECT home_team, away_team, home_score, away_score, date as game_date, 
                inning, top_inning, game_id, description, 
-               home_win_exp_before as home_win_expectancy, WPA, run_expectancy_delta, 
-               player_standardized, pitcher_standardized, li
+               home_win_exp_before, home_win_exp_after, WPA, run_expectancy_delta, 
+               player_standardized, pitcher_standardized, li, home_score_after, away_score_after
         FROM pbp_{year} 
         WHERE game_id = ? AND description IS NOT NULL
     """, (game_id,))
@@ -916,8 +922,8 @@ def get_games_by_date():
                 p.game_id,
                 p.home_team,
                 p.away_team,
-                MAX(p.home_score) as home_score,
-                MAX(p.away_score) as away_score,
+                MAX(p.home_score_after) as home_score,
+                MAX(p.away_score_after) as away_score,
                 p.date as game_date,
                 {year} as year,
                 i_home.prev_team_id as home_team_logo_id,

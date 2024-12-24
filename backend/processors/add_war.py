@@ -118,7 +118,6 @@ class BaseballStats:
         fip = f_constant + ((13 * df['HR-A'] + 3 * (df['BB'] + df['HB']) -
                             2 * df['SO']) / df['IP'])
 
-        # Calculate league HR/FB rate for xFIP
         lg_hr_fb_rate = df['HR-A'].sum() / (df['HR-A'].sum() + df['FO'].sum())
 
         xfip = f_constant + ((13 * ((df['FO'] + df['HR-A']) * lg_hr_fb_rate) +
@@ -401,7 +400,7 @@ class BaseballStats:
 
         return results.sort_values('Extra_Bases_Taken', ascending=False)
 
-    def process_batting_stats(self, df, weights_df, runs_df, pbp_df, fielding_df):
+    def process_batting_stats(self, df, weights_df, runs_df, pbp_df):
         if df.empty:
             return df
 
@@ -466,9 +465,9 @@ class BaseballStats:
         denominator = df['AB'] + df['BB'] - df['IBB'] + df['SF'] + df['HBP']
         df['wOBA'] = numerator / denominator
 
-        return self._compute_batting_war(df, weights_df, fielding_df)
+        return self._compute_batting_war(df, weights_df)
 
-    def _compute_batting_war(self, df, weights, fielding_df):
+    def _compute_batting_war(self, df, weights):
         df['PF'].fillna(100, inplace=True)
         pf = df['PF'] / 100
 
@@ -546,7 +545,7 @@ class BaseballStats:
 
     def get_data(self):
         conn = self.get_connection()
-        pitching, batting, fielding, pbp = [], [], [], []
+        pitching, batting, pbp = [], [], []
 
         try:
             for year in [2021, 2022, 2023, 2024]:
@@ -557,10 +556,6 @@ class BaseballStats:
                 batting_df = pd.read_sql(f"SELECT * FROM batting_{year}", conn)
                 batting.append(batting_df)
 
-                fielding_df = pd.read_sql(
-                    f"SELECT * FROM fielding_{year}", conn)
-                fielding.append(fielding_df)
-
                 pbp_df = pd.read_csv(
                     f'{self.data_dir}/parsed_pbp_new_{year}.csv')
                 pbp.append(pbp_df)
@@ -568,7 +563,7 @@ class BaseballStats:
             park_factors = pd.read_csv(f'{self.data_dir}/park_factors.csv')
             guts = pd.read_csv(f'{self.data_dir}/guts_constants.csv')
 
-            return batting, pitching, fielding, pbp, guts, park_factors
+            return batting, pitching, pbp, guts, park_factors
         finally:
             conn.close()
 
@@ -641,9 +636,7 @@ class BaseballStats:
         df['K-BB%'] = df['K%'] - df['BB%']
         df['HR/FB'] = (df['HR-A'] / (df['HR-A'] + df['FO'])) * 100
 
-        fip, xfip = self.calculate_pitching_metrics(df)
-        df['FIP'] = fip
-        df['xFIP'] = xfip
+        df['FIP'], df['xFIP'] = self.calculate_pitching_metrics(df)
 
         df['iPF'] = df['Team'].map(
             self.park_factors.set_index('team_name')['iPF'])
@@ -699,6 +692,8 @@ class BaseballStats:
             'li': 'mean'
         }).reset_index().sort_values('pWPA/LI', ascending=False).reset_index(drop=True)
 
+        pitcher_stats = pitcher_stats[pitcher_stats['pitcher_standardized'] != "Starter"]
+
         pitcher_stats['Clutch'] = np.where(
             pitcher_stats['li'] == 0,
             np.nan,
@@ -725,7 +720,7 @@ class BaseballStats:
     def process_and_save_stats(self, start_year=2021, end_year=2024):
         conn = self.get_connection()
         try:
-            batting, pitching, fielding, pbp, self.guts, self.park_factors = self.get_data()
+            batting, pitching, pbp, self.guts, self.park_factors = self.get_data()
             self.guts = self.guts.reset_index(drop=True)
 
             for i, year in enumerate(range(start_year, end_year + 1)):
@@ -740,7 +735,7 @@ class BaseballStats:
                 year_guts = year_guts.iloc[0]
 
                 bat_war = self.process_batting_stats(batting[i], year_guts,
-                                                     self.park_factors, pbp[i], fielding[i])
+                                                     self.park_factors, pbp[i])
                 batting_war_total = bat_war.WAR.sum()
                 bat_war = bat_war.rename(columns={
                     'player_name': 'Player',

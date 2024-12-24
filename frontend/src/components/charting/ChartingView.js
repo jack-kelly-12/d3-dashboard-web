@@ -289,15 +289,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
               </button>
             </div>
 
-            <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-800">
-                Bullpen Session
-              </h1>
-              <p className="text-gray-500">
-                {new Date(chart.date).toLocaleDateString()}
-              </p>
-            </div>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12 w-full">
               {" "}
               <div className="space-y-6">
@@ -308,36 +299,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     onEdit={() => handlePlayerEdit("pitcher")}
                     required
                   />
-
-                  {/* Pitch Count Summary */}
-                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <h3 className="text-sm font-medium text-gray-700 mb-3">
-                      Pitch Count Summary
-                    </h3>
-                    <div className="grid grid-cols-3 gap-3">
-                      {Object.entries(
-                        pitches.reduce((acc, pitch) => {
-                          acc[pitch.type] = (acc[pitch.type] || 0) + 1;
-                          return acc;
-                        }, {})
-                      ).map(([type, count]) => (
-                        <div
-                          key={type}
-                          className="bg-white p-2 rounded border border-gray-200"
-                        >
-                          <div className="text-lg font-bold text-gray-900">
-                            {count}
-                          </div>
-                          <div className="text-xs text-gray-600 capitalize">
-                            {type}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 text-right text-sm text-gray-600">
-                      Total: {pitches.length} pitches
-                    </div>
-                  </div>
                 </div>
 
                 <PitchInput
@@ -384,17 +345,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                 <ChevronLeft size={20} />
                 <span>Back to Charts</span>
               </button>
-            </div>
-
-            <div className="mb-6 flex space-between items-center">
-              <div className="text-center mb-4">
-                <h1 className="text-2xl font-bold text-gray-800">
-                  {`${chart.awayTeam} @ ${chart.homeTeam}`}
-                </h1>
-                <p className="text-gray-500 mt-1">
-                  {new Date(chart.date).toLocaleDateString()}
-                </p>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full mb-6">

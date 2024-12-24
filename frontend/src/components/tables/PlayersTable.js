@@ -117,17 +117,17 @@ const PlayersTable = ({
         <div className="flex gap-1">
           <button
             onClick={() => onEditPlayer(row)}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-600 text-white rounded"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
           >
             <Edit2 size={12} />
-            <span>Edit</span>
+            Edit
           </button>
           <button
             onClick={() => onDeletePlayer(row.id)}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded"
+            className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
           >
             <Trash2 size={12} />
-            <span>Delete</span>
+            Delete
           </button>
         </div>
       ),

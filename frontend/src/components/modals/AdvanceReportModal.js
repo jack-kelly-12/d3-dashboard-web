@@ -1,21 +1,17 @@
 import React, { useState } from "react";
-import PitchArsenalPDF from "../../reports/PitchArsenalReport";
+import BullpenReportPDF from "../../reports/BullpenReport";
 import { FileText } from "lucide-react";
+import { pdf } from "@react-pdf/renderer";
 
 export const ReportTypes = {
-  PITCH_ARSENAL: {
-    id: "pitch-arsenal",
-    name: "Pitch Arsenal Report",
-    description:
-      "Detailed breakdown of pitch usage, movement, and metrics by pitcher",
-    dataRequirements: [
-      "velocity",
-      "spinRate",
-      "horizontalBreak",
-      "verticalBreak",
-    ],
-    sourceRestriction: ["trackman", "rapsodo", "d3"],
-    component: PitchArsenalPDF,
+  BULLPEN: {
+    id: "bullpen",
+    name: "Bullpen Report",
+    description: "",
+    dataRequirements: ["velocity"],
+    sourceRestriction: ["d3"],
+    typeRestriction: ["bullpen"],
+    component: BullpenReportPDF,
   },
 };
 
@@ -24,7 +20,6 @@ export const validatePitchData = (charts, reportType) => {
   const validSources = ReportTypes[reportType].sourceRestriction;
 
   return charts.filter((chart) => {
-    // Check if chart source is valid for this report type
     const source = (chart.source || "d3").toLowerCase();
     if (!validSources.includes(source)) return false;
     return chart.pitches?.some((pitch) =>
@@ -54,13 +49,26 @@ const AdvanceReportModal = ({ isOpen, onClose, charts, onGenerate }) => {
     return Array.from(pitchers);
   }, [selectedCharts]);
 
-  const handleGenerate = () => {
-    onGenerate({
-      charts: selectedCharts,
-      reportType,
-      pitchers: selectedPitchers,
-    });
-    onClose();
+  const handleGenerate = async () => {
+    try {
+      const blob = await pdf(
+        <BullpenReportPDF charts={selectedCharts} pitchers={selectedPitchers} />
+      ).toBlob();
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const dateStr = new Date().toISOString().split("T")[0];
+      link.download = `bullpen_report_${dateStr}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      onClose();
+    } catch (error) {
+      console.error("Error generating report:", error);
+    }
   };
 
   if (!isOpen) return null;
@@ -90,7 +98,7 @@ const AdvanceReportModal = ({ isOpen, onClose, charts, onGenerate }) => {
               onChange={(e) => setReportType(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
             >
-              <option value="pitch-arsenal">Pitch Arsenal Report</option>
+              <option value="bullpen">Bullpen Report</option>
             </select>
           </div>
 

@@ -75,7 +75,7 @@ const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
                     <td className="px-3 py-2.5 font-mono">{coords.y}</td>
 
                     <td className="px-3 py-2.5 text-gray-600">
-                      {pitch.notes || "—"}
+                      {pitch.note || "—"}
                     </td>
                     <td className="px-3 py-2.5">
                       <button

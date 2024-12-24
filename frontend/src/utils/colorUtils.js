@@ -59,6 +59,21 @@ export const getPitchColor = (pitchType) => {
   return colors[pitchType] || colors.Other;
 };
 
+export const getPitchColorPDF = (pitchType) => {
+  switch (pitchType) {
+    case "FB": // Fastball
+      return "#ef4444"; // Red
+    case "CB": // Curveball
+      return "#3b82f6"; // Blue
+    case "SL": // Slider
+      return "#10b981"; // Green
+    case "CH": // Changeup
+      return "#94a3b8"; // Gray
+    default:
+      return "#94a3b8"; // Default to gray if the pitch type is unknown
+  }
+};
+
 export const getPFColor = (val) => {
   const min = 90;
   const max = 120;

@@ -10,15 +10,24 @@ import {
 
 const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
   const chartData = useMemo(() => {
-    return plays.map((play) => ({
-      probability: play.home_win_expectancy * 100,
-      inning_half: play.top_inning,
-      inning: play.inning,
-      label: play.top_inning + " " + play.inning,
-      description: play.description,
-      homeScore: play.home_score,
-      awayScore: play.away_score,
-    }));
+    return plays.map((play, index) => {
+      const isLastPlay = index === plays.length - 1;
+      let probability = play.home_win_exp_after * 100;
+
+      if (isLastPlay && play.away_score_after !== play.home_score_after) {
+        probability = play.away_score_after > play.home_score_after ? 0 : 100;
+      }
+
+      return {
+        probability,
+        inning_half: play.top_inning,
+        inning: play.inning,
+        label: play.top_inning + " " + play.inning,
+        description: play.description,
+        homeScore: play.home_score_after,
+        awayScore: play.away_score_after,
+      };
+    });
   }, [plays]);
 
   const [hoverData, setHoverData] = useState(chartData[chartData.length - 1]);
@@ -50,8 +59,12 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
   const getWinProbabilityText = (data) => {
     if (!data || data.probability === undefined) return "";
     const probability = data.probability;
-    const leadingTeam = probability >= 50 ? homeTeam : awayTeam;
-    return `${leadingTeam}: ${probability.toFixed(1)}%`;
+    const isHomeTeamLeading = probability >= 50;
+    const leadingTeam = isHomeTeamLeading ? homeTeam : awayTeam;
+    const displayProbability = isHomeTeamLeading
+      ? probability
+      : 100 - probability;
+    return `${leadingTeam}: ${displayProbability.toFixed(1)}%`;
   };
 
   return (
@@ -68,7 +81,7 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
               <div className="text-3xl font-bold">
                 {hoverData
                   ? hoverData.awayScore
-                  : plays[plays.length - 1].away_score}
+                  : plays[plays.length - 1].away_score_after}
               </div>
             </div>
             <div className="text-gray-400 text-xl">@</div>
@@ -80,7 +93,7 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
               <div className="text-3xl font-bold">
                 {hoverData
                   ? hoverData.homeScore
-                  : plays[plays.length - 1].home_score}
+                  : plays[plays.length - 1].home_score_after}
               </div>
             </div>
 
