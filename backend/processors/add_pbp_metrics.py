@@ -568,6 +568,147 @@ def calculate_dre_and_dwe(df):
     return df
 
 
+class BaseballAnalytics:
+    EVENT_CODES = {
+        'WALK': 14,
+        'HBP': 16,
+        'SINGLE': 20,
+        'DOUBLE': 21,
+        'TRIPLE': 22,
+        'HOME_RUN': 23,
+        'OUT': [2, 3, 19],
+        'ERROR': 18
+    }
+
+    def __init__(self, pbp_df, year, weights_path='../data/linear_weights_{}.csv'):
+        self.original_df = pbp_df.copy()
+        self.year = year
+        self.weights_path = weights_path
+        self.situations = None
+        self.weights = None
+
+    def load_weights(self):
+        try:
+            lw = pd.read_csv(self.weights_path.format(self.year))
+            self.weights = lw.set_index(
+                'events')['normalized_weight'].to_dict()
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"Linear weights file for year {self.year} not found")
+        except Exception as e:
+            raise Exception(f"Error loading weights: {str(e)}")
+
+    def prepare_situations(self):
+        self.situations = self.original_df.copy()
+
+        self.situations['RISP_fl'] = (
+            ~self.situations['r2_name'].isna() |
+            ~self.situations['r3_name'].isna()
+        ).astype(int)
+
+        self.situations['LI_HI_fl'] = (self.situations['li'] >= 2).astype(int)
+        self.situations['LI_LO_fl'] = (
+            self.situations['li'] <= 0.85).astype(int)
+
+    def calculate_metrics(self, group):
+        if self.weights is None:
+            self.load_weights()
+
+        # Count events
+        events = {
+            event: (group['event_cd'] == code).sum()
+            if not isinstance(code, list)
+            else group['event_cd'].isin(code).sum()
+            for event, code in self.EVENT_CODES.items()
+        }
+
+        # Calculate plate appearances
+        sf = (group['sf_fl'] == 1).sum()
+        ab = (events['SINGLE'] + events['DOUBLE'] + events['TRIPLE'] +
+              events['HOME_RUN'] + events['OUT'] + events['ERROR'])
+        pa = ab + events['WALK'] + sf + events['HBP']
+
+        if pa == 0:
+            return pd.Series({
+                'wOBA': np.nan,
+                'BA': np.nan,
+                'PA': 0,
+                'REA': 0
+            })
+
+        # Calculate wOBA
+        woba = (
+            self.weights.get('walk', 0) * events['WALK'] +
+            self.weights.get('hit_by_pitch', 0) * events['HBP'] +
+            self.weights.get('single', 0) * events['SINGLE'] +
+            self.weights.get('double', 0) * events['DOUBLE'] +
+            self.weights.get('triple', 0) * events['TRIPLE'] +
+            self.weights.get('home_run', 0) * events['HOME_RUN']
+        ) / pa
+
+        # Calculate batting average
+        hits = (events['SINGLE'] + events['DOUBLE'] +
+                events['TRIPLE'] + events['HOME_RUN'])
+        ba = hits / ab if ab > 0 else np.nan
+
+        # Calculate run expectancy delta
+        rea = group['REA'].sum()
+
+        return pd.Series({
+            'wOBA': woba,
+            'BA': ba,
+            'PA': pa,
+            'REA': rea
+        })
+
+    def analyze_situations(self):
+        """Analyze performance across different situations"""
+        if self.situations is None:
+            self.prepare_situations()
+
+        situations_list = [
+            ('RISP', self.situations[self.situations['RISP_fl'] == 1]),
+            ('High_Leverage',
+             self.situations[self.situations['LI_HI_fl'] == 1]),
+            ('Low_Leverage',
+             self.situations[self.situations['LI_LO_fl'] == 1]),
+            ('Overall', self.situations)
+        ]
+
+        results = []
+        for name, data in situations_list:
+            grouped = (data.groupby(['batter_standardized', 'bat_team'])
+                       .apply(self.calculate_metrics)
+                       .reset_index())
+            grouped['Situation'] = name
+            results.append(grouped)
+
+        return pd.concat(results, axis=0).reset_index(drop=True)
+
+    def get_pivot_results(self):
+        """Generate pivoted results for easy comparison"""
+        final_df = self.analyze_situations()
+
+        pivot = final_df.pivot(
+            index=['batter_standardized', 'bat_team'],
+            columns='Situation',
+            values=['wOBA', 'BA', 'PA', 'REA']
+        )
+
+        # Clean up column names
+        pivot.columns = [f"{stat}_{sit}" for stat, sit in pivot.columns]
+        return pivot.reset_index()
+
+
+def run_analysis(pbp_df, year):
+    try:
+        analytics = BaseballAnalytics(pbp_df, year)
+        return analytics.get_pivot_results()
+    except Exception as e:
+        print(f"Error running analysis: {str(e)}")
+        return None
+
+
 def process_single_year(year):
     try:
         # Load data with error handling
@@ -622,6 +763,10 @@ def process_single_year(year):
     merged_df.to_csv(
         f'../data/parsed_pbp_new_{year}.csv', index=False)
 
+    situational = run_analysis(merged_df, year).fillna(0)
+    situational.to_sql(f'situational_{year}',
+                       conn, if_exists='replace', index=False)
+
     columns = [
         'home_team', 'away_team', 'home_score', 'away_score', 'date',
         'inning', 'top_inning', 'game_id', 'description',
@@ -633,6 +778,7 @@ def process_single_year(year):
 
     conn = sqlite3.connect('../ncaa.db')
     merged_df.to_sql(f'pbp_{year}', conn, if_exists='replace', index=False)
+
     conn.close()
     print(f"Successfully processed data for {year}")
 

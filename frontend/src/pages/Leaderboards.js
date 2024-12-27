@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { ChevronDown } from "lucide-react";
 import ValueLeaderboard from "../components/tables/ValueLeaderboard";
 import SituationalLeaderboard from "../components/tables/SituationalLeaderboard";
+import BaserunningLeaderboard from "../components/tables/BaserunningLeaderboard";
 
 const LEADERBOARD_TYPES = {
   VALUE: {
@@ -17,6 +18,13 @@ const LEADERBOARD_TYPES = {
     description:
       "How hitters do w/ RISP vs. high leverage situations vs. low leverage vs. all together",
     component: SituationalLeaderboard,
+  },
+  BASERUNNING: {
+    id: "baserunning",
+    label: "Baserunning Leaderboard",
+    description:
+      "Comprehensive leaderboard of total baserunning value. Accounts for stolen bases, avoiding double plays, and taking extra bases when given the opportunity.",
+    component: BaserunningLeaderboard,
   },
 };
 
@@ -49,7 +57,7 @@ const Leaderboards = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between items-center mx-auto py-4 px-4 md:px-12">
-          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-4 md:mb-0">
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent py-3 mb-5 md:mb-0">
             {LEADERBOARD_TYPES[selectedType.toUpperCase()]?.label}
           </h1>
 

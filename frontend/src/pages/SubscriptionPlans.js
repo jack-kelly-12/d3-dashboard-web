@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Check } from "lucide-react";
 import toast from "react-hot-toast";
+import AuthManager from "../managers/AuthManager";
 
 const PlanFeature = ({ children, isPremium }) => (
   <li className="flex items-start gap-3">
@@ -23,14 +24,31 @@ function SubscriptionPlans() {
     navigate("/data");
   };
 
-  const handleBuyPremium = async () => {
+  const handleBuyPremium = async (planType) => {
+    const user = AuthManager.getCurrentUser();
+
+    if (!user || user.isAnonymous) {
+      toast.error("Please create an account to purchase a subscription");
+      navigate("/signin?signup=true", {
+        state: {
+          returnTo: "/subscriptions",
+          message: "Create an account to continue with your purchase",
+        },
+      });
+      return;
+    }
+
     try {
-      // Replace with your Stripe checkout URL
-      const stripeCheckoutUrl = process.env.REACT_APP_STRIPE_CHECKOUT_URL;
-      if (!stripeCheckoutUrl) {
-        throw new Error("Stripe checkout URL not configured");
-      }
-      window.location.href = stripeCheckoutUrl;
+      const stripeUrls = {
+        monthly: process.env.REACT_APP_STRIPE_MONTHLY_URL,
+        yearly: process.env.REACT_APP_STRIPE_YEARLY_URL,
+      };
+
+      const url = new URL(stripeUrls[planType]);
+      url.searchParams.append("client_reference_id", user.uid);
+      url.searchParams.append("prefilled_email", user.email);
+
+      window.location.href = url.toString();
     } catch (error) {
       console.error("Stripe redirect error:", error);
       toast.error("Unable to process payment request. Please try again later.");
@@ -98,12 +116,20 @@ function SubscriptionPlans() {
               <PlanFeature isPremium>Custom analytical reports</PlanFeature>
             </ul>
 
-            <button
-              onClick={handleBuyPremium}
-              className="block w-full py-3 px-6 text-center rounded-lg text-white font-medium bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
-            >
-              Upgrade to Premium
-            </button>
+            <div className="flex flex-row gap-4">
+              <button
+                onClick={() => handleBuyPremium("monthly")}
+                className="block w-full py-3 px-6 text-center rounded-lg text-white font-medium bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
+              >
+                Get Monthly Plan ($10/mo)
+              </button>
+              <button
+                onClick={() => handleBuyPremium("yearly")}
+                className="block w-full py-3 px-6 text-center rounded-lg text-white font-medium bg-green-600 hover:bg-green-700 transition-colors duration-200"
+              >
+                Get Yearly Plan ($40/yr)
+              </button>
+            </div>
           </div>
         </div>
       </div>

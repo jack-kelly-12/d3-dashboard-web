@@ -775,6 +775,74 @@ def get_value_leaderboard():
         conn.close()
 
 
+@app.route('/api/leaderboards/baserunning', methods=['GET'])
+def get_baserunning_leaderboard():
+    start_year = request.args.get('start_year', '2024')
+    end_year = request.args.get('end_year', '2024')
+    min_pa = request.args.get('min_pa', '50')
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+        min_pa = int(min_pa)
+    except ValueError:
+        return jsonify({"error": "Invalid parameters"}), 400
+
+    # Validate the year range
+    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+        return jsonify({"error": "Invalid year range"}), 400
+
+    # Initialize database connection
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    results = []
+
+    try:
+        for year in range(start_year, end_year + 1):
+            query = f"""
+                WITH baserunning AS (
+                    SELECT 
+                        p.Player,
+                        p.player_id,
+                        p.Team,
+                        p.Conference,
+                        i.prev_team_id,
+                        i.conference_id,
+                        p.Baserunning,
+                        p.wSB,
+                        p.wGDP,
+                        p.wTEB,
+                        p.Picked,
+                        p.SB,
+                        p.CS,
+                        p.[SB%],
+                        p.Opportunities,
+                        p.Outs_On_Bases,
+                        p.Extra_Bases_Taken AS XBT,
+                        ? AS Year
+                    FROM baserunning_{year} p
+                    LEFT JOIN ids_for_images i 
+                        ON p.Team = i.team_name
+                    ORDER BY p.Baserunning DESC
+                )
+                SELECT * FROM baserunning
+            """
+            cursor.execute(query, (year, ))
+            columns = [col[0] for col in cursor.description]
+            year_results = [dict(zip(columns, row))
+                            for row in cursor.fetchall()]
+            results.extend(year_results)
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
+
+
 @app.route('/api/leaderboards/situational', methods=['GET'])
 def get_situational_leaderboard():
     start_year = request.args.get('start_year', '2024')

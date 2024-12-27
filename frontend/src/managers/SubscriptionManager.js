@@ -7,9 +7,6 @@ import {
   updateDoc,
   serverTimestamp,
 } from "firebase/firestore";
-import { loadStripe } from "@stripe/stripe-js";
-
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLIC_KEY);
 
 class SubscriptionManager {
   constructor() {
@@ -27,8 +24,7 @@ class SubscriptionManager {
     const data = docSnap.data();
     return {
       ...data,
-      isActive:
-        data.status === "active" && new Date(data.expiresAt) > new Date(),
+      isActive: data.status === "active" && new Date(data.endDate) > new Date(),
     };
   }
 
@@ -46,11 +42,15 @@ class SubscriptionManager {
       });
 
       const session = await response.json();
-      const stripe = await stripePromise;
 
-      return stripe.redirectToCheckout({
+      if (!session || !session.id) {
+        throw new Error("Invalid checkout session response");
+      }
+
+      return {
         sessionId: session.id,
-      });
+        url: session.url,
+      };
     } catch (error) {
       throw new Error(`Failed to create checkout session: ${error.message}`);
     }
@@ -101,52 +101,6 @@ class SubscriptionManager {
     }
   }
 }
-
-export const manageSubscription = async (userId, subscriptionData) => {
-  try {
-    const subscriptionRef = doc(db, "subscriptions", userId);
-
-    await setDoc(subscriptionRef, {
-      status: "active",
-      type: subscriptionData.type, // "monthly" or "yearly"
-      startDate: new Date(),
-      endDate: new Date(
-        Date.now() +
-          (subscriptionData.type === "yearly" ? 365 : 30) * 24 * 60 * 60 * 1000
-      ),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error managing subscription:", error);
-    return { success: false, error };
-  }
-};
-
-export const checkSubscriptionStatus = async (userId) => {
-  try {
-    const subscriptionRef = doc(db, "subscriptions", userId);
-    const subscriptionDoc = await getDoc(subscriptionRef);
-
-    if (!subscriptionDoc.exists()) {
-      return { isSubscribed: false };
-    }
-
-    const data = subscriptionDoc.data();
-    const isActive =
-      data.status === "active" && new Date(data.endDate.toDate()) > new Date();
-
-    return {
-      isSubscribed: isActive,
-      subscription: data,
-    };
-  } catch (error) {
-    console.error("Error checking subscription:", error);
-    return { isSubscribed: false, error };
-  }
-};
 
 const manager = new SubscriptionManager();
 export default manager;

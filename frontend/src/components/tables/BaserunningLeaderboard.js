@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
 import { useSearchParams } from "react-router-dom";
 
-const SituationalLeaderboard = () => {
+const BaserunningLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
@@ -21,7 +21,7 @@ const SituationalLeaderboard = () => {
 
   useEffect(() => {
     setSearchParams({
-      table: "situational-leaderboard",
+      table: "baserunning-leaderboard",
       search: searchTerm,
       startYear,
       endYear,
@@ -37,6 +37,7 @@ const SituationalLeaderboard = () => {
     setSearchParams,
   ]);
 
+  // Fetch conferences only once
   useEffect(() => {
     const fetchConferences = async () => {
       try {
@@ -49,13 +50,14 @@ const SituationalLeaderboard = () => {
     fetchConferences();
   }, []);
 
+  // Fetch leaderboard data based on filters
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
       try {
         const rawData = await fetchAPI(
-          `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}`
+          `/api/leaderboards/baserunning?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}`
         );
 
         const transformedData = rawData.map((row, index) => ({
@@ -157,92 +159,76 @@ const SituationalLeaderboard = () => {
         sortable: true,
         width: "80px",
       },
+
       {
-        name: "PA",
-        selector: (row) => row.PA_Overall,
+        name: "SB",
+        selector: (row) => row.SB,
         sortable: true,
-        width: "80px",
+        width: "70px",
       },
       {
-        name: "BA",
-        selector: (row) => row.BA_Overall,
+        name: "CS",
+        selector: (row) => row.CS,
         sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Overall?.toFixed(3) || "—",
+        width: "70px",
       },
       {
-        name: "wOBA",
-        selector: (row) => row.wOBA_Overall,
+        name: "SB%",
+        selector: (row) => row["SB%"],
         sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
+        width: "90px",
+        cell: (row) => row["SB%"]?.toFixed(1) + "%" || "—",
       },
       {
-        name: "PA w/ RISP",
-        selector: (row) => row.PA_RISP,
+        name: "XBT",
+        selector: (row) => row.XBT,
         sortable: true,
-        width: "110px",
+        width: "70px",
       },
       {
-        name: "BA w/ RISP",
-        selector: (row) => row.BA_RISP,
+        name: "XBT%",
+        selector: (row) => row.XBT / row.Opportunities,
         sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_RISP?.toFixed(3) || "—",
+        width: "90px",
+        cell: (row) =>
+          row.Opportunities
+            ? (100 * (row.XBT / row.Opportunities)).toFixed(1) + "%"
+            : "—",
       },
       {
-        name: "wOBA w/ RISP",
-        selector: (row) => row.wOBA_RISP,
+        name: "Picked",
+        selector: (row) => row.Picked,
         sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
+        width: "90px",
+        cell: (row) => row.Picked || "0",
       },
       {
-        name: "LI+ PA",
-        selector: (row) => row.PA_High_Leverage,
+        name: "wSB",
+        selector: (row) => row.wSB,
         sortable: true,
-        width: "110px",
+        width: "90px",
+        cell: (row) => row.wSB?.toFixed(1) || "0.0",
       },
       {
-        name: "LI+ BA",
-        selector: (row) => row.BA_High_Leverage,
+        name: "wGDP",
+        selector: (row) => row.wGDP,
         sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
+        width: "90px",
+        cell: (row) => row.wGDP?.toFixed(1) || "0.0",
       },
       {
-        name: "LI+ wOBA",
-        selector: (row) => row.wOBA_High_Leverage,
+        name: "wTEB",
+        selector: (row) => row.wTEB,
         sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
+        width: "90px",
+        cell: (row) => row.wTEB?.toFixed(1) || "0.0",
       },
       {
-        name: "LI- PA",
-        selector: (row) => row.PA_Low_Leverage,
+        name: "BsR",
+        selector: (row) => row.Baserunning,
         sortable: true,
-        width: "110px",
-      },
-      {
-        name: "LI- BA",
-        selector: (row) => row.BA_Low_Leverage,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "LI- wOBA",
-        selector: (row) => row.wOBA_Low_Leverage,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "Clutch",
-        selector: (row) => row.Clutch,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.Clutch?.toFixed(3) || "—",
+        width: "90px",
+        cell: (row) => row.Baserunning?.toFixed(1) || "—",
       },
     ],
     []
@@ -253,12 +239,16 @@ const SituationalLeaderboard = () => {
       {/* Explanation Banner */}
       <div className="bg-white border-l-4 border-blue-500 rounded-lg p-6 mb-6">
         <h3 className="text-base font-semibold text-blue-800 mb-2">
-          What is the Situational Leaderboard?
+          What is the Baserunning Leaderboard?
         </h3>
-        <p className="text-sm text-gray-700 leading-relaxed">
-          This leaderboard helps evaluate how players perform in different game
-          situations, with emphasis on moments that can significantly impact the
-          outcome of games.
+        <p className="text-sm text-gray-700 mt-1 leading-relaxed">
+          This leaderboard helps evaluate players contributions to their
+          respective teams based on their baserunning. An elite baserunner could
+          add almost one win above replacement to their team based on
+          baserunnning alone. Baserunning run value is calculated using wSB,
+          wGDP, and wTEB, which is based off of Fangraphs methodology besides
+          the UBR component. wTEB is a new stat that values taking extra bases
+          compared to the average baserunner.
         </p>
       </div>
 
@@ -305,18 +295,6 @@ const SituationalLeaderboard = () => {
               </select>
             </div>
 
-            <select
-              value={minPA}
-              onChange={(e) => setMinPA(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value={1}>Min 1 PA</option>
-              <option value={25}>Min 25 PA</option>
-              <option value={50}>Min 50 PA</option>
-              <option value={100}>Min 100 PA</option>
-              <option value={150}>Min 150 PA</option>
-            </select>
-
             {conferences.length > 0 && (
               <select
                 value={selectedConference}
@@ -349,7 +327,7 @@ const SituationalLeaderboard = () => {
           <BaseballTable
             data={filteredData}
             columns={columns}
-            defaultSortField="wOBA_Overall"
+            defaultSortField="Baserunning"
             defaultSortAsc={false}
           />
         </div>
@@ -358,4 +336,4 @@ const SituationalLeaderboard = () => {
   );
 };
 
-export default SituationalLeaderboard;
+export default BaserunningLeaderboard;
