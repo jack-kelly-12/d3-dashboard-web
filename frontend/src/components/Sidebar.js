@@ -17,10 +17,12 @@ import {
   Trophy,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
+import SubscriptionManager from "../managers/SubscriptionManager";
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [authState, setAuthState] = useState({
     isAuthenticated: false,
     isAnonymous: false,
@@ -28,19 +30,34 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Close mobile menu on location change
   useEffect(() => {
     setMobileOpen(false);
   }, [location]);
 
   useEffect(() => {
-    const unsubscribe = AuthManager.onAuthStateChanged((user) => {
+    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
       setAuthState({
         isAuthenticated: !!user,
         isAnonymous: user?.isAnonymous || false,
       });
+
+      if (user) {
+        // Listen to subscription updates
+        SubscriptionManager.listenToSubscriptionUpdates(
+          user.uid,
+          (subscription) => {
+            setIsPremiumUser(subscription?.isActive || false);
+          }
+        );
+      } else {
+        setIsPremiumUser(false);
+      }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      SubscriptionManager.stopListening();
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -85,11 +102,16 @@ const Sidebar = () => {
           onClick={handleSignOut}
           className={`w-full flex items-center h-11 px-4 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 ${
             collapsed && !mobileOpen ? "justify-center" : ""
-          }`}
+          } relative`}
         >
           <LogOut className="w-5 h-5" strokeWidth={1.5} />
           {(!collapsed || mobileOpen) && (
             <span className="ml-3 text-sm font-medium">Sign Out</span>
+          )}
+          {isPremiumUser && (
+            <span className="absolute top-0 right-0 mt-1 mr-1 px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded-full">
+              Premium
+            </span>
           )}
         </button>
       );
@@ -123,7 +145,6 @@ const Sidebar = () => {
     );
   };
 
-  // Mobile menu button
   const MobileMenuButton = () => (
     <button
       onClick={() => setMobileOpen(!mobileOpen)}

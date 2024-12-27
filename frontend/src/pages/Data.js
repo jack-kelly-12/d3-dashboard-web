@@ -5,7 +5,6 @@ import DataControls from "../components/data/DataControls";
 import { fetchAPI } from "../config/api";
 import { getDataColumns } from "../config/tableColumns";
 import TeamLogo from "../components/data/TeamLogo";
-import debounce from "lodash/debounce";
 import { useSearchParams } from "react-router-dom";
 
 const Data = () => {
@@ -113,14 +112,6 @@ const Data = () => {
 
     fetchData();
   }, [dataType, selectedYears]);
-
-  const handleSearchChange = useMemo(
-    () =>
-      debounce((value) => {
-        setSearchTerm(value);
-      }, 300),
-    []
-  );
 
   const filteredData = useMemo(() => {
     return data.filter((item) => {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar } from "lucide-react";
 import WinExpectancyChart from "../components/game/WinExpectancyChart";
 import GameLog from "../components/game/GameLog";
 import { fetchAPI } from "../config/api";

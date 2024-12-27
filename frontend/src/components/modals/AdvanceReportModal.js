@@ -1,13 +1,9 @@
 import React, { useState, useMemo } from "react";
 import { FileText, X } from "lucide-react";
 import { pdf } from "@react-pdf/renderer";
-import { useNavigate } from "react-router-dom";
-import SubscriptionManager from "../../managers/SubscriptionManager";
-import AuthManager from "../../managers/AuthManager";
-import toast from "react-hot-toast";
 import BullpenReport from "../../reports/BullpenReport";
-import TTOReport from "../../reports/TTOReport";
 import PitcherAdvanceReport from "../../reports/PitcherAdvanceReport";
+import TTOReport from "../../reports/TTOReport";
 
 export const ReportTypes = {
   BULLPEN: {
@@ -46,7 +42,6 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
   const [selectedCharts, setSelectedCharts] = useState([]);
   const [reportType, setReportType] = useState("bullpen");
   const [selectedPitchers, setSelectedPitchers] = useState([]);
-  const navigate = useNavigate();
 
   const availableCharts = useMemo(() => {
     const type = ReportTypes[reportType.toUpperCase()];
@@ -74,29 +69,6 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
 
   const handleGenerate = async () => {
     try {
-      const user = AuthManager.getCurrentUser();
-      if (!user) {
-        toast.error("Please sign in to generate reports");
-        navigate("/signin");
-        return;
-      }
-
-      const subscription = await SubscriptionManager.getUserSubscription(
-        user.uid
-      );
-
-      if (!subscription?.isActive) {
-        toast.error("Premium subscription required to generate reports");
-        navigate("/subscriptions");
-        return;
-      }
-
-      if (!subscription?.isActive) {
-        toast.error("Premium subscription required to generate reports");
-        navigate("/subscriptions");
-        return;
-      }
-
       const ReportComponent = ReportTypes[reportType.toUpperCase()].component;
       const dateStr = new Date().toISOString().split("T")[0];
       const filename = `${reportType}_report_${dateStr}.pdf`;

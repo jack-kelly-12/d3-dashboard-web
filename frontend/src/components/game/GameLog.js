@@ -67,7 +67,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
         const probability = homeWinProb;
         const leadingTeam = probability >= 50 ? homeTeam : awayTeam;
         const shownProb =
-          leadingTeam == homeTeam ? probability : 100 - probability;
+          leadingTeam === homeTeam ? probability : 100 - probability;
         return (
           <div className={`text-center`}>
             {`${leadingTeam}: ${roundTo(shownProb, 0)}%`}

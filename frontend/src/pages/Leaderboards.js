@@ -22,8 +22,7 @@ const LEADERBOARD_TYPES = {
   BASERUNNING: {
     id: "baserunning",
     label: "Baserunning Leaderboard",
-    description:
-      "Comprehensive leaderboard of total baserunning value. Accounts for stolen bases, avoiding double plays, and taking extra bases when given the opportunity.",
+    description: "Comprehensive leaderboard of total baserunning value.",
     component: BaserunningLeaderboard,
   },
 };

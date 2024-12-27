@@ -12,7 +12,7 @@ import os
 from PIL import Image
 import io
 from flask import Response
-
+import stripe
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 
@@ -1012,6 +1012,39 @@ def get_games_by_date():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+
+
+@app.route('/api/webhooks/stripe', methods=['POST'])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, webhook_secret
+        )
+
+        # We'll only handle subscription-related events
+        if event.type in [
+            'checkout.session.completed',
+            'customer.subscription.updated',
+            'customer.subscription.deleted'
+        ]:
+            print(f"Processing webhook: {event.type}")
+            return jsonify({'received': True})
+
+        return jsonify({'received': True})
+
+    except stripe.error.SignatureVerificationError as e:
+        print(f"Webhook signature verification failed: {str(e)}")
+        return jsonify({'error': 'Invalid signature'}), 400
+    except Exception as e:
+        print(f"Webhook error: {str(e)}")
+        return jsonify({'error': str(e)}), 400
 
 
 if __name__ == '__main__':

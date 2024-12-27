@@ -6,14 +6,17 @@ import {
   setDoc,
   updateDoc,
   serverTimestamp,
+  onSnapshot,
 } from "firebase/firestore";
 
 class SubscriptionManager {
   constructor() {
     this.subscriptionsRef = collection(db, "subscriptions");
+    this.unsubscribeFromFirestore = null;
   }
 
   async getUserSubscription(userId) {
+    console.log(userId);
     if (!userId) throw new Error("User ID is required");
 
     const docRef = doc(this.subscriptionsRef, userId);
@@ -24,80 +27,101 @@ class SubscriptionManager {
     const data = docSnap.data();
     return {
       ...data,
-      isActive: data.status === "active" && new Date(data.endDate) > new Date(),
+      isActive:
+        data.status === "active" &&
+        new Date(data.expiresAt.toDate()) > new Date(),
     };
   }
 
-  async createCheckoutSession(userId, priceId) {
-    try {
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          priceId,
-        }),
-      });
+  listenToSubscriptionUpdates(userId, callback) {
+    if (this.unsubscribeFromFirestore) {
+      this.unsubscribeFromFirestore();
+    }
 
-      const session = await response.json();
+    if (!userId) {
+      callback(null);
+      return () => {};
+    }
 
-      if (!session || !session.id) {
-        throw new Error("Invalid checkout session response");
+    const docRef = doc(this.subscriptionsRef, userId);
+    this.unsubscribeFromFirestore = onSnapshot(
+      docRef,
+      (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          callback({
+            ...data,
+            isActive:
+              data.status === "active" &&
+              new Date(data.expiresAt.toDate()) > new Date(),
+          });
+        } else {
+          callback(null);
+        }
+      },
+      (error) => {
+        console.error("Error listening to subscription updates:", error);
+        callback(null);
       }
+    );
 
-      return {
-        sessionId: session.id,
-        url: session.url,
-      };
+    return this.unsubscribeFromFirestore;
+  }
+
+  // This method will be called by your webhook handler
+  async handleStripeWebhook(event) {
+    const { type, data } = event;
+    const userId = data.object.client_reference_id; // From your URL parameter
+    const subscriptionRef = doc(this.subscriptionsRef, userId);
+
+    try {
+      switch (type) {
+        case "checkout.session.completed":
+          // When checkout completes successfully
+          await setDoc(subscriptionRef, {
+            status: "active",
+            stripeCustomerId: data.object.customer,
+            customerId: data.object.customer,
+            planType: data.object.metadata.planType, // 'monthly' or 'yearly'
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            expiresAt: new Date(
+              data.object.subscription.current_period_end * 1000
+            ),
+          });
+          break;
+
+        case "customer.subscription.updated":
+          // When subscription is updated (renewal, plan change, etc.)
+          await updateDoc(subscriptionRef, {
+            status: data.object.status,
+            planType: data.object.metadata.planType,
+            currentPeriodEnd: new Date(data.object.current_period_end * 1000),
+            expiresAt: new Date(data.object.current_period_end * 1000),
+            cancelAtPeriodEnd: data.object.cancel_at_period_end,
+            updatedAt: serverTimestamp(),
+          });
+          break;
+
+        case "customer.subscription.deleted":
+          // When subscription is cancelled or expires
+          await updateDoc(subscriptionRef, {
+            status: "canceled",
+            cancelAtPeriodEnd: false,
+            updatedAt: serverTimestamp(),
+          });
+          break;
+      }
     } catch (error) {
-      throw new Error(`Failed to create checkout session: ${error.message}`);
+      console.error("Error handling subscription webhook:", error);
+      throw error;
     }
   }
 
-  async handleSubscriptionUpdate(subscriptionId, userId, status) {
-    const docRef = doc(this.subscriptionsRef, userId);
-
-    await updateDoc(docRef, {
-      subscriptionId,
-      status,
-      updatedAt: serverTimestamp(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-    });
-  }
-
-  async createSubscription(userId, subscriptionData) {
-    const docRef = doc(this.subscriptionsRef, userId);
-
-    await setDoc(docRef, {
-      ...subscriptionData,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  async cancelSubscription(userId) {
-    try {
-      const response = await fetch("/api/cancel-subscription", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ userId }),
-      });
-
-      if (!response.ok) throw new Error("Failed to cancel subscription");
-
-      const docRef = doc(this.subscriptionsRef, userId);
-      await updateDoc(docRef, {
-        status: "canceled",
-        updatedAt: serverTimestamp(),
-      });
-
-      return true;
-    } catch (error) {
-      throw new Error(`Failed to cancel subscription: ${error.message}`);
+  stopListening() {
+    if (this.unsubscribeFromFirestore) {
+      this.unsubscribeFromFirestore();
+      this.unsubscribeFromFirestore = null;
     }
   }
 }
