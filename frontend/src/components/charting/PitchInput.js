@@ -39,7 +39,7 @@ const VelocityInput = ({ value, onChange, disabled }) => {
           onChange={handleInputChange}
           className="w-16 px-2 py-1 border border-gray-200 rounded-md text-center
             focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="80"
+          placeholder="-"
           disabled={disabled}
         />
       </div>
@@ -62,7 +62,7 @@ const PitchInput = ({
   const handleReset = () => {
     if (isBullpen) {
       onChange({
-        velocity: "",
+        velocity: null,
         type: "",
         intendedZone: null,
         location: null,
@@ -91,6 +91,7 @@ const PitchInput = ({
     "changeup",
     "splitter",
     "cutter",
+    "knuckleball",
   ];
 
   if (isBullpen) {

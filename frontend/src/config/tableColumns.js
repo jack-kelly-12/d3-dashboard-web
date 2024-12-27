@@ -954,7 +954,7 @@ export const getReportColumns = (onReportSelect) => [
     cell: (row) => (
       <button
         onClick={() => onReportSelect(row)}
-        className="px-4 py-2 text-sm bg-[#007BA7] text-white rounded hover:bg-[#006990] transition-colors duration-200"
+        className="px-4 py-2 text-sm bg-[#007BA7] text-white rounded hover:bg-blue-50 transition-colors duration-200"
       >
         View
       </button>

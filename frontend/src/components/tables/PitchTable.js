@@ -104,20 +104,17 @@ const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
             <th className="px-3 py-3">Time</th>
             <th className="px-3 py-3">Pitcher</th>
             <th className="px-3 py-3">Batter</th>
-            <th className="px-3 py-3">Bat. Side</th>
-            <th className="px-3 py-3">Pit. Hand</th>
+            <th className="px-3 py-3">B. Side</th>
+            <th className="px-3 py-3">P. Hand</th>
             <th className="px-3 py-3">Pitch Type</th>
             <th className="px-3 py-3">Velo</th>
             <th className="px-3 py-3">Result</th>
-            <th className="px-7 py-3">Hit Result</th>
-            <th className="px-3 py-3">EV Type</th>
             <th className="px-3 py-3">Pitch X</th>
             <th className="px-3 py-3">Pitch Z</th>
+            <th className="px-7 py-3">Hit Result</th>
             <th className="px-3 py-3">Hit X</th>
             <th className="px-3 py-3">Hit Z</th>
             <th className="px-3 py-3">Notes</th>
-            <th className="px-3 py-3">Catcher</th>
-            <th className="px-3 py-3">Umpire</th>
             <th className="px-3 py-3 w-10"></th>
           </tr>
         </thead>
@@ -171,25 +168,16 @@ const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
                       {pitch.result?.replace(/_/g, " ") || "—"}
                     </span>
                   </td>
-                  <td className="px-3 py-2.5">
-                    {pitch.hitDetails ? (
-                      <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs">
-                        {pitch.hitDetails?.type?.replace(/_/g, " ")}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5 capitalize">
-                    {pitch.hitDetails?.exitVelocity?.replace(/_/g, " ") || "—"}
-                  </td>
                   <td className="px-3 py-2.5 font-mono">{pitchCoords.x}</td>
                   <td className="px-3 py-2.5 font-mono">{pitchCoords.y}</td>
+                  <td className="px-3 py-2.5">
+                    {pitch.hitDetails
+                      ? pitch.hitDetails?.type?.replace(/_/g, " ")
+                      : "—"}
+                  </td>
                   <td className="px-3 py-2.5 font-mono">{hitCoords.x}</td>
                   <td className="px-3 py-2.5 font-mono">{hitCoords.y}</td>
                   <td className="px-3 py-2.5">{pitch.note || "—"}</td>
-                  <td className="px-3 py-2.5">{pitch.catcher || "—"}</td>
-                  <td className="px-3 py-2.5">{pitch.umpire || "—"}</td>
                   <td className="px-3 py-2.5">
                     <button
                       onClick={() => onDeletePitch?.(pitch.id)}

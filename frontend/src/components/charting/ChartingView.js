@@ -21,7 +21,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isStrikeZone, setIsStrikeZone] = useState(true);
   const [currentPitch, setCurrentPitch] = useState({
-    velocity: "80",
+    velocity: null,
     type: "",
     result: "",
     location: null,
@@ -35,6 +35,13 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   const isBullpen = chart.chartType === "bullpen";
   const [shouldOpenCatcherModal, setShouldOpenCatcherModal] = useState(false);
   const [shouldOpenBatterModal, setShouldOpenBatterModal] = useState(false);
+  const [shouldOpenPitcherModal, setShouldOpenPitcherModal] = useState(false);
+  const [outs, setOuts] = useState(isBullpen ? null : 0);
+  const [balls, setBalls] = useState(isBullpen ? null : 0);
+  const [strikes, setStrikes] = useState(isBullpen ? null : 0);
+  const [inning, setInning] = useState(isBullpen ? null : 1);
+  const [topBottom, setTopBottom] = useState(isBullpen ? null : "Top");
+  const [nextModalType, setNextModalType] = useState(null);
 
   useEffect(() => {
     if (shouldOpenCatcherModal) {
@@ -53,6 +60,14 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   }, [shouldOpenBatterModal]);
 
   useEffect(() => {
+    if (shouldOpenPitcherModal) {
+      setEditingPlayer("pitcher");
+      setIsPlayerModalOpen(true);
+      setShouldOpenPitcherModal(false);
+    }
+  }, [shouldOpenPitcherModal]);
+
+  useEffect(() => {
     const loadChartData = async () => {
       try {
         setIsLoading(true);
@@ -62,6 +77,32 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         setBatter(updatedChart.batter || null);
         setCatcher(updatedChart.catcher || null);
         setUmpire(updatedChart.umpire || null);
+
+        if (!isBullpen) {
+          const lastPitch =
+            updatedChart.pitches?.[updatedChart.pitches.length - 1];
+          if (lastPitch) {
+            setBalls(lastPitch.balls || 0);
+            setStrikes(lastPitch.strikes || 0);
+            setOuts(lastPitch.outs || 0);
+            setInning(lastPitch.inning || 1);
+            setTopBottom(lastPitch.topBottom || "Top");
+          } else {
+            setBalls(0);
+            setStrikes(0);
+            setOuts(0);
+            setInning(1);
+            setTopBottom("Top");
+            setNextModalType("batter");
+            setShouldOpenPitcherModal(true);
+          }
+        } else {
+          const lastPitch =
+            updatedChart.pitches?.[updatedChart.pitches.length - 1];
+          if (!lastPitch) {
+            setShouldOpenPitcherModal(true);
+          }
+        }
       } catch (error) {
         toast.error("Failed to load chart data");
       } finally {
@@ -70,9 +111,12 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
     };
 
     loadChartData();
-  }, [chart.id]);
+  }, [chart.id, isBullpen]);
 
   const handlePlayerEdit = (type) => {
+    if (type === "pitcher" && !isBullpen) {
+      setNextModalType("batter");
+    }
     setEditingPlayer(type);
     setIsPlayerModalOpen(true);
   };
@@ -123,6 +167,14 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
       await ChartManager.updateChart(chart.id, updatedData);
       setIsPlayerModalOpen(false);
 
+      if (nextModalType) {
+        setTimeout(() => {
+          setEditingPlayer(nextModalType);
+          setIsPlayerModalOpen(true);
+          setNextModalType(null);
+        }, 100);
+      }
+
       if (editingPlayer === "pitcher") {
         setCatcher(null);
       }
@@ -158,12 +210,59 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         "strikeout_looking",
       ].includes(currentPitch.result.toLowerCase());
 
-      if (
-        isInPlay &&
-        (!currentHit.location || !currentHit.type || !currentHit.exitVelocity)
-      ) {
-        setIsStrikeZone(false);
-        return;
+      let newBalls = balls;
+      let newStrikes = strikes;
+      let newOuts = outs;
+
+      if (!isBullpen) {
+        const result = currentPitch.result?.toLowerCase();
+        const hitResult = currentHit.result?.toLowerCase();
+        const isOut =
+          ["strikeout_swinging", "strikeout_looking"].includes(result) ||
+          ["lineout", "groundout", "flyout", "popout"].includes(hitResult);
+        const isHit = ["single", "double", "triple", "home_run"].includes(
+          hitResult
+        );
+
+        if (result === "ball") {
+          newBalls = balls + 1;
+          setBalls(newBalls);
+        } else if (
+          ["swinging_strike", "called_strike", "foul"].includes(result)
+        ) {
+          if (result !== "foul" || strikes < 2) {
+            newStrikes = strikes + 1;
+            setStrikes(newStrikes);
+          }
+        }
+
+        if (result === "walk" || result === "hit_by_pitch" || isOut || isHit) {
+          newBalls = 0;
+          newStrikes = 0;
+          setBalls(0);
+          setStrikes(0);
+        }
+
+        if (newOuts >= 3) {
+          setOuts(0);
+          newOuts = 0;
+          setBalls(0);
+          setStrikes(0);
+
+          if (topBottom === "Top") {
+            setTopBottom("Bottom");
+          } else {
+            setTopBottom("Top");
+            setInning((prev) => prev + 1);
+          }
+
+          setBatter(null);
+          setPitcher(null);
+
+          setNextModalType("batter");
+          setEditingPlayer("pitcher");
+          setIsPlayerModalOpen(true);
+        }
       }
 
       const newPitch = {
@@ -186,6 +285,14 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         y: currentPitch.location.y,
       };
 
+      if (!isBullpen) {
+        newPitch.balls = newBalls;
+        newPitch.strikes = newStrikes;
+        newPitch.outs = newOuts;
+        newPitch.inning = inning;
+        newPitch.topBottom = topBottom;
+      }
+
       if (isInPlay) {
         newPitch.hitDetails = {
           x: currentHit.location.x,
@@ -206,7 +313,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
       onSave(updatedChart.pitches);
 
       setCurrentPitch({
-        velocity: "80",
+        velocity: null,
         type: "",
         result: "",
         location: null,
@@ -237,7 +344,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
     setShouldResetPlot(true);
     if (isStrikeZone) {
       setCurrentPitch({
-        velocity: "80",
+        velocity: null,
         type: "",
         result: "",
         location: null,
@@ -267,8 +374,8 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <div className="w-12 h-12 border-4 border-[#007BA7] border-t-transparent rounded-full animate-spin" />
+      <div className="flex justify-center items-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -327,20 +434,21 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   Pitch History
                 </h2>
               </div>
-              <PitchTable
-                pitches={pitches}
-                onDeletePitch={handleDeletePitch}
-                isBullpen={true}
-              />
+              <div className="overflow-x-auto">
+                <PitchTable
+                  pitches={pitches}
+                  onDeletePitch={handleDeletePitch}
+                  isBullpen={true}
+                />
+              </div>
             </div>
           </div>
         ) : (
-          // Game/Scrimmage View - Keep existing layout
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col items-center mb-6">
             <div className="w-full mb-4">
               <button
                 onClick={onBack}
-                className="flex items-center gap-2 text-gray-600 hover:text-[#007BA7]"
+                className="flex items-center gap-2 text-gray-600 hover:text-blue-600"
               >
                 <ChevronLeft size={20} />
                 <span>Back to Charts</span>
@@ -459,12 +567,14 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   Pitch History
                 </h2>
               </div>
-              <PitchTable
-                pitches={pitches}
-                showBatter={true}
-                onDeletePitch={handleDeletePitch}
-                isBullpen={false}
-              />
+              <div className="overflow-x-auto">
+                <PitchTable
+                  pitches={pitches}
+                  showBatter={true}
+                  onDeletePitch={handleDeletePitch}
+                  isBullpen={false}
+                />
+              </div>
             </div>
           </div>
         )}

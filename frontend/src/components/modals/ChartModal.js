@@ -14,7 +14,6 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
 
   const chartTypes = [
     { value: "game", label: "Game" },
-    { value: "scrimmage", label: "Scrimmage" },
     { value: "bullpen", label: "Bullpen" },
   ];
 
