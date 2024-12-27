@@ -135,7 +135,8 @@ const processPitchData = (charts, pitcher) => {
         pitches: [],
         totalMissDistance: 0,
         inZoneCount: 0,
-        strikeCount: 0, // New field for counting strikes
+        strikeCount: 0,
+        missedZoneCount: 0, // New field to count pitches that missed the intended zone
       };
     }
 
@@ -161,14 +162,15 @@ const processPitchData = (charts, pitcher) => {
         isPitchInZone(pitch.location.x, pitch.location.y, pitch.intendedZone)
       ) {
         acc[type].inZoneCount++;
+      } else {
+        // Calculate miss distance only if the pitch missed the intended zone
+        const missDistance = Math.sqrt(
+          Math.pow(pitch.location.x - centerX, 2) +
+            Math.pow(pitch.location.y - centerY, 2)
+        );
+        acc[type].totalMissDistance += missDistance;
+        acc[type].missedZoneCount++; // Increment missed zone count
       }
-
-      // Calculate miss distance
-      const missDistance = Math.sqrt(
-        Math.pow(pitch.location.x - centerX, 2) +
-          Math.pow(pitch.location.y - centerY, 2)
-      );
-      acc[type].totalMissDistance += missDistance;
     }
 
     // Track strikes
@@ -201,11 +203,9 @@ const processPitchData = (charts, pitcher) => {
       ? ((data.inZoneCount / data.count) * 100).toFixed(1)
       : "-";
 
-    const intendedZonePitches = data.pitches.filter(
-      (pitch) => pitch.intendedZone
-    );
-    data.avgMissDistance = intendedZonePitches.length
-      ? (data.totalMissDistance / intendedZonePitches.length).toFixed(2)
+    // Calculate avgMissDistance only for pitches that missed the intended zone
+    data.avgMissDistance = data.missedZoneCount
+      ? (data.totalMissDistance / data.missedZoneCount).toFixed(2)
       : "-";
 
     data.strikeRate = data.count
@@ -213,34 +213,8 @@ const processPitchData = (charts, pitcher) => {
       : "-";
   });
 
-  Object.keys(pitchTypes).forEach((type) => {
-    const data = pitchTypes[type];
-    data.usage = ((data.count / allPitches.length) * 100).toFixed(1);
-    data.avgVelo = data.velocities.length
-      ? (data.totalVelo / data.count).toFixed(1)
-      : "-";
-    data.minVelo = data.velocities.length
-      ? Math.min(...data.velocities).toFixed(1)
-      : "-";
-    data.maxVelo = data.velocities.length
-      ? Math.max(...data.velocities).toFixed(1)
-      : "-";
-
-    data.accuracy = data.count
-      ? ((data.inZoneCount / data.count) * 100).toFixed(1)
-      : "-";
-
-    const intendedZonePitches = data.pitches.filter(
-      (pitch) => pitch.intendedZone
-    );
-    data.avgMissDistance = intendedZonePitches.length
-      ? (data.totalMissDistance / intendedZonePitches.length).toFixed(2)
-      : "-";
-  });
-
   return pitchTypes;
 };
-
 function toTitleCase(str) {
   return str.replace(
     /\w\S*/g,
@@ -278,7 +252,7 @@ const BullpenReportPDF = ({ charts = [], pitchers = [] }) => {
             style={styles.page}
           >
             <View style={styles.header}>
-              <Text style={styles.title}>Bullpen Report - {pitcher}</Text>
+              <Text style={styles.title}>{pitcher} - Bullpen Report</Text>
               <Text style={styles.date}>{reportDate}</Text>
             </View>
 

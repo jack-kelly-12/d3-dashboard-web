@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { ArrowLeftRight } from "lucide-react";
 
-const RadioGroup = ({ options, value, onChange, title, showSwitch = true }) => (
+const RadioGroup = ({ options, value, onChange, title }) => (
   <div>
     <label className="text-sm font-medium text-gray-700 mb-3 block">
       {title}
@@ -114,12 +113,6 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type }) => {
     },
   ];
 
-  const switchOption = {
-    value: "switch",
-    label: "Switch",
-    icon: <ArrowLeftRight className="w-4 h-4" />,
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -156,11 +149,10 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type }) => {
 
             {type === "batter" && (
               <RadioGroup
-                options={[...handOptions, switchOption]}
+                options={[...handOptions]}
                 value={batHand}
                 onChange={setBatHand}
                 title="Bats"
-                showSwitch
               />
             )}
           </div>

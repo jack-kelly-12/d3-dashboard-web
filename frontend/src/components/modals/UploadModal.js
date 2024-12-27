@@ -6,10 +6,9 @@ const UploadModal = ({ isOpen, onClose, onUpload }) => {
   if (!isOpen) return null;
 
   const handleUpload = (data) => {
-    // Ensure we're setting the source in a consistent format
     const processedData = {
       ...data,
-      source: data.source?.toLowerCase() || "d3", // Normalize source to lowercase
+      source: data.source?.toLowerCase() || "d3",
     };
 
     onUpload(processedData);

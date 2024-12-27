@@ -86,7 +86,6 @@ class ChartManager {
         data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString();
       const updatedAt = data.updatedAt?.toDate?.()?.toISOString() || createdAt;
       const date = data.date || createdAt;
-
       return {
         id: doc.id,
         ...data,
@@ -107,11 +106,10 @@ class ChartManager {
     const userId = this.currentUser?.uid;
     if (!userId) throw new Error("User must be authenticated");
 
-    // Make sure we're keeping all the pitch data
     const chart = {
       ...chartData,
       userId,
-      pitches: chartData.pitches || [], // Preserve the pitches array
+      pitches: chartData.pitches || [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       totalPitches: chartData.pitches?.length || 0,
@@ -119,13 +117,12 @@ class ChartManager {
 
     const docRef = await addDoc(this.chartsRef, chart);
 
-    // Return the complete chart data
     return {
       id: docRef.id,
       ...chart,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      pitches: chartData.pitches || [], // Include pitches in return value
+      pitches: chartData.pitches || [],
       totalPitches: chartData.pitches?.length || 0,
     };
   }
@@ -150,7 +147,7 @@ class ChartManager {
     return {
       id: chartDoc.id,
       ...chartData,
-      source: chartData.source || "d3", // Add default source
+      source: chartData.source || "d3",
       createdAt: chartData.createdAt?.toDate?.()?.toISOString() || null,
       updatedAt: chartData.updatedAt?.toDate?.()?.toISOString() || null,
     };
