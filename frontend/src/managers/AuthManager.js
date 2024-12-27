@@ -45,6 +45,10 @@ class AuthManager {
     return this.currentUser;
   }
 
+  isAnonymousUser() {
+    return this.currentUser?.isAnonymous || false;
+  }
+
   async signUp(email, password) {
     try {
       const result = await createUserWithEmailAndPassword(
