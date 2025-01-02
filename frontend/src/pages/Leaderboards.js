@@ -1,8 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { ChevronDown } from "lucide-react";
-import ValueLeaderboard from "../components/tables/ValueLeaderboard";
-import SituationalLeaderboard from "../components/tables/SituationalLeaderboard";
-import BaserunningLeaderboard from "../components/tables/BaserunningLeaderboard";
+
+const ValueLeaderboard = lazy(() =>
+  import("../components/tables/ValueLeaderboard")
+);
+const SituationalLeaderboard = lazy(() =>
+  import("../components/tables/SituationalLeaderboard")
+);
+const BaserunningLeaderboard = lazy(() =>
+  import("../components/tables/BaserunningLeaderboard")
+);
+const ProjectionsHit = lazy(() =>
+  import("../components/tables/ProjectionsHit")
+);
+const ProjectionsPitch = lazy(() =>
+  import("../components/tables/ProjectionsPitch")
+);
 
 const LEADERBOARD_TYPES = {
   VALUE: {
@@ -22,10 +35,28 @@ const LEADERBOARD_TYPES = {
   BASERUNNING: {
     id: "baserunning",
     label: "Baserunning Leaderboard",
-    description: "Comprehensive leaderboard of total baserunning value.",
+    description: "Comprehensive leaderboard of total baserunning value",
     component: BaserunningLeaderboard,
   },
+  PROJECTIONS: {
+    id: "projections",
+    label: "2025 Projections (Hitting)",
+    description: "Projected hitting statistics for the 2025 season",
+    component: ProjectionsHit,
+  },
+  PROJECTIONS_PITCH: {
+    id: "projections_pitch",
+    label: "2025 Projections (Pitching)",
+    description: "Projected pitching statistics for the 2025 season",
+    component: ProjectionsPitch,
+  },
 };
+
+const LoadingFallback = () => (
+  <div className="flex justify-center items-center h-64">
+    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 const Leaderboards = () => {
   const [selectedType, setSelectedType] = useState(LEADERBOARD_TYPES.VALUE.id);
@@ -40,15 +71,33 @@ const Leaderboards = () => {
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
+
+  // Memory optimization: Clear unused data when switching leaderboards
+  useEffect(() => {
+    const gcTimeout = setTimeout(() => {
+      if (window.gc) {
+        window.gc();
+      }
+    }, 100);
+
+    return () => clearTimeout(gcTimeout);
+  }, [selectedType]);
 
   const getCurrentLeaderboard = () => {
     const leaderboard = Object.values(LEADERBOARD_TYPES).find(
       (type) => type.id === selectedType
     );
     const LeaderboardComponent = leaderboard?.component;
-    return LeaderboardComponent ? <LeaderboardComponent /> : null;
+
+    return LeaderboardComponent ? (
+      <Suspense fallback={<LoadingFallback />}>
+        <LeaderboardComponent />
+      </Suspense>
+    ) : null;
   };
 
   return (

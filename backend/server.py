@@ -12,7 +12,7 @@ import os
 from PIL import Image
 import io
 from flask import Response
-import stripe
+
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 
@@ -1014,37 +1014,135 @@ def get_games_by_date():
         return jsonify({"error": str(e)}), 500
 
 
-stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
-
-
-@app.route('/api/webhooks/stripe', methods=['POST'])
-def stripe_webhook():
-    payload = request.data
-    sig_header = request.headers.get('Stripe-Signature')
+@app.route('/api/projections-hit-25', methods=['GET'])
+def get_projections_hit():
+    min_pa = request.args.get('min_pa', '25')
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, webhook_secret
-        )
+        min_pa = int(min_pa)
+    except ValueError:
+        return jsonify({"error": "Invalid min_pa parameter"}), 400
 
-        # We'll only handle subscription-related events
-        if event.type in [
-            'checkout.session.completed',
-            'customer.subscription.updated',
-            'customer.subscription.deleted'
-        ]:
-            print(f"Processing webhook: {event.type}")
-            return jsonify({'received': True})
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-        return jsonify({'received': True})
+    try:
+        query = """
+            WITH projections AS (
+                SELECT 
+                    p.Player,
+                    p.Team,
+                    p.Conference,
+                    p.player_id,
+                    p.Yr,
+                    p.Pos,
+                    p.PA,
+                    p.H,
+                    p.BB,
+                    p."K" as K,
+                    p.BA,
+                    p.OBPct,
+                    p.SLGPct,
+                    p.wOBA,
+                    p.Batting,
+                    p.Baserunning,
+                    p.Adjustment,
+                    p.WAR,
+                    i.prev_team_id,
+                    i.conference_id
+                FROM projections_bat_25 p
+                LEFT JOIN ids_for_images i 
+                    ON p.Team = i.team_name
+                WHERE p.PA >= ?
+                ORDER BY p.WAR DESC
+            )
+            SELECT * FROM projections
+        """
 
-    except stripe.error.SignatureVerificationError as e:
-        print(f"Webhook signature verification failed: {str(e)}")
-        return jsonify({'error': 'Invalid signature'}), 400
-    except Exception as e:
-        print(f"Webhook error: {str(e)}")
-        return jsonify({'error': str(e)}), 400
+        cursor.execute(query, (min_pa,))
+        columns = [col[0] for col in cursor.description]
+        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
+
+
+@app.route('/api/projections-pitch-25', methods=['GET'])
+def get_projections_pitch():
+    min_ip = request.args.get('min_ip', '10')
+
+    try:
+        min_ip = int(min_ip)
+    except ValueError:
+        return jsonify({"error": "Invalid min_ip parameter"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        query = """
+            WITH projections AS (
+                SELECT 
+                    p.Player,
+                    p.Team,
+                    p.Conference,
+                    p.player_id,
+                    p.Yr,
+                    p.App,
+                    p.GS,
+                    p.IP,
+                    p.H,
+                    p.R,
+                    p.ER,
+                    p.BB,
+                    p.SO,
+                    p."HR-A",
+                    p."2B-A",
+                    p."3B-A",
+                    p.HB,
+                    p.BF,
+                    p.FO,
+                    p.GO,
+                    p.Pitches,
+                    p.gmLI,
+                    p."BB%",
+                    p."K%",
+                    p."K-BB%",
+                    p."HR/FB",
+                    p.FIP,
+                    p.xFIP,
+                    p."ERA+",
+                    ROUND(9.0 * p.ER / NULLIF(p.IP, 0), 2) as ERA,
+                    p.WAR,
+                    i.prev_team_id,
+                    i.conference_id
+                FROM projections_pitch_25 p
+                LEFT JOIN ids_for_images i 
+                    ON p.Team = i.team_name
+                WHERE p.IP >= ?
+                ORDER BY p.WAR DESC
+            )
+            SELECT * FROM projections
+        """
+
+        cursor.execute(query, (min_ip,))
+        columns = [col[0] for col in cursor.description]
+        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
 
 
 if __name__ == '__main__':
