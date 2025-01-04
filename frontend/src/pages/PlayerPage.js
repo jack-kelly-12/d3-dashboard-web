@@ -33,7 +33,6 @@ const PlayerPage = () => {
                 teamName={playerResponse.currentTeam}
                 className="h-8 w-8"
               />
-              <span className="ml-2">{playerResponse.currentTeam}</span>
             </div>
           ) : null,
           renderedConference: playerResponse.conference ? (
@@ -43,9 +42,8 @@ const PlayerPage = () => {
                 conferenceId={playerResponse.conference_id}
                 teamName={playerResponse.conference}
                 showConference={true}
-                className="h-6 w-6"
+                className="h-8 w-8"
               />
-              <span className="ml-2">{playerResponse.conference}</span>
             </div>
           ) : null,
           battingStats: playerResponse.battingStats?.map((stat) => ({
@@ -82,7 +80,6 @@ const PlayerPage = () => {
                   teamName={stat.Team}
                   className="h-8 w-8"
                 />
-                <span className="ml-2">{stat.Team}</span>
               </div>
             ),
             renderedConference: (
@@ -92,9 +89,8 @@ const PlayerPage = () => {
                   conferenceId={stat.conference_id}
                   teamName={stat.Conference}
                   showConference={true}
-                  className="h-6 w-6"
+                  className="h-8 w-8"
                 />
-                <span className="ml-2">{stat.Conference}</span>
               </div>
             ),
           })),

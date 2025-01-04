@@ -12,7 +12,6 @@ const TeamLogo = ({
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    // Use conferenceId when showConference is true, otherwise use teamId
     const id = showConference ? conferenceId : teamId;
     if (!id) return;
 
