@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
-import { useSearchParams } from "react-router-dom";
 
 const SituationalLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -17,83 +16,67 @@ const SituationalLeaderboard = () => {
   const [selectedConference, setSelectedConference] = useState("");
   const [minPA, setMinPA] = useState(50);
   const [conferences, setConferences] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    setSearchParams({
-      table: "situational-leaderboard",
-      search: searchTerm,
-      startYear,
-      endYear,
-      conference: selectedConference,
-      paQual: minPA,
-    });
-  }, [
-    searchTerm,
-    startYear,
-    endYear,
-    selectedConference,
-    minPA,
-    setSearchParams,
-  ]);
-
-  useEffect(() => {
-    const fetchConferences = async () => {
-      try {
-        const response = await fetchAPI("/conferences");
-        setConferences(response.sort());
-      } catch (err) {
-        console.error("Error fetching conferences:", err);
-      }
-    };
-    fetchConferences();
+  // Memoized fetch conferences function
+  const fetchConferences = useCallback(async () => {
+    try {
+      const response = await fetchAPI("/conferences");
+      setConferences(response.sort());
+    } catch (err) {
+      console.error("Error fetching conferences:", err);
+    }
   }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const rawData = await fetchAPI(
-          `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}`
-        );
+    fetchConferences();
+  }, [fetchConferences]);
 
-        const transformedData = rawData.map((row, index) => ({
-          ...row,
-          rank: index + 1,
-          renderedTeam: (
-            <div className="flex items-center gap-2">
-              <TeamLogo
-                teamId={row.prev_team_id}
-                conferenceId={row.conference_id}
-                teamName={row.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-          renderedConference: (
-            <div className="flex items-center gap-2">
-              <TeamLogo
-                teamId={row.conference_id}
-                conferenceId={row.conference_id}
-                teamName={row.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-        }));
+  // Memoized fetch data function
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const rawData = await fetchAPI(
+        `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}`
+      );
 
-        setData(transformedData);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const transformedData = rawData.map((row, index) => ({
+        ...row,
+        rank: index + 1,
+        renderedTeam: (
+          <div className="flex items-center gap-2">
+            <TeamLogo
+              teamId={row.prev_team_id}
+              conferenceId={row.conference_id}
+              teamName={row.Team}
+              className="h-8 w-8"
+            />
+          </div>
+        ),
+        renderedConference: (
+          <div className="flex items-center gap-2">
+            <TeamLogo
+              teamId={row.conference_id}
+              conferenceId={row.conference_id}
+              teamName={row.Team}
+              className="h-8 w-8"
+            />
+          </div>
+        ),
+      }));
 
-    fetchData();
+      setData(transformedData);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   }, [startYear, endYear, minPA]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleSearchChange = useMemo(
     () =>
@@ -248,6 +231,18 @@ const SituationalLeaderboard = () => {
     []
   );
 
+  const yearOptions = useMemo(() => [2024, 2023, 2022, 2021], []);
+  const paOptions = useMemo(
+    () => [
+      { value: 1, label: "Min 1 PA" },
+      { value: 25, label: "Min 25 PA" },
+      { value: 50, label: "Min 50 PA" },
+      { value: 100, label: "Min 100 PA" },
+      { value: 150, label: "Min 150 PA" },
+    ],
+    []
+  );
+
   return (
     <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
       {/* Explanation Banner */}
@@ -285,7 +280,7 @@ const SituationalLeaderboard = () => {
                 onChange={(e) => setStartYear(Number(e.target.value))}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {[2024, 2023, 2022, 2021].map((year) => (
+                {yearOptions.map((year) => (
                   <option key={year} value={year}>
                     {year}
                   </option>
@@ -297,7 +292,7 @@ const SituationalLeaderboard = () => {
                 onChange={(e) => setEndYear(Number(e.target.value))}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {[2024, 2023, 2022, 2021].map((year) => (
+                {yearOptions.map((year) => (
                   <option key={year} value={year}>
                     {year}
                   </option>
@@ -310,11 +305,11 @@ const SituationalLeaderboard = () => {
               onChange={(e) => setMinPA(Number(e.target.value))}
               className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value={1}>Min 1 PA</option>
-              <option value={25}>Min 25 PA</option>
-              <option value={50}>Min 50 PA</option>
-              <option value={100}>Min 100 PA</option>
-              <option value={150}>Min 150 PA</option>
+              {paOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
 
             {conferences.length > 0 && (

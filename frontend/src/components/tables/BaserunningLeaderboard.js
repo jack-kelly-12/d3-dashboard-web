@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
-import { useSearchParams } from "react-router-dom";
 
 const BaserunningLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -15,87 +14,68 @@ const BaserunningLeaderboard = () => {
   const [startYear, setStartYear] = useState(2024);
   const [endYear, setEndYear] = useState(2024);
   const [selectedConference, setSelectedConference] = useState("");
-  const [minPA, setMinPA] = useState(50);
   const [conferences, setConferences] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    setSearchParams({
-      table: "baserunning-leaderboard",
-      search: searchTerm,
-      startYear,
-      endYear,
-      conference: selectedConference,
-      paQual: minPA,
-    });
-  }, [
-    searchTerm,
-    startYear,
-    endYear,
-    selectedConference,
-    minPA,
-    setSearchParams,
-  ]);
-
-  // Fetch conferences only once
-  useEffect(() => {
-    const fetchConferences = async () => {
-      try {
-        const response = await fetchAPI("/conferences");
-        setConferences(response.sort());
-      } catch (err) {
-        console.error("Error fetching conferences:", err);
-      }
-    };
-    fetchConferences();
+  // Memoized fetch conferences function
+  const fetchConferences = useCallback(async () => {
+    try {
+      const response = await fetchAPI("/conferences");
+      setConferences(response.sort());
+    } catch (err) {
+      console.error("Error fetching conferences:", err);
+    }
   }, []);
 
-  // Fetch leaderboard data based on filters
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const rawData = await fetchAPI(
-          `/api/leaderboards/baserunning?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}`
-        );
+    fetchConferences();
+  }, [fetchConferences]);
 
-        const transformedData = rawData.map((row, index) => ({
-          ...row,
-          rank: index + 1,
-          renderedTeam: (
-            <div className="flex items-center gap-2">
-              <TeamLogo
-                teamId={row.prev_team_id}
-                conferenceId={row.conference_id}
-                teamName={row.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-          renderedConference: (
-            <div className="flex items-center gap-2">
-              <TeamLogo
-                teamId={row.conference_id}
-                conferenceId={row.conference_id}
-                teamName={row.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-        }));
+  // Memoized fetch data function
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const rawData = await fetchAPI(
+        `/api/leaderboards/baserunning?start_year=${startYear}&end_year=${endYear}`
+      );
 
-        setData(transformedData);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      const transformedData = rawData.map((row, index) => ({
+        ...row,
+        rank: index + 1,
+        renderedTeam: (
+          <div className="flex items-center gap-2">
+            <TeamLogo
+              teamId={row.prev_team_id}
+              conferenceId={row.conference_id}
+              teamName={row.Team}
+              className="h-8 w-8"
+            />
+          </div>
+        ),
+        renderedConference: (
+          <div className="flex items-center gap-2">
+            <TeamLogo
+              teamId={row.conference_id}
+              conferenceId={row.conference_id}
+              teamName={row.Team}
+              className="h-8 w-8"
+            />
+          </div>
+        ),
+      }));
 
+      setData(transformedData);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [startYear, endYear]);
+
+  useEffect(() => {
     fetchData();
-  }, [startYear, endYear, minPA]);
+  }, [fetchData]);
 
   const handleSearchChange = useMemo(
     () =>
@@ -159,7 +139,6 @@ const BaserunningLeaderboard = () => {
         sortable: true,
         width: "80px",
       },
-
       {
         name: "SB",
         selector: (row) => row.SB,

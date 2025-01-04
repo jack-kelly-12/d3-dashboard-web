@@ -2,47 +2,60 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ main ]  # Triggers on push to main branch
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3  # Checkout the code
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        
-    - name: Install Dependencies
-      working-directory: ./frontend
-      run: npm install
-        
-    - name: Build React App
-      working-directory: ./frontend
-      run: npm run build
+      - uses: actions/checkout@v3
 
-    - name: List directory structure
-      run: ls -R frontend/
-        
-    - name: Deploy Frontend Build to EC2
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "frontend/build/"  # This will be the newly generated build folder
-        target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/frontend"
-        strip_components: 2
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
 
-    - name: Deploy Backend to EC2
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.EC2_HOST }}
-        username: ${{ secrets.EC2_USERNAME }}
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "backend/server.py"
-        target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/backend"
-        strip_components: 1
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Build React App
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: List directory structure
+        run: ls -R frontend/
+
+      - name: Deploy Frontend Build to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "frontend/build/"
+          target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/frontend"
+          strip_components: 2
+
+      - name: Deploy Backend to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "backend/*"
+          target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/backend"
+          strip_components: 1
+
+      - name: Execute Remote Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USERNAME }}/d3_dashboard/backend
+            python3 -m pip install -r requirements.txt
+
+            sudo systemctl restart nginx
+            sudo systemctl restart app

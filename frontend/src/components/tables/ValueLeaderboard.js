@@ -1,12 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
-import { useSearchParams } from "react-router-dom";
-
 const ValueLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -16,79 +14,69 @@ const ValueLeaderboard = () => {
   const [endYear, setEndYear] = useState(2024);
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  useEffect(() => {
-    setSearchParams({
-      table: "value-leaderboard",
-      search: searchTerm,
-      startYear,
-      endYear,
-      conference: selectedConference,
-    });
-  }, [searchTerm, startYear, endYear, selectedConference, setSearchParams]);
-
-  useEffect(() => {
-    const fetchConferences = async () => {
-      try {
-        const response = await fetchAPI("/conferences");
-        setConferences(response.sort());
-      } catch (err) {
-        console.error("Error fetching conferences:", err);
-      }
-    };
-    fetchConferences();
+  // Memoized fetch conferences function
+  const fetchConferences = useCallback(async () => {
+    try {
+      const response = await fetchAPI("/conferences");
+      setConferences(response.sort());
+    } catch (err) {
+      console.error("Error fetching conferences:", err);
+    }
   }, []);
 
-  // Fetch leaderboard data based on filters
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const rawData = await fetchAPI(
-          `/api/leaderboards/value?start_year=${startYear}&end_year=${endYear}`
-        );
+    fetchConferences();
+  }, [fetchConferences]);
 
-        const sortedData = rawData.sort((a, b) => b.WAR - a.WAR);
-        const transformedData = sortedData.map((row, index) => ({
-          ...row,
-          rank: index + 1,
-          renderedTeam: (
-            <div className="flex items-center gap-2">
-              <TeamLogo
-                teamId={row.prev_team_id}
-                conferenceId={row.conference_id}
-                teamName={row.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-          renderedConference: (
-            <div className="w-full flex justify-center items-center gap-2">
-              <TeamLogo
-                teamId={row.prev_team_id}
-                conferenceId={row.conference_id}
-                teamName={row.Conference}
-                showConference={true}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-        }));
-        setData(transformedData);
-      } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Memoized fetch data function
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const rawData = await fetchAPI(
+        `/api/leaderboards/value?start_year=${startYear}&end_year=${endYear}`
+      );
 
-    fetchData();
+      const sortedData = rawData.sort((a, b) => b.WAR - a.WAR);
+      const transformedData = sortedData.map((row, index) => ({
+        ...row,
+        rank: index + 1,
+        renderedTeam: (
+          <div className="flex items-center gap-2">
+            <TeamLogo
+              teamId={row.prev_team_id}
+              conferenceId={row.conference_id}
+              teamName={row.Team}
+              className="h-8 w-8"
+            />
+          </div>
+        ),
+        renderedConference: (
+          <div className="w-full flex justify-center items-center gap-2">
+            <TeamLogo
+              teamId={row.prev_team_id}
+              conferenceId={row.conference_id}
+              teamName={row.Conference}
+              showConference={true}
+              className="h-8 w-8"
+            />
+          </div>
+        ),
+      }));
+      setData(transformedData);
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
   }, [startYear, endYear]);
 
-  // Debounced search input
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const handleSearchChange = useMemo(
     () =>
       debounce((value) => {
@@ -97,7 +85,6 @@ const ValueLeaderboard = () => {
     []
   );
 
-  // Filter data based on search term and selected conference
   const filteredData = useMemo(() => {
     return data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
@@ -110,7 +97,8 @@ const ValueLeaderboard = () => {
     });
   }, [data, searchTerm, selectedConference]);
 
-  // Table columns
+  const yearOptions = useMemo(() => [2024, 2023, 2022, 2021], []);
+
   const columns = useMemo(
     () => [
       {
@@ -255,6 +243,7 @@ const ValueLeaderboard = () => {
           positional adjustment, and no runs from pitching."
         </blockquote>
       </div>
+
       {/* Controls */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
         <div className="px-6 py-4 space-y-4">
@@ -278,7 +267,7 @@ const ValueLeaderboard = () => {
                 onChange={(e) => setStartYear(Number(e.target.value))}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {[2024, 2023, 2022, 2021].map((year) => (
+                {yearOptions.map((year) => (
                   <option key={year} value={year}>
                     {year}
                   </option>
@@ -290,7 +279,7 @@ const ValueLeaderboard = () => {
                 onChange={(e) => setEndYear(Number(e.target.value))}
                 className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {[2024, 2023, 2022, 2021].map((year) => (
+                {yearOptions.map((year) => (
                   <option key={year} value={year}>
                     {year}
                   </option>

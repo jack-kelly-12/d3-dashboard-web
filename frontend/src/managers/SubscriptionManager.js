@@ -111,6 +111,8 @@ class SubscriptionManager {
             updatedAt: serverTimestamp(),
           });
           break;
+        default:
+          break;
       }
     } catch (error) {
       console.error("Error handling subscription webhook:", error);
