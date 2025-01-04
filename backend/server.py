@@ -689,7 +689,7 @@ def get_value_leaderboard():
     try:
         start_year = int(start_year)
         end_year = int(end_year)
-        if not (2021 <= start_year <= 2024) or not (2021 <= end_year <= 2024) or start_year > end_year:
+        if not (2021 <= start_year <= 2025) or not (2021 <= end_year <= 2025) or start_year > end_year:
             return jsonify({"error": "Invalid year range"}), 400
     except ValueError:
         return jsonify({"error": "Invalid year format"}), 400
@@ -911,7 +911,6 @@ def get_situational_leaderboard():
                 SELECT * FROM situational
             """
 
-            # Execute the query
             cursor.execute(query, (min_pa,))
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
@@ -974,9 +973,9 @@ def get_games_by_date():
         # Convert the year to an integer
         year = int(year)
 
-        # Validate the year range
-        if not (2021 <= year <= 2025):
-            return jsonify({"error": "Year must be between 2021 and 2024"}), 400
+        # Validate year is within acceptable range
+        if year < 2021 or year > 2024:  # Changed to 2024 as upper limit
+            return jsonify({"error": f"No games available for year {year}. Please select a year between 2021 and 2024"}), 400
 
         game_date = f"{month}/{day}/{year}"
 
@@ -984,6 +983,16 @@ def get_games_by_date():
 
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        # First check if the table exists
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name=?
+        """, (table_name,))
+
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": f"No games available for year {year}"}), 404
 
         cursor.execute(f"""
             SELECT DISTINCT 
@@ -1008,8 +1017,15 @@ def get_games_by_date():
         games = [dict(row) for row in cursor.fetchall()]
         conn.close()
 
+        if not games:
+            return jsonify({"games": [], "message": f"No games found for date {game_date}"}), 200
+
         return jsonify(games)
 
+    except ValueError:
+        return jsonify({"error": "Invalid year format"}), 400
+    except sqlite3.Error as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

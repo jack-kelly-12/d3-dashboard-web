@@ -121,14 +121,34 @@ const Scoreboard = () => {
   useEffect(() => {
     const fetchGames = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const dateStr = formatAPIDate(currentDate);
-        const data = await fetchAPI(
+
+        if (dateStr.year < 2021 || dateStr.year > 2024) {
+          setError("Games are only available for years 2021-2024");
+          setGames([]);
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetchAPI(
           `/api/games?month=${dateStr.month}&day=${dateStr.day}&year=${dateStr.year}`
         );
-        setGames(data);
+
+        if (Array.isArray(response)) {
+          setGames(response);
+        } else if (response.games) {
+          setGames(response.games);
+        } else if (response.error) {
+          setError(response.error);
+          setGames([]);
+        } else {
+          setGames([]);
+        }
       } catch (err) {
-        setError(err.message);
+        setError(err.message || "Failed to load games");
+        setGames([]);
       } finally {
         setIsLoading(false);
       }
@@ -159,18 +179,16 @@ const Scoreboard = () => {
     setCurrentDate(newDate);
   };
 
+  // Custom date validation for DatePicker
+  const filterDate = (date) => {
+    const year = date.getFullYear();
+    return year >= 2021 && year <= 2024;
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12 text-red-600">
-        <p>Error loading games: {error}</p>
       </div>
     );
   }
@@ -187,6 +205,7 @@ const Scoreboard = () => {
               <DatePicker
                 selected={currentDate}
                 onChange={(date) => setCurrentDate(date)}
+                filterDate={filterDate}
                 className="px-4 py-2 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500"
               />
             </div>
@@ -217,15 +236,24 @@ const Scoreboard = () => {
           </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="text-center py-8 bg-red-50 rounded-lg mb-6">
+            <div className="text-red-600">{error}</div>
+          </div>
+        )}
+
         {/* Games Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {games.map((game) => (
-            <GameCard key={game.game_id} game={game} />
-          ))}
-        </div>
+        {!error && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {games.map((game) => (
+              <GameCard key={game.game_id} game={game} />
+            ))}
+          </div>
+        )}
 
         {/* No Games Message */}
-        {games.length === 0 && (
+        {!error && games.length === 0 && (
           <div className="text-center py-12">
             <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900">
