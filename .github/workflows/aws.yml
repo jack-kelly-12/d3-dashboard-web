@@ -34,7 +34,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           source: "frontend/build/"
-          target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/frontend"
+          target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/frontend/build"
           strip_components: 2
 
       - name: Deploy Backend to EC2
