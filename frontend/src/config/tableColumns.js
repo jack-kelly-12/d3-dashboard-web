@@ -3,6 +3,12 @@ import { roundTo } from "../utils/mathUtils";
 import { Link } from "react-router-dom";
 import { WARCell } from "../utils/colorUtils";
 
+const createPercentageSortFn = (field) => (rowA, rowB) => {
+  const a = parseFloat(String(rowA[field]).replace("%", "")) || 0;
+  const b = parseFloat(String(rowB[field]).replace("%", "")) || 0;
+  return a - b;
+};
+
 export const columnsGuts = [
   { name: "Year", selector: (row) => row.Year, width: "80px" },
   { name: "Division", selector: (row) => row.Division, width: "100px" },
@@ -234,18 +240,21 @@ export const getDataColumns = (dataType) => {
           selector: (row) => roundTo(row["K%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("K%"),
         },
         {
           name: "BB%",
           selector: (row) => roundTo(row["BB%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("BB%"),
         },
         {
           name: "SB%",
           selector: (row) => roundTo(row["SB%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("SB%"),
         },
         {
           name: "wRC+",
@@ -487,30 +496,35 @@ export const getDataColumns = (dataType) => {
           selector: (row) => roundTo(row["K%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("K%"),
         },
         {
           name: "BB%",
           selector: (row) => roundTo(row["BB%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("BB%"),
         },
         {
           name: "K-BB%",
           selector: (row) => roundTo(row["K-BB%"], 1) + "%",
           sortable: true,
           width: "90px",
+          sortFunction: createPercentageSortFn("K-BB%"),
         },
         {
           name: "HR/FB",
           selector: (row) => roundTo(row["HR/FB"], 1) + "%",
           sortable: true,
           width: "90px",
+          sortFunction: createPercentageSortFn("HR/FB"),
         },
         {
           name: "IR-A%",
           selector: (row) => roundTo(row["IR-A%"], 1) + "%",
           sortable: true,
           width: "90px",
+          sortFunction: createPercentageSortFn("IR-A%"),
         },
         {
           name: "WPA",
@@ -672,18 +686,21 @@ export const getDataColumns = (dataType) => {
           selector: (row) => roundTo(row["K%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("K%"),
         },
         {
           name: "BB%",
           selector: (row) => roundTo(row["BB%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("BB%"),
         },
         {
           name: "SB%",
           selector: (row) => roundTo(row["SB%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("SB%"),
         },
         {
           name: "OPS+",
@@ -863,30 +880,35 @@ export const getDataColumns = (dataType) => {
           selector: (row) => roundTo(row["K%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("K%"),
         },
         {
           name: "BB%",
           selector: (row) => roundTo(row["BB%"], 1) + "%",
           sortable: true,
           width: "80px",
+          sortFunction: createPercentageSortFn("BB%"),
         },
         {
           name: "K-BB%",
           selector: (row) => roundTo(row["K-BB%"], 1) + "%",
           sortable: true,
           width: "90px",
+          sortFunction: createPercentageSortFn("K-BB%"),
         },
         {
           name: "HR/FB",
           selector: (row) => roundTo(row["HR/FB"], 1) + "%",
           sortable: true,
           width: "90px",
+          sortFunction: createPercentageSortFn("HR/FB"),
         },
         {
           name: "IR-A%",
           selector: (row) => roundTo(row["IR-A%"], 1) + "%",
           sortable: true,
           width: "90px",
+          sortFunction: createPercentageSortFn("IR-A%"),
         },
         {
           name: "WPA",
