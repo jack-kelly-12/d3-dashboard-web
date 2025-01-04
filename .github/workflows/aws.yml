@@ -20,9 +20,26 @@ jobs:
         working-directory: ./frontend
         run: npm install
 
+      - name: Create .env file
+        working-directory: ./frontend
+        run: |
+          echo "REACT_APP_STRIPE_MONTHLY_URL=${{ secrets.REACT_APP_STRIPE_MONTHLY_URL }}" >> .env
+          echo "REACT_APP_STRIPE_YEARLY_URL=${{ secrets.REACT_APP_STRIPE_YEARLY_URL }}" >> .env
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.REACT_APP_FIREBASE_API_KEY }}" >> .env
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}" >> .env
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}" >> .env
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}" >> .env
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.REACT_APP_FIREBASE_APP_ID }}" >> .env
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}" >> .env
+
       - name: Build React App
         working-directory: ./frontend
         run: npm run build
+
+      - name: Cleanup
+        working-directory: ./frontend
+        run: rm .env
 
       - name: List directory structure
         run: ls -R frontend/
