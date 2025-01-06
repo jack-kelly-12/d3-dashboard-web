@@ -23,6 +23,9 @@ const PlayerPage = () => {
           `/api/player/${decodeURIComponent(playerId)}`
         );
 
+        // Sort function for stats
+        const sortBySeasonDesc = (a, b) => b.Season - a.Season;
+
         const enhancedPlayerData = {
           ...playerResponse,
           renderedTeam: playerResponse.currentTeam ? (
@@ -46,54 +49,58 @@ const PlayerPage = () => {
               />
             </div>
           ) : null,
-          battingStats: playerResponse.battingStats?.map((stat) => ({
-            ...stat,
-            renderedTeam: (
-              <div className="w-full flex justify-center items-center">
-                <TeamLogo
-                  teamId={stat.prev_team_id}
-                  conferenceId={stat.conference_id}
-                  teamName={stat.Team}
-                  className="h-8 w-8"
-                />
-              </div>
-            ),
-            renderedConference: (
-              <div className="w-full flex justify-center items-center">
-                <TeamLogo
-                  teamId={stat.prev_team_id}
-                  conferenceId={stat.conference_id}
-                  teamName={stat.Conference}
-                  showConference={true}
-                  className="h-8 w-8"
-                />
-              </div>
-            ),
-          })),
-          pitchingStats: playerResponse.pitchingStats?.map((stat) => ({
-            ...stat,
-            renderedTeam: (
-              <div className="w-full flex justify-center items-center">
-                <TeamLogo
-                  teamId={stat.prev_team_id}
-                  conferenceId={stat.conference_id}
-                  teamName={stat.Team}
-                  className="h-8 w-8"
-                />
-              </div>
-            ),
-            renderedConference: (
-              <div className="w-full flex justify-center items-center">
-                <TeamLogo
-                  teamId={stat.prev_team_id}
-                  conferenceId={stat.conference_id}
-                  teamName={stat.Conference}
-                  showConference={true}
-                  className="h-8 w-8"
-                />
-              </div>
-            ),
-          })),
+          battingStats: playerResponse.battingStats
+            ?.map((stat) => ({
+              ...stat,
+              renderedTeam: (
+                <div className="w-full flex justify-center items-center">
+                  <TeamLogo
+                    teamId={stat.prev_team_id}
+                    conferenceId={stat.conference_id}
+                    teamName={stat.Team}
+                    className="h-8 w-8"
+                  />
+                </div>
+              ),
+              renderedConference: (
+                <div className="w-full flex justify-center items-center">
+                  <TeamLogo
+                    teamId={stat.prev_team_id}
+                    conferenceId={stat.conference_id}
+                    teamName={stat.Conference}
+                    showConference={true}
+                    className="h-8 w-8"
+                  />
+                </div>
+              ),
+            }))
+            .sort(sortBySeasonDesc),
+          pitchingStats: playerResponse.pitchingStats
+            ?.map((stat) => ({
+              ...stat,
+              renderedTeam: (
+                <div className="w-full flex justify-center items-center">
+                  <TeamLogo
+                    teamId={stat.prev_team_id}
+                    conferenceId={stat.conference_id}
+                    teamName={stat.Team}
+                    className="h-8 w-8"
+                  />
+                </div>
+              ),
+              renderedConference: (
+                <div className="w-full flex justify-center items-center">
+                  <TeamLogo
+                    teamId={stat.prev_team_id}
+                    conferenceId={stat.conference_id}
+                    teamName={stat.Conference}
+                    showConference={true}
+                    className="h-8 w-8"
+                  />
+                </div>
+              ),
+            }))
+            .sort(sortBySeasonDesc),
         };
 
         setPlayerData(enhancedPlayerData);

@@ -3,24 +3,24 @@ import React from "react";
 export const PercentileLegend = () => (
   <div className="flex items-center gap-4 mb-8">
     <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-red-600 rounded-sm mr-1" />
-      90-100
+      <span className="inline-block w-3 h-3 bg-gradient-to-r from-red-600 to-red-500 rounded-sm mr-1" />
+      Great
     </div>
     <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-red-400 rounded-sm mr-1" />
-      75-89
+      <span className="inline-block w-3 h-3 bg-gradient-to-r from-red-500 to-red-400 rounded-sm mr-1" />
+      Good
     </div>
     <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-red-100 rounded-sm mr-1" />
-      50-74
+      <span className="inline-block w-3 h-3 bg-gradient-to-r from-red-400 to-red-300 rounded-sm mr-1" />
+      Average
     </div>
     <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-blue-400 rounded-sm mr-1" />
-      25-49
+      <span className="inline-block w-3 h-3 bg-gradient-to-r from-blue-400 to-blue-300 rounded-sm mr-1" />
+      Below Average
     </div>
     <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-blue-600 rounded-sm mr-1" />
-      0-24
+      <span className="inline-block w-3 h-3 bg-gradient-to-r from-blue-600 to-blue-500 rounded-sm mr-1" />
+      Poor
     </div>
   </div>
 );
@@ -45,41 +45,73 @@ export const StatBar = ({
     }
   };
 
-  const getColorClass = (pct, isQualified) => {
-    if (!isQualified) return "bg-gray-300";
-    if (pct >= 90) return "bg-red-600";
-    if (pct >= 75) return "bg-red-400";
-    if (pct >= 50) return "bg-red-100";
-    if (pct >= 25) return "bg-blue-400";
-    return "bg-blue-600";
+  const getBarColors = (pct, isQualified) => {
+    if (!isQualified)
+      return {
+        bar: "bg-gradient-to-r from-gray-300 to-gray-200",
+        circle: "bg-gray-300",
+      };
+    if (pct >= 90)
+      return {
+        bar: "bg-gradient-to-r from-red-600 to-red-500",
+        circle: "bg-red-600",
+      };
+    if (pct >= 75)
+      return {
+        bar: "bg-gradient-to-r from-red-500 to-red-400",
+        circle: "bg-red-500",
+      };
+    if (pct >= 50)
+      return {
+        bar: "bg-gradient-to-r from-red-400 to-red-300",
+        circle: "bg-red-400",
+      };
+    if (pct >= 25)
+      return {
+        bar: "bg-gradient-to-r from-blue-400 to-blue-300",
+        circle: "bg-blue-400",
+      };
+    return {
+      bar: "bg-gradient-to-r from-blue-600 to-blue-500",
+      circle: "bg-blue-600",
+    };
   };
 
   return (
-    <div className={`relative h-8 mb-2 ${!qualified ? "opacity-50" : ""}`}>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-600">
-          {label}
-          {!qualified && (
-            <span className="ml-1 text-gray-400">(Unqualified)</span>
-          )}
-        </span>
-        <span className="font-mono font-medium">
-          {formatValue(value)}
-          {suffix}
-        </span>
+    <div className={`relative h-10 mb-4 ${!qualified ? "opacity-50" : ""}`}>
+      <div className="flex justify-between text-xs mb-2.5">
+        <div className="flex gap-3">
+          <span className="text-gray-600 font-medium">
+            {label}
+            {!qualified && (
+              <span className="ml-1 text-gray-400">(Unqualified)</span>
+            )}
+          </span>
+          <span className="font-mono font-medium">
+            {formatValue(value)}
+            {suffix}
+          </span>
+        </div>
       </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div className="relative h-2">
+        <div className="absolute inset-0 bg-gray-100 rounded-full" />
         <div
-          className={`h-full rounded-full transition-all duration-300 ${getColorClass(
-            percentile,
-            qualified
-          )}`}
+          className={`absolute h-full rounded-full transition-all duration-300 ${
+            getBarColors(percentile, qualified).bar
+          }`}
           style={{ width: `${percentile}%` }}
         />
-      </div>
-      <div className="absolute right-0 -top-1">
-        <div className="bg-gray-800 text-white text-xs rounded-full h-5 w-8 flex items-center justify-center">
-          {percentile || 0}
+        <div
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+          style={{ left: `${percentile}%` }}
+        >
+          <div
+            className={`${
+              getBarColors(percentile, qualified).circle
+            } text-white text-xs rounded-full h-5 w-8 flex items-center justify-center`}
+          >
+            {percentile || 0}
+          </div>
         </div>
       </div>
     </div>
@@ -208,7 +240,7 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
       : playerData.pitchingStats[0];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 mb-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-gray-900">
           2024 Percentile Rankings
@@ -223,19 +255,17 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
       <PercentileLegend />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-        {stats.map(
-          ({ key, label, decimals, suffix = "", reverse, percentileKey }) => (
-            <StatBar
-              key={key}
-              label={label}
-              value={currentStats[key]}
-              percentile={percentiles?.stats?.[percentileKey] || 0}
-              decimals={decimals}
-              suffix={suffix}
-              qualified={isQualified}
-            />
-          )
-        )}
+        {stats.map(({ key, label, decimals, suffix = "", percentileKey }) => (
+          <StatBar
+            key={key}
+            label={label}
+            value={currentStats[key]}
+            percentile={percentiles?.stats?.[percentileKey] || 0}
+            decimals={decimals}
+            suffix={suffix}
+            qualified={isQualified}
+          />
+        ))}
       </div>
     </div>
   );

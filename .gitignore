@@ -32,7 +32,9 @@ scrapers/
 notebooks/
 
 backend/images
-backend/data/
+backend/data/park_factors/
+backend/data/schedules/
+backend/data/play_by_play/
 
 github-actions-key
 github-actions-key.pub
