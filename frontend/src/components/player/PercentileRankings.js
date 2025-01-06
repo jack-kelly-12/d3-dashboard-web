@@ -234,10 +234,16 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
           },
         ];
 
+  // Get current stats safely, with fallback to empty object
   const currentStats =
     activeTab === "batting"
-      ? playerData.battingStats[0]
-      : playerData.pitchingStats[0];
+      ? playerData?.battingStats?.[0] || {}
+      : playerData?.pitchingStats?.[0] || {};
+
+  // If there are no stats, don't render the section
+  if (!playerData?.battingStats?.length && !playerData?.pitchingStats?.length) {
+    return null;
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 mb-8">
