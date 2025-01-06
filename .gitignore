@@ -32,6 +32,7 @@ scrapers/
 notebooks/
 
 backend/images
+backend/data/
 
 github-actions-key
 github-actions-key.pub

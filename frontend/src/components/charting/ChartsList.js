@@ -261,7 +261,7 @@ const ChartsList = ({
     if (row.chartType === "bullpen") {
       return (
         <div className="space-y-1">
-          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+          <span className="px-2 py-1 bg-red-100 text-gray-800 rounded-full text-sm">
             Bullpen Session: {row.pitcher?.name || "No Pitcher"}
           </span>
         </div>

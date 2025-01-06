@@ -92,6 +92,8 @@ const Data = () => {
               <TeamLogo
                 teamId={row.prev_team_id}
                 conferenceId={row.conference_id}
+                teamName={row.Conference}
+                showConference={true}
                 className="h-8 w-8"
               />
             </div>
