@@ -18,22 +18,23 @@ from dotenv import load_dotenv
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
+
+# CORS(app, resources={
+#     r"/api/*": {
+#         "origins": [
+#             "https://d3-dashboard.com",
+#             "https://www.d3-dashboard.com",
+#             "http://d3-dashboard.com",
+#             "http://www.d3-dashboard.com",
+#             "http://localhost:3000"
+#         ],
+#         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+#         "allow_headers": ["Content-Type", "Authorization"]
+#     }
+# })
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-CORS(app, resources={
-    r"/api/*": {
-        "origins": [
-            "https://d3-dashboard.com",
-            "https://www.d3-dashboard.com",
-            "http://d3-dashboard.com",
-            "http://www.d3-dashboard.com",
-            "http://localhost:3000"
-        ],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
-    }
-})
 
 DB_PATH = 'ncaa.db'
 load_dotenv()
