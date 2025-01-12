@@ -15,19 +15,19 @@ class BaseballStats:
             'RP': 0.62, 'SP': 0.62, '': 0
         }
         self.batting_columns = [
-            'Player', 'Pos', 'Team', 'Conference', 'Yr', 'R/PA', 'GP',
+            'Player', 'Pos', 'player_id', 'Team', 'Conference', 'Yr', 'R/PA', 'GP',
             'BB', 'CS', 'GS', 'HBP', 'IBB', 'K', 'RBI', 'SF', 'AB',
             'PA', 'H', '2B', '3B', 'HR', 'R', 'SB', 'OPS+', 'Picked',
             'Sac', 'BA', 'SlgPct', 'OBPct', 'ISO', 'wOBA', 'K%', 'BB%',
-            'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR', 'player_id', 'player_url',
-            'Clutch', 'WPA', 'REA', 'WPA/LI', 'wSB', 'wGDP', 'wTEB', 'Extra_Bases_Taken', "Opportunities", 'Outs_On_Bases',
+            'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR',
+            'Clutch', 'WPA', 'REA', 'WPA/LI', 'wSB', 'wGDP', 'wTEB', 'EBT', "Opportunities", 'OutsOB',
             'GDP_opps', 'GDP'
         ]
         self.pitching_columns = [
-            'Player', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
+            'Player', 'player_id', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
             'BB', 'SO', 'HR-A', '2B-A', '3B-A', 'HB', 'BF', 'FO', 'GO', 'Pitches',
             'gmLI', 'K9', 'BB9', 'HR9', 'RA9', 'H9', 'IR-A%', 'K%', 'BB%', 'K-BB%', 'HR/FB', 'FIP',
-            'xFIP', 'ERA+', 'WAR', 'Season', 'Yr', 'Inh Run', 'Inh Run Score', 'player_id', 'player_url',
+            'xFIP', 'ERA+', 'WAR', 'Season', 'Yr', 'Inh Run', 'Inh Run Score',
             'Clutch', 'pWPA', 'pREA', 'pWPA/LI'
         ]
         self.team_pitching_agg = {
@@ -62,7 +62,6 @@ class BaseballStats:
                      'SO', 'SV', 'GS', 'HB', 'BF', 'H', 'R']
         df[fill_cols] = df[fill_cols].fillna(0)
 
-        # Calculate rate stats safely handling zero IP
         def safe_per_nine(numerator, ip):
             return np.where(ip > 0, (numerator / ip) * 9, 0)
 
@@ -236,7 +235,7 @@ class BaseballStats:
         df['WAR'] = np.where(valid_ip_mask, df['WPGAR'] * (df['IP'] / 9), 0)
 
         # Apply relief pitcher adjustment
-        relief_mask = df['GS'] <= 2
+        relief_mask = df['GS'] < 3
         df.loc[relief_mask & valid_ip_mask,
                'WAR'] *= (1 + df.loc[relief_mask & valid_ip_mask, 'gmLI']) / 2
 
@@ -272,16 +271,17 @@ class BaseballStats:
 
         return gdp_stats
 
-    def calculate_extra_bases(self, df, batting_df, weights):
+    def calculate_extra_bases(self, df, roster, weights):
         extra_bases = {}
         opportunities = {}
         outs_on_bases = {}
 
         batting_lookup = {
             team: group.set_index('player_name')['player_id'].to_dict()
-            for team, group in batting_df.groupby('team_name')
+            for team, group in roster.groupby('team_name')
         }
 
+        # Handle singles
         singles = df[df['event_cd'] == 20].copy()
         next_plays = singles.shift(-1)
 
@@ -289,6 +289,7 @@ class BaseballStats:
             next_play = next_plays.loc[idx]
             team_dict = batting_lookup.get(play.bat_team, {})
 
+            # Check first to third on single
             if pd.notna(play.r1_name) and team_dict:
                 try:
                     matches = process.extractOne(
@@ -299,22 +300,22 @@ class BaseballStats:
                     )
                     if matches:
                         standardized_r1 = matches[0]
+                        # Count opportunity when runner starts on first
                         opportunities[standardized_r1] = opportunities.get(
                             standardized_r1, 0) + 1
 
                         if play.outs_on_play > 0 and play.r1_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name]:
+                            # Runner was out on bases
                             outs_on_bases[standardized_r1] = outs_on_bases.get(
                                 standardized_r1, 0) + 1
-                        elif (play.r1_name == next_play.r3_name or
-                              (play.r1_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name] and
-                               play.runs_on_play > 0 and
-                               play.outs_on_play == 0)):
+                        elif play.r1_name == next_play.r3_name:
+                            # Runner advanced to third
                             extra_bases[standardized_r1] = extra_bases.get(
                                 standardized_r1, 0) + 1
                 except Exception:
                     pass
 
-            # Similar logic for r2_name...
+            # Check second to home on single
             if pd.notna(play.r2_name) and team_dict:
                 try:
                     matches = process.extractOne(
@@ -325,21 +326,23 @@ class BaseballStats:
                     )
                     if matches:
                         standardized_r2 = matches[0]
+                        # Count opportunity when runner starts on second
                         opportunities[standardized_r2] = opportunities.get(
                             standardized_r2, 0) + 1
 
                         if play.outs_on_play > 0 and play.r2_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name]:
+                            # Runner was out on bases
                             outs_on_bases[standardized_r2] = outs_on_bases.get(
                                 standardized_r2, 0) + 1
                         elif (play.r2_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name] and
-                              play.runs_on_play > 0 and
-                              play.outs_on_play == 0):
+                              play.runs_on_play > 0):
+                            # Runner scored
                             extra_bases[standardized_r2] = extra_bases.get(
                                 standardized_r2, 0) + 1
                 except Exception:
                     pass
 
-        # Process doubles similar to singles...
+        # Handle doubles
         doubles = df[df['event_cd'] == 21].copy()
         next_plays = doubles.shift(-1)
 
@@ -347,61 +350,64 @@ class BaseballStats:
             next_play = next_plays.loc[idx]
             team_dict = batting_lookup.get(play.bat_team, {})
 
-            for runner_name in [play.r1_name, play.r2_name]:
-                if pd.notna(runner_name) and team_dict:
-                    try:
-                        matches = process.extractOne(
-                            runner_name,
-                            list(team_dict.keys()),
-                            scorer=fuzz.token_sort_ratio,
-                            score_cutoff=65
-                        )
-                        if matches:
-                            standardized_name = matches[0]
-                            opportunities[standardized_name] = opportunities.get(
-                                standardized_name, 0) + 1
+            # Check first to home on double
+            if pd.notna(play.r1_name) and team_dict:
+                try:
+                    matches = process.extractOne(
+                        play.r1_name,
+                        list(team_dict.keys()),
+                        scorer=fuzz.token_sort_ratio,
+                        score_cutoff=65
+                    )
+                    if matches:
+                        standardized_r1 = matches[0]
+                        # Count opportunity when runner starts on first
+                        opportunities[standardized_r1] = opportunities.get(
+                            standardized_r1, 0) + 1
 
-                            if play.outs_on_play > 0 and runner_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name]:
-                                outs_on_bases[standardized_name] = outs_on_bases.get(
-                                    standardized_name, 0) + 1
-                            elif (runner_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name] and
-                                  play.runs_on_play > 0 and
-                                  play.outs_on_play == 0):
-                                extra_bases[standardized_name] = extra_bases.get(
-                                    standardized_name, 0) + 1
-                    except Exception:
-                        pass
+                        if play.outs_on_play > 0 and play.r1_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name]:
+                            # Runner was out on bases
+                            outs_on_bases[standardized_r1] = outs_on_bases.get(
+                                standardized_r1, 0) + 1
+                        elif (play.r1_name not in [next_play.r1_name, next_play.r2_name, next_play.r3_name] and
+                              play.runs_on_play > 0):
+                            # Runner scored
+                            extra_bases[standardized_r1] = extra_bases.get(
+                                standardized_r1, 0) + 1
+                except Exception:
+                    pass
 
         results = pd.DataFrame({
-            'Extra_Bases_Taken': pd.Series(extra_bases),
-            'Outs_On_Bases': pd.Series(outs_on_bases),
+            'EBT': pd.Series(extra_bases),
+            'OutsOB': pd.Series(outs_on_bases),
             'Opportunities': pd.Series(opportunities)
         }).fillna(0)
 
         # Calculate Success Rate
         results['Success_Rate'] = (
-            results['Extra_Bases_Taken'] / results['Opportunities']).round(3)
+            results['EBT'] / results['Opportunities']).round(3)
 
         # Calculate league average rates
-        lg_teb_rate = results['Extra_Bases_Taken'].sum(
+        lg_teb_rate = results['EBT'].sum(
         ) / results['Opportunities'].sum()
-        lg_out_rate = results['Outs_On_Bases'].sum() / \
+        lg_out_rate = results['OutsOB'].sum() / \
             results['Opportunities'].sum()
 
+        # Calculate weighted value
         run_extra_base = 0.3
         runs_per_out = weights['runsOut']
         run_out = -1 * (2 * runs_per_out + 0.075)
 
         results['wTEB'] = (
-            (results['Extra_Bases_Taken'] * run_extra_base) +
-            (results['Outs_On_Bases'] * run_out) -
+            (results['EBT'] * run_extra_base) +
+            (results['OutsOB'] * run_out) -
             (results['Opportunities'] * (lg_teb_rate *
              run_extra_base + lg_out_rate * run_out))
         )
 
-        return results.sort_values('Extra_Bases_Taken', ascending=False)
+        return results.sort_values('EBT', ascending=False)
 
-    def process_batting_stats(self, df, weights_df, runs_df, pbp_df):
+    def process_batting_stats(self, df, weights_df, runs_df, pbp_df, roster):
         if df.empty:
             return df
 
@@ -410,7 +416,7 @@ class BaseballStats:
             x) else str(x).split('/')[0].upper())
 
         gdp_stats = self.calculate_wgdp(pbp_df)
-        teb_stats = self.calculate_extra_bases(pbp_df, df, weights_df)
+        teb_stats = self.calculate_extra_bases(pbp_df, roster, weights_df)
 
         df = df.merge(
             gdp_stats,
@@ -546,25 +552,31 @@ class BaseballStats:
 
     def get_data(self):
         conn = self.get_connection()
-        pitching, batting, pbp = [], [], []
+        pitching, batting, pbp, rosters = [], [], [], []
 
         try:
-            for year in [2021, 2022, 2023, 2024]:
-                pitching_df = pd.read_sql(
-                    f"SELECT * FROM pitching_{year}", conn)
-                pitching.append(pitching_df)
+            for division in range(1, 4):
+                for year in [2021, 2022, 2023, 2024]:
+                    pitching_df = pd.read_csv(
+                        f'../data/stats/d{division}_pitching_{year}.csv')
+                    pitching.append(pitching_df)
 
-                batting_df = pd.read_sql(f"SELECT * FROM batting_{year}", conn)
-                batting.append(batting_df)
+                    batting_df = pd.read_csv(
+                        f'../data/stats/d{division}_batting_{year}.csv')
+                    batting.append(batting_df)
 
-                pbp_df = pd.read_csv(
-                    f'{self.data_dir}/parsed_pbp_new_{year}.csv')
-                pbp.append(pbp_df)
+                    roster_df = pd.read_sql(
+                        f"SELECT * FROM d{division}_rosters_{year}", conn)
+                    rosters.append(roster_df)
 
-            park_factors = pd.read_csv(f'{self.data_dir}/park_factors.csv')
-            guts = pd.read_csv(f'{self.data_dir}/guts_constants.csv')
+                    pbp_df = pd.read_csv(
+                        f'{self.data_dir}/play_by_play/d{division}_parsed_pbp_new_{year}.csv')
+                    pbp.append(pbp_df)
 
-            return batting, pitching, pbp, guts, park_factors
+                park_factors = pd.read_csv(
+                    f'{self.data_dir}/park_factors/d{division}_park_factors.csv')
+                guts = pd.read_csv(f'{self.data_dir}/guts/guts_constants.csv')
+            return batting, pitching, pbp, guts, park_factors, rosters
         finally:
             conn.close()
 
@@ -637,7 +649,17 @@ class BaseballStats:
         df['K-BB%'] = df['K%'] - df['BB%']
         df['HR/FB'] = (df['HR-A'] / (df['HR-A'] + df['FO'])) * 100
 
-        df['FIP'], df['xFIP'] = self.calculate_pitching_metrics(df)
+        lg_era = (df['ER'].sum() * 9) / df['IP'].sum()
+        fip_components = ((13 * df['HR-A'].sum() + 3 * (df['BB'].sum() + df['HB'].sum()) -
+                           2 * df['SO'].sum()) / df['IP'].sum())
+        f_constant = lg_era - fip_components
+        fip = f_constant + ((13 * df['HR-A'] + 3 * (df['BB'] + df['HB']) -
+                            2 * df['SO']) / df['IP'])
+        lg_hr_fb_rate = df['HR-A'].sum() / (df['HR-A'].sum() + df['FO'].sum())
+        xfip = f_constant + ((13 * ((df['FO'] + df['HR-A']) * lg_hr_fb_rate) +
+                              3 * (df['BB'] + df['HB']) - 2 * df['SO']) / df['IP'])
+        df['FIP'] = fip
+        df['xFIP'] = xfip
 
         df['iPF'] = df['Team'].map(
             self.park_factors.set_index('team_name')['iPF'])
@@ -649,12 +671,15 @@ class BaseballStats:
         return df
 
     def get_clutch_stats(self, pbp_df):
-        player_stats = pbp_df.groupby(['player_standardized', 'bat_team']).agg({
-            'REA': 'sum',
-            'WPA': 'sum',
-            'WPA/LI': 'sum',
+        player_stats = pbp_df.groupby(['player_id']).agg({
+            'rea': 'sum',
+            'wpa': 'sum',
+            'wpa/li': 'sum',
             'li': 'mean'
-        }).reset_index().sort_values('WPA/LI', ascending=False).reset_index(drop=True)
+        }).reset_index().sort_values('wpa/li', ascending=False).reset_index(drop=True)
+
+        player_stats = player_stats.rename(
+            columns={'wpa': 'WPA', 'wpa/li': 'WPA/LI', 'rea': 'REA'})
 
         player_stats['Clutch'] = np.where(
             player_stats['li'] == 0,
@@ -663,11 +688,14 @@ class BaseballStats:
         )
 
         team_stats = pbp_df.groupby('bat_team').agg({
-            'REA': 'sum',
-            'WPA': 'sum',
-            'WPA/LI': 'sum',
+            'rea': 'sum',
+            'wpa': 'sum',
+            'wpa/li': 'sum',
             'li': 'mean'
-        }).reset_index().sort_values('WPA/LI', ascending=False).reset_index(drop=True)
+        }).reset_index().sort_values('wpa/li', ascending=False).reset_index(drop=True)
+
+        team_stats = team_stats.rename(
+            columns={'wpa': 'WPA', 'wpa/li': 'WPA/LI', 'rea': 'REA'})
 
         team_stats['Clutch'] = np.where(
             team_stats['li'] == 0,
@@ -686,11 +714,12 @@ class BaseballStats:
         pbp_df['pWPA/LI'] = pbp_df['pWPA'].div(
             pbp_df['li'].replace(0, float('nan')))
 
-        pitcher_stats = pbp_df.groupby(['pitcher_standardized', 'pitch_team']).agg({
+        pitcher_stats = pbp_df.groupby(['pitcher_id']).agg({
             'pREA': 'sum',
             'pWPA': 'sum',
             'pWPA/LI': 'sum',
-            'li': 'mean'
+            'li': 'mean',
+            'pitcher_standardized': 'first',
         }).reset_index().sort_values('pWPA/LI', ascending=False).reset_index(drop=True)
 
         pitcher_stats = pitcher_stats[pitcher_stats['pitcher_standardized'] != "Starter"]
@@ -721,95 +750,137 @@ class BaseballStats:
     def process_and_save_stats(self, start_year=2021, end_year=2024):
         conn = self.get_connection()
         try:
-            batting, pitching, pbp, self.guts, self.park_factors = self.get_data()
+            batting, pitching, pbp, self.guts, self.park_factors, rosters = self.get_data()
             self.guts = self.guts.reset_index(drop=True)
 
-            for i, year in enumerate(range(start_year, end_year + 1)):
-                if i >= len(batting):
-                    continue
+            data_index = 0
+            for division in [1, 2, 3]:
+                for year in range(start_year, end_year + 1):
+                    print(f"Processing Division {division}, Year {year}")
 
-                year_guts = self.guts[self.guts['Year'] == year]
-                if len(year_guts) == 0:
-                    year_guts = self.guts[self.guts['Year'] <= year].iloc[-1:]
-                if len(year_guts) == 0:
-                    year_guts = self.guts.iloc[-1:]
-                year_guts = year_guts.iloc[0]
+                    current_index = data_index + (year - start_year)
 
-                bat_war = self.process_batting_stats(batting[i], year_guts,
-                                                     self.park_factors, pbp[i])
-                batting_war_total = bat_war.WAR.sum()
-                bat_war = bat_war.rename(columns={
-                    'player_name': 'Player',
-                    'team_name': 'Team', 'SH': 'Sac',
-                    'batting_runs': 'Batting', 'baserunning': 'Baserunning',
-                    'conference': 'Conference'
-                })
+                    if current_index >= len(batting):
+                        continue
 
-                player_stats, team_stats = self.get_clutch_stats(pbp[i])
+                    div_guts = self.guts.query(f'Division == {division}')
+                    year_guts = div_guts[div_guts['Year'] == year]
+                    if len(year_guts) == 0:
+                        continue
+                    year_guts = year_guts.iloc[0]
 
-                bat_war = bat_war.merge(
-                    player_stats, left_on=['Player', 'Team'], right_on=['player_standardized', 'bat_team'], how='left')
-                bat_war = bat_war[self.batting_columns]
-                bat_war['Season'] = year
+                    # Process batting stats
+                    bat_war = self.process_batting_stats(
+                        batting[current_index],
+                        year_guts,
+                        self.park_factors,
+                        pbp[current_index],
+                        rosters[current_index]
+                    )
+                    batting_war_total = bat_war.WAR.sum()
 
-                bat_war[['Player', 'Team', 'Conference', 'Yr']] = bat_war[[
-                    'Player', 'Team', 'Conference', 'Yr']].fillna('-')
-                bat_war = bat_war.fillna(0)
-
-                bat_war.to_sql(f'batting_war_{year}', conn, if_exists='replace',
-                               index=False)
-                bat_team_war = self.create_batting_team_war_table(
-                    bat_war, year)
-                bat_team_war = bat_team_war.merge(
-                    team_stats, left_on='Team', right_on='bat_team', how='left')
-                bat_team_war.to_sql(f'batting_team_war_{year}', conn,
-                                    if_exists='replace', index=False)
-                bat_team_war.to_csv(
-                    f'../data/batting_team_war_{year}.csv', index=False)
-                bat_war.to_csv(
-                    f'../data/batting_war_{year}.csv', index=False)
-
-                if i < len(pitching):
-                    pitch_war = self.process_pitching_stats(pitching[i], pbp[i],
-                                                            self.park_factors, batting_war_total)
-
-                    if 'Team' in pitch_war.columns and 'team_name' in pitch_war.columns:
-                        pitch_war = pitch_war.drop('Team', axis=1)
-
-                    pitch_war = pitch_war.rename(columns={
+                    bat_war = bat_war.rename(columns={
                         'player_name': 'Player',
-                        'conference': 'Conference',
-                        'team_name': 'Team'
+                        'team_name': 'Team',
+                        'SH': 'Sac',
+                        'batting_runs': 'Batting',
+                        'baserunning': 'Baserunning',
+                        'conference': 'Conference'
                     })
 
-                    pitch_war['Season'] = year
+                    player_stats, team_stats = self.get_clutch_stats(
+                        pbp[current_index])
+                    bat_war = bat_war.merge(
+                        player_stats,
+                        left_on=['player_id'],
+                        right_on=['player_id'],
+                        how='left'
+                    )
+                    bat_war = bat_war[self.batting_columns]
+                    bat_war['Season'] = year
 
-                    pitch_war[['Player', 'Team', 'Conference', 'Yr']] = pitch_war[[
-                        'Player', 'Team', 'Conference', 'Yr']].fillna('-')
-                    pitch_war = pitch_war.fillna(0)
-                    pitch_war = pitch_war.replace(
-                        {np.inf: 0, -np.inf: 0})
+                    bat_war[['Player', 'Team', 'Conference', 'Yr']] = bat_war[
+                        ['Player', 'Team', 'Conference', 'Yr']].fillna('-')
+                    bat_war = bat_war.fillna(0)
 
-                    pitcher_stats, team_stats = self.get_pitcher_clutch_stats(
-                        pbp[i])
+                    # Save batting stats
+                    table_name = f'd{division}_batting_war_{year}'
+                    bat_war.to_sql(table_name, conn,
+                                   if_exists='replace', index=False)
+                    bat_war.to_csv(
+                        f'../data/war/d{division}_batting_war_{year}.csv', index=False)
 
-                    pitch_war = pitch_war.merge(
-                        pitcher_stats, left_on=['Player', 'Team'], right_on=['pitcher_standardized', 'pitch_team'], how='left')
+                    # Process batting team stats
+                    bat_team_war = self.create_batting_team_war_table(
+                        bat_war, year)
+                    bat_team_war = bat_team_war.merge(
+                        team_stats,
+                        left_on='Team',
+                        right_on='bat_team',
+                        how='left'
+                    )
+                    table_name = f'd{division}_batting_team_war_{year}'
+                    bat_team_war.to_sql(
+                        table_name, conn, if_exists='replace', index=False)
+                    bat_team_war.to_csv(
+                        f'../data/war/d{division}_batting_team_war_{year}.csv', index=False)
 
-                    pitch_war = pitch_war[self.pitching_columns]
+                    # Process pitching stats if available
+                    if current_index < len(pitching):
+                        pitch_war = self.process_pitching_stats(
+                            pitching[current_index],
+                            pbp[current_index],
+                            self.park_factors,
+                            batting_war_total
+                        )
 
-                    pitch_war.to_sql(f'pitching_war_{year}', conn,
-                                     if_exists='replace', index=False)
-                    pitch_war.to_csv(
-                        f'../data/pitching_war_{year}.csv', index=False)
-                    pitch_team_war = self.create_pitching_team_war_table(pitch_war,
-                                                                         year)
-                    pitch_team_war = pitch_team_war.merge(
-                        team_stats, left_on='Team', right_on='pitch_team', how='left')
-                    pitch_team_war.to_sql(f'pitching_team_war_{year}', conn,
-                                          if_exists='replace', index=False)
-                    pitch_team_war.to_csv(
-                        f'../data/pitching_team_war_{year}.csv', index=False)
+                        if 'Team' in pitch_war.columns and 'team_name' in pitch_war.columns:
+                            pitch_war = pitch_war.drop('Team', axis=1)
+
+                        pitch_war = pitch_war.rename(columns={
+                            'player_name': 'Player',
+                            'conference': 'Conference',
+                            'team_name': 'Team'
+                        })
+                        pitch_war['Season'] = year
+
+                        pitch_war[['Player', 'Team', 'Conference', 'Yr']] = pitch_war[
+                            ['Player', 'Team', 'Conference', 'Yr']].fillna('-')
+                        pitch_war = pitch_war.fillna(0)
+                        pitch_war = pitch_war.replace({np.inf: 0, -np.inf: 0})
+
+                        pitcher_stats, team_stats = self.get_pitcher_clutch_stats(
+                            pbp[current_index])
+                        pitch_war = pitch_war.merge(
+                            pitcher_stats,
+                            left_on=['player_id'],
+                            right_on=['pitcher_id'],
+                            how='left'
+                        )
+                        pitch_war = pitch_war[self.pitching_columns]
+
+                        table_name = f'd{division}_pitching_war_{year}'
+                        pitch_war.to_sql(table_name, conn,
+                                         if_exists='replace', index=False)
+                        pitch_war.to_csv(
+                            f'../data/war/d{division}_pitching_war_{year}.csv', index=False)
+
+                        pitch_team_war = self.create_pitching_team_war_table(
+                            pitch_war, year)
+                        pitch_team_war = pitch_team_war.merge(
+                            team_stats,
+                            left_on='Team',
+                            right_on='pitch_team',
+                            how='left'
+                        )
+                        table_name = f'd{division}_pitching_team_war_{year}'
+                        pitch_team_war.to_sql(
+                            table_name, conn, if_exists='replace', index=False)
+                        pitch_team_war.to_csv(
+                            f'../data/war/d{division}_pitching_team_war_{year}.csv', index=False)
+
+                data_index += (end_year - start_year + 1)
+
         finally:
             conn.close()
 
