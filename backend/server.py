@@ -11,7 +11,6 @@ import os
 from PIL import Image
 import io
 from flask import Response
-from llm_insights import InsightsProcessor
 import os
 import logging
 from dotenv import load_dotenv
@@ -19,19 +18,19 @@ from dotenv import load_dotenv
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 
-# CORS(app, resources={
-#     r"/api/*": {
-#         "origins": [
-#             "https://d3-dashboard.com",
-#             "https://www.d3-dashboard.com",
-#             "http://d3-dashboard.com",
-#             "http://www.d3-dashboard.com",
-#             "http://localhost:3000"
-#         ],
-#         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-#         "allow_headers": ["Content-Type", "Authorization"]
-#     }
-# })
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://d3-dashboard.com",
+            "https://www.d3-dashboard.com",
+            "http://d3-dashboard.com",
+            "http://www.d3-dashboard.com",
+            "http://localhost:3000"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1186,35 +1185,35 @@ def get_projections_pitch():
         conn.close()
 
 
-@app.route('/api/insights/query', methods=['POST'])
-def query_insights():
-    try:
-        data = request.get_json()
-        question = data.get('question')
-        conn = get_db_connection()
+# @app.route('/api/insights/query', methods=['POST'])
+# def query_insights():
+#     try:
+#         data = request.get_json()
+#         question = data.get('question')
+#         conn = get_db_connection()
 
-        if not question:
-            return jsonify({"error": "No question provided"}), 400
+#         if not question:
+#             return jsonify({"error": "No question provided"}), 400
 
-        processor = InsightsProcessor(groq_api_key=os.getenv('GROQ_API_KEY'))
+#         processor = InsightsProcessor(groq_api_key=os.getenv('GROQ_API_KEY'))
 
-        result = processor.process_question(question, conn)
+#         result = processor.process_question(question, conn)
 
-        return jsonify(result)
+#         return jsonify(result)
 
-    except Exception as e:
-        logger.error(f"API error: {str(e)}", exc_info=True)
-        return jsonify({
-            "type": "error",
-            "result": {
-                "answer": "Sorry, I encountered an error processing your request.",
-                "analysis": [f"Error: {str(e)}"],
-                "data": None
-            }
-        }), 500
-    finally:
-        if 'conn' in locals():
-            conn.close()
+#     except Exception as e:
+#         logger.error(f"API error: {str(e)}", exc_info=True)
+#         return jsonify({
+#             "type": "error",
+#             "result": {
+#                 "answer": "Sorry, I encountered an error processing your request.",
+#                 "analysis": [f"Error: {str(e)}"],
+#                 "data": None
+#             }
+#         }), 500
+#     finally:
+#         if 'conn' in locals():
+#             conn.close()
 
 
 if __name__ == '__main__':
