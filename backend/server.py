@@ -26,6 +26,8 @@ CORS(app, resources={
         "origins": [
             "https://d3-dashboard.com",
             "https://www.d3-dashboard.com",
+            "http://d3-dashboard.com",
+            "http://www.d3-dashboard.com",
             "http://localhost:3000"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
