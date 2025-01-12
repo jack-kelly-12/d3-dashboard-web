@@ -49,6 +49,12 @@ const InfoBanner = ({ dataType }) => {
           description:
             "Team-level pitching statistics for programs. Analyze and compare pitching staff performance using comprehensive metrics.",
         };
+      case "insights":
+        return {
+          title: "Insights",
+          description:
+            "Ask questions to analyze D3 baseball data and get detailed statistical breakdowns with supporting evidence and methodology.",
+        };
       default:
         return {
           title: "Statistics",

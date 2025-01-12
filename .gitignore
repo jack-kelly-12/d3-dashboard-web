@@ -25,17 +25,18 @@
 *.log
 
 .ipynb_checkpoints/
-.csv
 
 backend/data/*.csv
-scrapers/
 notebooks/
 
 backend/images
-backend/data/park_factors/
-backend/data/schedules/
-backend/data/play_by_play/
+backend/data/*/
 
 github-actions-key
 github-actions-key.pub
 github-actions-keys/
+
+InsightsPage.js
+llm_insights.py
+
+.venv/

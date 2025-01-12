@@ -13,41 +13,46 @@ const TeamLogo = ({
 
   useEffect(() => {
     const id = showConference ? conferenceId : teamId;
-    if (!id) return;
+    if (!id) {
+      console.log(
+        `No ${
+          showConference ? "conference" : "team"
+        } ID provided for ${teamName}`
+      );
+      return;
+    }
 
-    const getLogoUrl = async () => {
-      try {
-        const endpoint = showConference ? "conferences" : "teams";
-        const response = await fetch(
-          `${API_BASE_URL}/api/${endpoint}/logos/${id}.png`
-        );
-        if (!response.ok) throw new Error("Failed to load logo");
+    const endpoint = showConference ? "conferences" : "teams";
+    const url = `${API_BASE_URL}/api/${endpoint}/logos/${id}.png`;
+    console.log(`Attempting to load logo from: ${url}`);
 
-        const blob = await response.blob();
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.blob();
+      })
+      .then((blob) => {
         const url = URL.createObjectURL(blob);
         setImageUrl(url);
-      } catch (err) {
-        console.error(
-          `Error loading ${showConference ? "conference" : "team"} logo:`,
-          err
-        );
+        setError(false);
+      })
+      .catch((err) => {
+        console.error(`Error loading logo for ${teamName}:`, err);
         setError(true);
-      }
-    };
-
-    getLogoUrl();
+      });
 
     return () => {
       if (imageUrl) {
         URL.revokeObjectURL(imageUrl);
       }
     };
-  }, [teamId, conferenceId, showConference, imageUrl]);
+  }, [teamId, conferenceId, showConference, teamName, imageUrl]);
 
   const InitialsDisplay = () => {
-    const name = showConference ? teamName : teamName;
     const initials =
-      name
+      teamName
         ?.split(" ")
         .map((word) => word[0])
         .join("")
@@ -69,12 +74,7 @@ const TeamLogo = ({
     );
   };
 
-  if (
-    error ||
-    (!showConference && !teamId) ||
-    (showConference && !conferenceId) ||
-    !imageUrl
-  ) {
+  if (error || !imageUrl) {
     return <InitialsDisplay />;
   }
 
@@ -82,9 +82,12 @@ const TeamLogo = ({
     <div className={className}>
       <img
         src={imageUrl}
-        alt={`Logo for NCAA ${showConference ? "conference" : "team"}`}
+        alt={`${teamName || "Team"} logo`}
         className="w-full h-full object-contain"
-        onError={() => setError(true)}
+        onError={() => {
+          console.error(`Image load error for ${teamName}`);
+          setError(true);
+        }}
       />
     </div>
   );

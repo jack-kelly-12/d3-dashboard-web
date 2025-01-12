@@ -233,8 +233,8 @@ const ValueLeaderboard = () => {
           batting, baserunning, positional adjustment, and pitching to show run
           contributions. WAR is park-adjusted and strength-of-schedule adjusted
           to account for differences in ballparks and competition. Additional
-          metrics include RE24 (run expectancy added), WPA (win probability
-          added), and WPA/LI (context-neutral win probability added).
+          metrics include WPA (win probability added), and WPA/LI
+          (context-neutral win probability added).
         </p>
 
         <blockquote className="text-sm border-l-4 border-blue-400 pl-4 italic text-gray-600 mt-2">

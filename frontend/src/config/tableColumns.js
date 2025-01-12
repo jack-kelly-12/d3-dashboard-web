@@ -293,12 +293,6 @@ export const getDataColumns = (dataType) => {
           width: "100px",
         },
         {
-          name: "RE24",
-          selector: (row) => roundTo(row["REA"], 1),
-          sortable: true,
-          width: "100px",
-        },
-        {
           name: "WPA/LI",
           selector: (row) => roundTo(row["WPA/LI"], 1),
           sortable: true,
@@ -533,12 +527,6 @@ export const getDataColumns = (dataType) => {
           width: "100px",
         },
         {
-          name: "RE24",
-          selector: (row) => roundTo(row["pREA"], 1),
-          sortable: true,
-          width: "100px",
-        },
-        {
           name: "WPA/LI",
           selector: (row) => roundTo(row["pWPA/LI"], 1),
           sortable: true,
@@ -711,12 +699,6 @@ export const getDataColumns = (dataType) => {
         {
           name: "WPA",
           selector: (row) => roundTo(row["WPA"], 1),
-          sortable: true,
-          width: "100px",
-        },
-        {
-          name: "RE24",
-          selector: (row) => roundTo(row["REA"], 1),
           sortable: true,
           width: "100px",
         },
@@ -913,12 +895,6 @@ export const getDataColumns = (dataType) => {
         {
           name: "WPA",
           selector: (row) => roundTo(row["pWPA"], 1),
-          sortable: true,
-          width: "100px",
-        },
-        {
-          name: "RE24",
-          selector: (row) => roundTo(row["pREA"], 1),
           sortable: true,
           width: "100px",
         },
