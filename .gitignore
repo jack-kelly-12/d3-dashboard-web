@@ -36,7 +36,6 @@ github-actions-key
 github-actions-key.pub
 github-actions-keys/
 
-InsightsPage.js
 llm_insights.py
 
 .venv/
