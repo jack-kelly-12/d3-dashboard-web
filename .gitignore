@@ -37,6 +37,8 @@ github-actions-key
 github-actions-key.pub
 github-actions-keys/
 
+backend/ncaa.sqbpro
+
 llm_insights.py
 
 .venv/
