@@ -53,11 +53,15 @@ def get_batting_war(year):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(f"""
+    query = """
         SELECT b.*, i.prev_team_id, i.conference_id
-        FROM d3_batting_war_{year} b
+        FROM batting_war b
         LEFT JOIN ids_for_images i ON b.Team = i.team_name
-    """)
+        WHERE b.Division = 3 AND b.Year = ?
+        ORDER BY b.WAR DESC
+    """
+
+    cursor.execute(query, (year,))
 
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
@@ -72,12 +76,15 @@ def get_pitching_war(year):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Join with ids_for_images to get both team and conference IDs
-    cursor.execute(f"""
+    query = """
         SELECT p.*, i.prev_team_id, i.conference_id
-        FROM d3_pitching_war_{year} p
+        FROM pitching_war p
         LEFT JOIN ids_for_images i ON p.Team = i.team_name
-    """)
+        WHERE p.Division = 3 AND p.Year = ?
+        ORDER BY p.WAR DESC
+    """
+
+    cursor.execute(query, (year,))
 
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
@@ -85,19 +92,20 @@ def get_pitching_war(year):
 
 
 @app.route('/api/batting_team_war/<int:year>', methods=['GET'])
-def get_batting_team_war_war(year):
+def get_batting_team_war(year):
     if year < 2021 or year > 2024:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Join with ids_for_images to get both team and conference IDs
     cursor.execute(f"""
         SELECT b.*, i.prev_team_id, i.conference_id
-        FROM d3_batting_team_war_{year} b
+        FROM batting_team_war b
         LEFT JOIN ids_for_images i ON b.Team = i.team_name
-    """)
+        WHERE b.Division = 3 AND b.Year = ?
+        ORDER BY b.WAR DESC
+    """, (year,))
 
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
@@ -113,11 +121,12 @@ def get_pitching_team_war(year):
     cursor = conn.cursor()
 
     cursor.execute(f"""
-        SELECT p.*,
-        i.prev_team_id, i.conference_id
-        FROM d3_pitching_team_war_{year} p
+        SELECT p.*, i.prev_team_id, i.conference_id
+        FROM pitching_team_war p
         LEFT JOIN ids_for_images i ON p.Team = i.team_name
-    """)
+        WHERE p.Division = 3 AND p.Year = ?
+        ORDER BY p.WAR DESC
+    """, (year,))
 
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
@@ -128,7 +137,7 @@ def get_pitching_team_war(year):
 def get_guts():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"SELECT * FROM guts_constants WHERE Division == 3")
+    cursor.execute(f"SELECT * FROM guts_constants WHERE Division = 3")
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(data)
@@ -149,7 +158,8 @@ def get_teams():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT Team as team_name FROM d3_batting_war_2024")
+    cursor.execute(
+        "SELECT DISTINCT Team as team_name FROM batting_war WHERE Division = 3 AND Year = 2024")
     data = cursor.fetchall()
 
     conn.close()
@@ -160,20 +170,21 @@ def get_teams():
     return jsonify(teams)
 
 
-@app.route('/api/players-hit-2024/<int:team_id>', methods=['GET'])
-def get_team_players(team_id):
+@app.route('/api/players-hit-2024/<team_name>', methods=['GET'])
+def get_team_players(team_name):
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # Validate if team exists
     cursor.execute(
-        "SELECT DISTINCT Team FROM d3_batting_war_2024 ORDER BY Team")
-    teams = [row[0] for row in cursor.fetchall()]
+        "SELECT DISTINCT Team FROM batting_war WHERE Division = 3 AND Year = 2024 AND Team = %s",
+        (team_name,)
+    )
+    if not cursor.fetchone():
+        return jsonify({"error": "Invalid team name"}), 404
 
-    if team_id < 1 or team_id > len(teams):
-        return jsonify({"error": "Invalid team_id"}), 404
-    team_name = teams[team_id - 1]
-
-    cursor.execute(f"""
+    # Get players for the team
+    cursor.execute("""
         SELECT Player,
                Pos,
                BA,
@@ -182,42 +193,70 @@ def get_team_players(team_id):
                HR,
                SB,
                WAR
-        FROM d3_batting_war_2024
-        WHERE Team = %s
+        FROM batting_war
+        WHERE Team = %s AND Division = 3 AND Year = 2024
     """, (team_name,))
-    data = [dict(row) for row in cursor.fetchall()]
+
+    data = [dict(zip([col[0] for col in cursor.description], row))
+            for row in cursor.fetchall()]
 
     conn.close()
     return jsonify(data)
 
 
-@app.route('/api/players-pitch-2024/<team_id>', methods=['GET'])
-def get_team_pitchers(team_id):
+@app.route('/api/players-pitch-2024/<team_name>', methods=['GET'])
+def get_team_pitchers(team_name):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(f"""
-        SELECT p.Player,
-               p.ERA,
-               p.FIP,
-               p."K%" as "K%",
-               p."BB%" as "BB%",
-               p.IP,
-               p.WAR
-        FROM d3_pitching_war_2024 AS p
-        LEFT JOIN d3_pitching_2024 AS t ON p.Team = t.team_name
-        WHERE t.team_id = {team_id}
-    """)
-    data = [dict(row) for row in cursor.fetchall()]
+
+    # Validate if team exists
+    cursor.execute(
+        "SELECT DISTINCT Team FROM pitching_war WHERE Division = 3 AND Year = 2024 AND Team = %s",
+        (team_name,)
+    )
+    if not cursor.fetchone():
+        return jsonify({"error": "Invalid team name"}), 404
+
+    # Get pitchers for the team
+    cursor.execute("""
+        SELECT Player,
+               ERA,
+               FIP,
+               "K%" as strikeout_rate,
+               "BB%" as walk_rate,
+               IP,
+               WAR
+        FROM pitching_war
+        WHERE Team = %s AND Division = 3 AND Year = 2024
+    """, (team_name,))
+
+    data = [dict(zip([col[0] for col in cursor.description], row))
+            for row in cursor.fetchall()]
+
     conn.close()
     return jsonify(data)
 
 
 @app.route('/api/expected-runs', methods=['GET'])
 def get_expected_runs():
+    year = request.args.get('year', '2024')
+
+    try:
+        year = int(year)
+        if not (2021 <= year <= 2024):
+            return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
+    except ValueError:
+        return jsonify({"error": "Invalid year format"}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        f"SELECT * FROM expected_runs WHERE Division == 3 ORDER BY Year DESC")
+
+    cursor.execute("""
+        SELECT * 
+        FROM expected_runs 
+        WHERE Division = 3 AND Year = ?
+    """, (year,))
+
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(data)
@@ -231,8 +270,8 @@ def get_player_percentiles(player_id):
     try:
         # Check if player exists in 2024 batting stats
         cursor.execute("""
-            SELECT * FROM d3_batting_war_2024
-            WHERE player_id = ?
+            SELECT * FROM batting_war
+            WHERE player_id = ? AND Division = 3 AND Year == 2024
         """, (player_id,))
         player = cursor.fetchone()
 
@@ -241,8 +280,8 @@ def get_player_percentiles(player_id):
             cursor.execute("""
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
                        "Baserunning", "Adjustment", WAR, PA, "wRC+"
-                FROM d3_batting_war_2024
-                WHERE PA > 25
+                FROM batting_war
+                WHERE PA > 25 AND Division = 3 AND Year == 2024
                 ORDER BY PA DESC
             """)
             all_players = cursor.fetchall()
@@ -270,8 +309,8 @@ def get_player_percentiles(player_id):
 
         # Check if player exists in 2024 pitching stats
         cursor.execute("""
-            SELECT * FROM d3_pitching_war_2024
-            WHERE player_id = ?
+            SELECT * FROM pitching_war
+            WHERE player_id = ? AND Division = 3 AND Year == 2024
         """, (player_id,))
         player = cursor.fetchone()
 
@@ -279,8 +318,8 @@ def get_player_percentiles(player_id):
             # Get all pitchers with IP > 10
             cursor.execute("""
                 SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, "RA9"
-                FROM d3_pitching_war_2024
-                WHERE IP > 10
+                FROM pitching_war
+                WHERE IP > 10 AND Division = 3 AND Year = 2024
                 ORDER BY IP DESC
             """)
             all_players = cursor.fetchall()
@@ -339,10 +378,10 @@ def get_player_stats(player_id):
             # Check batting stats with team/conference IDs
             cursor.execute(f"""
                 SELECT b.*, i.prev_team_id, i.conference_id
-                FROM d3_batting_war_{year} b
+                FROM batting_war b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
-                WHERE b.player_id = ?
-            """, (player_id,))
+                WHERE b.player_id = ? AND Division = 3 AND year = ?
+            """, (player_id, year))
             bat_stats = cursor.fetchone()
             if bat_stats:
                 player_found = True
@@ -358,10 +397,10 @@ def get_player_stats(player_id):
             # Check pitching stats with team/conference IDs
             cursor.execute(f"""
                 SELECT p.*, i.prev_team_id, i.conference_id
-                FROM d3_pitching_war_{year} p
+                FROM pitching_war p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
-                WHERE p.player_id = ?
-            """, (player_id,))
+                WHERE p.player_id = ? AND Division = 3 AND Year = ?
+            """, (player_id, year))
             pitch_stats = cursor.fetchone()
             if pitch_stats:
                 player_found = True
@@ -430,10 +469,12 @@ def search_players():
                 Conference as conference
             FROM (
                 SELECT player_id, Player, Team, Conference
-                FROM d3_batting_war_2024
+                FROM batting_war
+                WHERE Division = 3
                 UNION
                 SELECT player_id, Player, Team, Conference
-                FROM d3_pitching_war_2024
+                FROM pitching_war
+                WHERE Division = 3 AND Year == 2024
             )
             WHERE Player LIKE ? OR Player LIKE ? OR Player LIKE ? OR Player LIKE ?
             ORDER BY
@@ -607,9 +648,9 @@ def get_conferences():
         cursor.execute("""
             SELECT DISTINCT Conference
             FROM (
-                SELECT Conference FROM d3_batting_war_2024
+                SELECT Conference FROM batting_war WHERE Division = 3 AND Year = 2024
                 UNION
-                SELECT Conference FROM d3_pitching_war_2024
+                SELECT Conference FROM pitching_war WHERE Division = 3 AND Year = 2024
             )
             WHERE Conference IS NOT NULL
             ORDER BY Conference
@@ -655,7 +696,7 @@ def get_team_logo(team_id):
                 img_io.getvalue(),
                 mimetype='image/png',
                 headers={
-                    'Cache-Control': 'public, max-age=31536000',
+                    'Cache-Control': 'public, max-age= 31536000',
                     'Content-Type': 'image/png'
                 }
             )
@@ -695,7 +736,7 @@ def get_conference_logo(conference_id):
                 img_io.getvalue(),
                 mimetype='image/png',
                 headers={
-                    'Cache-Control': 'public, max-age=31536000',
+                    'Cache-Control': 'public, max-age= 31536000',
                     'Content-Type': 'image/png'
                 }
             )
@@ -731,9 +772,11 @@ def get_value_leaderboard():
                     b.Player, b.Team, b.Conference, b.Pos, b.PA,
                     b.Batting, b.Adjustment, b.Baserunning, b.WAR AS bWAR,
                     i.prev_team_id, i.conference_id, b.player_id, b.WPA, b.[WPA/LI], b.REA, b.Clutch
-                FROM d3_batting_war_{} b
+                FROM batting_war b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
-            """.format(year))
+                WHERE Division = 3 AND Year = ?
+
+            """, (year,))
             batting_data = {(row['Player'], row['Team']): dict(row)
                             for row in cursor.fetchall()}
 
@@ -743,9 +786,10 @@ def get_value_leaderboard():
                     p.Player, p.Team, p.Conference, 'P' AS Pos, p.IP,
                     p.WAR AS pWAR,
                     i.prev_team_id, i.conference_id, p.player_id, p.pWPA, p.[pWPA/LI], p.pREA, p.Clutch
-                FROM d3_pitching_war_{} p
+                FROM pitching_war p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
-            """.format(year))
+                WHERE Division = 3 AND Year = ?
+            """, (year, ))
             pitching_data = {(row['Player'], row['Team']): dict(row)
                              for row in cursor.fetchall()}
 
@@ -854,9 +898,10 @@ def get_baserunning_leaderboard():
                         p.Outs_On_Bases,
                         p.Extra_Bases_Taken AS XBT,
                         ? AS Year
-                    FROM baserunning_{year} p
+                    FROM baserunning p
                     LEFT JOIN ids_for_images i 
                         ON p.Team = i.team_name
+                    WHERE Division = 3 AND Year = ?
                     ORDER BY p.Baserunning DESC
                 )
                 SELECT * FROM baserunning
@@ -932,20 +977,19 @@ def get_situational_leaderboard():
                         p.WPA,
                         p.[WPA/li],
                         p.REA,
-                        {year} AS Year
-                    FROM d3_situational_{year} s
-                    JOIN d3_batting_war_{year} p 
+                    FROM situational s
+                    JOIN batting_war p 
                         ON s.batter_standardized = p.Player 
                         AND s.bat_team = p.Team
                     LEFT JOIN ids_for_images i 
                         ON p.Team = i.team_name
-                    WHERE s.PA_Overall >= ?
+                    WHERE s.PA_Overall >= ? AND Division = 3 AND Year = ?
                     ORDER BY s.wOBA_Overall DESC
                 )
                 SELECT * FROM situational
             """
 
-            cursor.execute(query, (min_pa,))
+            cursor.execute(query, (min_pa, year))
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -971,9 +1015,9 @@ def get_game(year, game_id):
                inning, top_inning, game_id, description, 
                home_win_exp_before, home_win_exp_after, wpa, run_expectancy_delta, 
                batter_id, player_id, pitcher_id, li, home_score_after, away_score_after
-        FROM d3_pbp_{year} 
-        WHERE game_id = ? AND description IS NOT NULL
-    """, (game_id,))
+        FROM pbp
+        WHERE game_id = ? AND description IS NOT NULL AND Division = 3 AND Year = ?
+    """, (game_id, year))
 
     plays = [dict(row) for row in cursor.fetchall()]
 
@@ -1011,14 +1055,12 @@ def get_games_by_date():
 
         game_date = f"{month}/{day}/{year}"
 
-        table_name = f"d3_pbp_{year}"
-
         conn = get_db_connection()
         cursor = conn.cursor()
 
         cursor.execute("""
             SELECT name FROM sqlite_master 
-            WHERE type='table' AND name=?
+            WHERE type='table' AND name = ?
         """, (table_name,))
 
         if not cursor.fetchone():
@@ -1028,22 +1070,22 @@ def get_games_by_date():
         cursor.execute(f"""
             SELECT DISTINCT 
                 p.game_id,
+                p.Year
                 p.home_team,
                 p.away_team,
                 MAX(p.home_score_after) as home_score,
                 MAX(p.away_score_after) as away_score,
                 p.date as game_date,
-                {year} as year,
                 i_home.prev_team_id as home_team_logo_id,
                 i_away.prev_team_id as away_team_logo_id
-            FROM {table_name} p
+            FROM pbp p
             LEFT JOIN ids_for_images i_home 
                 ON p.home_team = i_home.team_name
             LEFT JOIN ids_for_images i_away 
                 ON p.away_team = i_away.team_name
-            WHERE p.date = ?
+            WHERE p.date = ? AND p.Division = 3 AND p.Year = ?
             GROUP BY p.game_id, p.home_team, p.away_team, p.date
-        """, (game_date,))
+        """, (game_date, year))
 
         games = [dict(row) for row in cursor.fetchall()]
         conn.close()

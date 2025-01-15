@@ -709,9 +709,9 @@ def process_single_year(args):
     )
 
     # Standardize the formats
-    pbp_processed['B/T_batter'] = pbp_processed['B/T_batter'].replace(
+    pbp_processed['B/T_batter'] = pbp_processed['B/T_batter'].str.split('/')[0].replace(
         {'R': 'right', 'L': 'left', 'S': 'switch', 'RIGHT': 'right', 'LEFT': 'left', 'SWITCH': 'switch'})
-    pbp_processed['B/T_pitcher'] = pbp_processed['B/T_pitcher'].replace(
+    pbp_processed['B/T_pitcher'] = pbp_processed['B/T_pitcher'].str.split('/')[0].replace(
         {'R': 'right', 'L': 'left', 'S': 'switch', 'RIGHT': 'right', 'LEFT': 'left', 'SWITCH': 'switch'})
 
     # Fill in missing values
@@ -753,7 +753,8 @@ def process_single_year(args):
         'away_score_after', 'batter_side', 'pitcher_throws'
     ]
     merged_df = merged_df[columns]
-    merged_df.to_sql(f'pbp_{year}', conn, if_exists='replace', index=False)
+    merged_df.to_sql(f'd_{division}_pbp_{year}', conn,
+                     if_exists='replace', index=False)
 
     conn.close()
     print(f"Successfully processed data for D{division} {year}")

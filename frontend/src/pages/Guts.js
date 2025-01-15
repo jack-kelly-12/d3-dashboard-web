@@ -11,6 +11,8 @@ const Guts = () => {
   const [erData, setERData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedYear, setSelectedYear] = useState("2024");
+  const years = ["2024", "2023", "2022", "2021"];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -19,7 +21,7 @@ const Guts = () => {
         const [gutsResults, pfResults, erResults] = await Promise.all([
           fetchAPI("/api/guts"),
           fetchAPI("/api/park-factors"),
-          fetchAPI("/api/expected-runs"),
+          fetchAPI(`/api/expected-runs?year=${selectedYear}`),
         ]);
 
         setGutsData(Array.isArray(gutsResults) ? gutsResults : []);
@@ -36,7 +38,7 @@ const Guts = () => {
     };
 
     fetchData();
-  }, []);
+  }, [selectedYear]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -47,17 +49,23 @@ const Guts = () => {
           </div>
         ) : (
           <div className="space-y-6 sm:space-y-4 md:space-y-8">
-            <InfoBanner dataType={"guts"}></InfoBanner>
+            <InfoBanner dataType="guts" />
 
             <div className="bg-white p-6 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200">
               <div className="space-y-6 sm:space-y-4 md:space-y-8">
-                {/* Make tables scrollable on smaller screens */}
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <GutsTable data={gutsData} />
                 </div>
+
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
-                  <ExpectedRunsTable data={erData} />
+                  <ExpectedRunsTable
+                    data={erData}
+                    years={years}
+                    selectedYear={selectedYear}
+                    onYearChange={setSelectedYear}
+                  />
                 </div>
+
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                   <ParkFactorsTable
                     data={pfData}

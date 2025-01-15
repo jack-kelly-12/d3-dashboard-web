@@ -1,7 +1,7 @@
 import React from "react";
 import { BaseballTable } from "./BaseballTable";
 
-const ExpectedRunsTable = ({ data }) => {
+const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
   const transformedData = data.map((row) => ({
     year: row.Year,
     baseState: row.Bases,
@@ -56,12 +56,31 @@ const ExpectedRunsTable = ({ data }) => {
   ];
 
   return (
-    <BaseballTable
-      title="Run Expectancy Matrix"
-      data={transformedData}
-      columns={columns}
-      filename="run_expectancy.csv"
-    />
+    <div>
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            Run Expectancy Matrix
+          </h2>
+          <select
+            value={selectedYear}
+            onChange={(e) => onYearChange(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {years.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <BaseballTable
+        data={transformedData}
+        columns={columns}
+        filename="run_expectancy.csv"
+      />
+    </div>
   );
 };
 

@@ -1,4 +1,5 @@
 import React from "react";
+import InfoBanner from "../components/data/InfoBanner";
 
 const Documentation = () => {
   const sections = [
@@ -164,59 +165,43 @@ const Documentation = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Statistics Glossary
-            </h1>
-            <p className="mt-2 text-gray-600">
-              Comprehensive guide to baseball statistics and metrics used in D3
-              Dashboard
-            </p>
-            <div className="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-100">
-              <p className="text-sm text-blue-800">
-                Note: All statistics are calculated using industry-standard
-                formulas and adjusted for Division III competition levels. Park
-                factors and league adjustments are applied where applicable. WAR
-                model is heavily based on fWAR, however, it is scaled for a
-                35-game season, uses different metrics to proxy baserunning
-                ability, and is adjusted for strength of schedule.
-              </p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
+        <InfoBanner dataType={"documentation"} />
 
-          {sections.map((section, index) => (
-            <div
-              key={index}
-              className="mb-8 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-            >
-              <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  {section.title}
-                </h2>
-              </div>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <div className="space-y-6">
+            {sections.map((section, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+              >
+                <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">
+                    {section.title}
+                  </h2>
+                </div>
 
-              <div className="divide-y divide-gray-100">
-                {section.fields.map((field, fieldIndex) => (
-                  <div
-                    key={fieldIndex}
-                    className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150"
-                  >
-                    <div className="flex items-center">
-                      <div className="w-20 flex-shrink-0">
-                        <span className="font-mono font-medium text-blue-600">
-                          {field.name}
-                        </span>
+                <div className="divide-y divide-gray-100">
+                  {section.fields.map((field, fieldIndex) => (
+                    <div
+                      key={fieldIndex}
+                      className="px-6 py-4 hover:bg-gray-50 transition-colors duration-150"
+                    >
+                      <div className="flex items-center">
+                        <div className="w-24 flex-shrink-0">
+                          <span className="font-mono font-medium text-blue-600">
+                            {field.name}
+                          </span>
+                        </div>
+                        <div className="flex-1 text-gray-600">{field.desc}</div>
                       </div>
-                      <div className="flex-1 text-gray-600">{field.desc}</div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>

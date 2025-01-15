@@ -61,13 +61,15 @@ const TeamLogo = ({
   }, [teamId, conferenceId, showConference, teamName, imageUrl]);
 
   const InitialsDisplay = () => {
-    const initials =
-      teamName
-        ?.split(" ")
-        .map((word) => word[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || "??";
+    const initials = teamName
+      ? (teamName.includes(" ")
+          ? teamName
+              .split(" ")
+              .map((word) => word[0])
+              .join("")
+          : teamName.slice(0, 3)
+        ).toUpperCase()
+      : "-";
 
     return (
       <div

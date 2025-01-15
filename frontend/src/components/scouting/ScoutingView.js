@@ -56,9 +56,11 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
     }
   };
 
-  const fetchPlayers = async (teamId) => {
+  const fetchPlayers = async (teamName) => {
     try {
-      const data = await fetchAPI(`/players-hit-2024/${teamId}`);
+      const data = await fetchAPI(
+        `/players-hit-2024/${encodeURIComponent(teamName)}`
+      );
 
       const uniqueData = data.reduce((acc, current) => {
         const x = acc.find((item) => item.Player === current.Player);
@@ -85,14 +87,15 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
     } catch (error) {
       console.error("Error fetching players:", error);
       toast.error("Failed to fetch players");
-
       setAvailablePlayers([]);
     }
   };
 
-  const fetchPitchers = async (teamId) => {
+  const fetchPitchers = async (teamName) => {
     try {
-      const data = await fetchAPI(`/players-pitch-2024/${teamId}`);
+      const data = await fetchAPI(
+        `/players-pitch-2024/${encodeURIComponent(teamName)}`
+      );
 
       const uniqueData = data.reduce((acc, current) => {
         const x = acc.find((item) => item.Player === current.Player);
@@ -118,7 +121,6 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
     } catch (error) {
       console.error("Error fetching pitchers:", error);
       toast.error("Failed to fetch pitchers");
-
       setAvailablePitchers([]);
     }
   };

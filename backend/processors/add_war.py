@@ -68,36 +68,29 @@ class BaseballStats:
         def safe_percentage(numerator, denominator):
             return np.where(denominator > 0, (numerator / denominator) * 100, 0)
 
-        # Apply safe calculations
         df['RA9'] = safe_per_nine(df['R'], df['IP'])
         df['K9'] = safe_per_nine(df['SO'], df['IP'])
         df['H9'] = safe_per_nine(df['H'], df['IP'])
         df['BB9'] = safe_per_nine(df['BB'], df['IP'])
         df['HR9'] = safe_per_nine(df['HR-A'], df['IP'])
 
-        # Percentage calculations using BF as denominator
         df['BB%'] = safe_percentage(df['BB'], df['BF'])
         df['K%'] = safe_percentage(df['SO'], df['BF'])
         df['K-BB%'] = df['K%'] - df['BB%']
 
-        # Handle HR/FB calculation
         fb_total = df['HR-A'] + df['FO']
         df['HR/FB'] = safe_percentage(df['HR-A'], fb_total)
 
-        # Handle inherited runners
         df['IR-A%'] = safe_percentage(df['Inh Run Score'], df['Inh Run'])
 
-        # Calculate FIP components only for pitchers with IP > 0
         valid_ip_mask = df['IP'] > 0
         df.loc[valid_ip_mask, ['FIP', 'xFIP']
                ] = self.calculate_pitching_metrics(df[valid_ip_mask])
         df.loc[~valid_ip_mask, ['FIP', 'xFIP']] = np.nan
 
-        # Handle park factors
         df['iPF'] = df['team_name'].map(runs_df.set_index('team_name')['iPF'])
         df['PF'] = ((1 - (1 - df.iPF) * .4) * 100).fillna(100)
 
-        # Calculate ERA+ only for pitchers with IP > 0
         lg_era = (df.loc[valid_ip_mask, 'ER'].sum() /
                   df.loc[valid_ip_mask, 'IP'].sum()) * 9
         df.loc[valid_ip_mask, 'ERA+'] = 100 * \
@@ -140,11 +133,9 @@ class BaseballStats:
                       right_on=['pitcher_id'])
         df['gmLI'] = df['gmLI'].fillna(0.0)
 
-        # Only calculate FIP-based stats for pitchers with IP > 0
         valid_ip_mask = df['IP'] > 0
 
         def calculate_if_fip_constant(group_df):
-            # Only use records with IP > 0
             group_df = group_df[group_df['IP'] > 0]
             if len(group_df) == 0:
                 return np.nan
@@ -166,17 +157,14 @@ class BaseballStats:
                          (row['BB'] + row['HB'])) - (2 * row['SO']))
             return (numerator / row['IP']) + constant
 
-        # Calculate FIP constants and ifFIP by conference
         if_fip_constants = df[valid_ip_mask].groupby('conference').apply(
             calculate_if_fip_constant).reset_index()
         if_fip_constants.columns = ['conference', 'if_fip_constant']
         df = df.merge(if_fip_constants, on='conference', how='left')
 
-        # Calculate individual ifFIP only for valid IP
         df['ifFIP'] = df.apply(lambda row: calculate_player_if_fip(
             row, row['if_fip_constant']), axis=1)
 
-        # Calculate RA9-ERA adjustment using only valid IP records
         valid_df = df[valid_ip_mask]
         if len(valid_df) > 0:
             lgRA9 = (valid_df['R'].sum() / valid_df['IP'].sum()) * 9
@@ -185,7 +173,6 @@ class BaseballStats:
         else:
             adjustment = 0
 
-        # Calculate individual FIPR9 and park adjust it
         df['FIPR9'] = np.where(valid_ip_mask, df['ifFIP'] + adjustment, np.nan)
         df['PF'] = df['PF'].fillna(100)
         df['pFIPR9'] = np.where(

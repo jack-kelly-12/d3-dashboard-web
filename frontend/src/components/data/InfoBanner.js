@@ -55,6 +55,12 @@ const InfoBanner = ({ dataType }) => {
           description:
             "Ask questions to analyze D3 baseball data and get detailed statistical breakdowns with supporting evidence and methodology.",
         };
+      case "documentation":
+        return {
+          title: "Statistics Glossary",
+          description:
+            "Comprehensive guide to baseball statistics and metrics used in D3 Dashboard",
+        };
       default:
         return {
           title: "Statistics",
