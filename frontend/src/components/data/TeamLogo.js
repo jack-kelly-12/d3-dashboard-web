@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { API_BASE_URL } from "../../config/api";
 
+const logoCache = new Map();
+
 const TeamLogo = ({
   teamId,
   conferenceId,
@@ -23,8 +25,15 @@ const TeamLogo = ({
     }
 
     const endpoint = showConference ? "conferences" : "teams";
+    const cacheKey = `${endpoint}_${id}`;
+
+    if (logoCache.has(cacheKey)) {
+      setImageUrl(logoCache.get(cacheKey));
+      setError(false);
+      return;
+    }
+
     const url = `${API_BASE_URL}/api/${endpoint}/logos/${id}.png`;
-    console.log(`Attempting to load logo from: ${url}`);
 
     fetch(url)
       .then((response) => {
@@ -34,8 +43,9 @@ const TeamLogo = ({
         return response.blob();
       })
       .then((blob) => {
-        const url = URL.createObjectURL(blob);
-        setImageUrl(url);
+        const objectUrl = URL.createObjectURL(blob);
+        logoCache.set(cacheKey, objectUrl);
+        setImageUrl(objectUrl);
         setError(false);
       })
       .catch((err) => {
@@ -44,7 +54,7 @@ const TeamLogo = ({
       });
 
     return () => {
-      if (imageUrl) {
+      if (imageUrl && !Array.from(logoCache.values()).includes(imageUrl)) {
         URL.revokeObjectURL(imageUrl);
       }
     };
@@ -91,6 +101,11 @@ const TeamLogo = ({
       />
     </div>
   );
+};
+
+TeamLogo.clearCache = () => {
+  logoCache.forEach((url) => URL.revokeObjectURL(url));
+  logoCache.clear();
 };
 
 export default TeamLogo;

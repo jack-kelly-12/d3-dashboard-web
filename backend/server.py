@@ -730,7 +730,7 @@ def get_value_leaderboard():
                 SELECT
                     b.Player, b.Team, b.Conference, b.Pos, b.PA,
                     b.Batting, b.Adjustment, b.Baserunning, b.WAR AS bWAR,
-                    i.prev_team_id, i.conference_id, b.player_id, b.WPA, b.[WPA/li]
+                    i.prev_team_id, i.conference_id, b.player_id, b.WPA, b.[WPA/LI], b.REA, b.Clutch
                 FROM d3_batting_war_{} b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
             """.format(year))
@@ -742,7 +742,7 @@ def get_value_leaderboard():
                 SELECT
                     p.Player, p.Team, p.Conference, 'P' AS Pos, p.IP,
                     p.WAR AS pWAR,
-                    i.prev_team_id, i.conference_id, p.player_id, p.pWPA, p.[pWPA/li]
+                    i.prev_team_id, i.conference_id, p.player_id, p.pWPA, p.[pWPA/LI], p.pREA, p.Clutch
                 FROM d3_pitching_war_{} p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
             """.format(year))
@@ -772,10 +772,14 @@ def get_value_leaderboard():
                     'Baserunning': bat_stats.get('Baserunning', 0),
                     'bWAR': bat_stats.get('bWAR', 0),
                     'pWAR': pitch_stats.get('pWAR', 0),
-                    'pWPA/li': pitch_stats.get('pWPA/li', 0),
-                    'bWPA/li': bat_stats.get('WPA/li', 0),
+                    'bREA': bat_stats.get('REA', 0),
+                    'pREA': pitch_stats.get('pREA', 0),
+                    'pWPA/LI': pitch_stats.get('pWPA/LI', 0),
+                    'bWPA/LI': bat_stats.get('WPA/LI', 0),
                     'pWPA': pitch_stats.get('pWPA', 0),
                     'bWPA': bat_stats.get('WPA', 0),
+                    'bClutch': bat_stats.get('Clutch', 0),
+                    'pClutch': bat_stats.get('pClutch', 0),
                 }
 
                 combined_stats['WAR'] = round(
@@ -784,8 +788,14 @@ def get_value_leaderboard():
                 combined_stats['WPA'] = round(
                     (combined_stats['bWPA'] or 0) + (combined_stats['pWPA'] or 0), 1)
 
-                combined_stats['WPA/li'] = round(
-                    (combined_stats['bWPA/li'] or 0) + (combined_stats['pWPA/li'] or 0), 1)
+                combined_stats['WPA/LI'] = round(
+                    (combined_stats['bWPA/LI'] or 0) + (combined_stats['pWPA/LI'] or 0), 1)
+
+                combined_stats['Clutch'] = round(
+                    (combined_stats['bClutch'] or 0) + (combined_stats['pClutch'] or 0), 1)
+
+                combined_stats['REA'] = round(
+                    (combined_stats['bREA'] or 0) + (combined_stats['pREA'] or 0), 1)
 
                 results.append(combined_stats)
 
@@ -959,9 +969,9 @@ def get_game(year, game_id):
     cursor.execute(f"""
         SELECT home_team, away_team, home_score, away_score, date as game_date, 
                inning, top_inning, game_id, description, 
-               home_win_exp_before, home_win_exp_after, WPA, run_expectancy_delta, 
-               player_standardized, pitcher_standardized, li, home_score_after, away_score_after
-        FROM pbp_{year} 
+               home_win_exp_before, home_win_exp_after, wpa, run_expectancy_delta, 
+               batter_id, player_id, pitcher_id, li, home_score_after, away_score_after
+        FROM d3_pbp_{year} 
         WHERE game_id = ? AND description IS NOT NULL
     """, (game_id,))
 
@@ -994,21 +1004,18 @@ def get_games_by_date():
         return jsonify({"error": "Missing required query parameters: month, day, year"}), 400
 
     try:
-        # Convert the year to an integer
         year = int(year)
 
-        # Validate year is within acceptable range
         if year < 2021 or year > 2024:  # Changed to 2024 as upper limit
             return jsonify({"error": f"No games available for year {year}. Please select a year between 2021 and 2024"}), 400
 
         game_date = f"{month}/{day}/{year}"
 
-        table_name = f"pbp_{year}"
+        table_name = f"d3_pbp_{year}"
 
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # First check if the table exists
         cursor.execute("""
             SELECT name FROM sqlite_master 
             WHERE type='table' AND name=?

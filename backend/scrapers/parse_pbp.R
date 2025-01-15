@@ -534,7 +534,7 @@ ncaa_parse_parallel <- function(pbp_data_frame, num_cores = detectCores() - 1) {
           TRUE ~ 0 )
       ) %>%
       mutate(bat_order = bat_order_fill(bat_order, game_end)) %>%
-      select(date, game_id, away_team, home_team, inning, top_inning, away_score, home_score, bat_order, bat_name, r1_name, r2_name, r3_name, sub_fl, sub_in, sub_out,
+      select(date, game_id, play_id, away_team, home_team, inning, top_inning, away_score, home_score, bat_order, bat_name, r1_name, r2_name, r3_name, sub_fl, sub_in, sub_out,
              base_cd_before, outs_before, event_cd, hit_type, outs_on_play, outs_after, runs_this_inn, runs_roi, runs_on_play, away_score_after, home_score_after, new_inn, inn_end, new_game, game_end, everything()) %>%
       select(-tmp_text, -bat_text, -r1_text, -r2_text, -r3_text)
   })
@@ -550,6 +550,8 @@ for (division in c(1, 2)) {
     message(sprintf("Processing Division %d, Year %d", division, year))
     
     df = read.csv(file_path)
+    df$play_id <- seq_len(nrow(df))
+    
     pbp_data <- ncaa_parse_parallel(df)
     
     if (nrow(pbp_data) == 0) {

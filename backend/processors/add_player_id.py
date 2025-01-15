@@ -1,101 +1,227 @@
 import pandas as pd
-import sqlite3
-import os
-from typing import Dict, Tuple
+import numpy as np
+from typing import List, Dict, Set, Tuple
+from collections import defaultdict
+import glob
+from difflib import SequenceMatcher
 
 
-def process_stats_with_rosters(year: int, division: int) -> Dict[str, int]:
-    div_name = f"d{division}"
-    base_path = "C:/Users/kellyjc/Desktop/d3_app_improved/backend"
+class PlayerMatcher:
+    def __init__(self):
+        self.reset_state()
 
-    rosters = pd.read_csv(f"{base_path}/data/{div_name}_rosters_{year}.csv")
-    batting = pd.read_csv(
-        f"{base_path}/data/stats/{div_name}_batting_{year}.csv")
-    pitching = pd.read_csv(
-        f"{base_path}/data/stats/{div_name}_pitching_{year}.csv")
+    def reset_state(self):
+        self.next_id = 1
+        self.player_info = defaultdict(list)
+        self.decisions = []
+        self.used_ids = set()
 
-    if 'player_id' in batting.columns:
-        batting = batting.drop(columns=['player_id'])
-    if 'player_id' in pitching.columns:
-        pitching = pitching.drop(columns=['player_id'])
+    def _generate_id(self) -> str:
+        while True:
+            new_id = f"d3-playerid-{self.next_id}"
+            self.next_id += 1
+            if new_id not in self.used_ids:
+                self.used_ids.add(new_id)
+                return new_id
 
-    def prepare_for_merge(df: pd.DataFrame) -> pd.DataFrame:
-        df = df.copy()
-        df['match_name'] = df['player_name'].str.strip().str.lower()
-        df['match_team'] = df['team_name'].str.strip().str.lower()
-        return df
+    def _clean_name(self, names: pd.Series) -> pd.Series:
+        return names.str.strip().str.upper()
 
-    rosters = prepare_for_merge(rosters)
-    batting = prepare_for_merge(batting)
-    pitching = prepare_for_merge(pitching)
+    def _is_valid_year_progression(self, years: List[int], yr_values: List[str]) -> bool:
+        if len(years) <= 1:
+            return True
 
-    # Merge using lowercase columns for matching
-    batting_with_ids = batting.merge(
-        rosters[['match_name', 'match_team', 'player_id']],
-        on=['match_name', 'match_team'],
-        how='left'
-    )
+        yr_map = {'FR': 1, 'SO': 2, 'JR': 3, 'SR': 4,
+                  'Fr.': 1, 'So.': 2, 'Jr.': 3, 'Sr.': 4}
+        numeric_years = [yr_map.get(yr.upper() if isinstance(
+            yr, str) else yr, 0) for yr in yr_values]
 
-    pitching_with_ids = pitching.merge(
-        rosters[['match_name', 'match_team', 'player_id']],
-        on=['match_name', 'match_team'],
-        how='left'
-    )
+        year_pairs = list(zip(sorted(years), sorted(numeric_years)))
+        for i in range(len(year_pairs)-1):
+            curr_year, curr_yr = year_pairs[i]
+            next_year, next_yr = year_pairs[i+1]
 
-    # Remove temporary matching columns
-    batting_with_ids = batting_with_ids.drop(
-        columns=['match_name', 'match_team'])
-    pitching_with_ids = pitching_with_ids.drop(
-        columns=['match_name', 'match_team'])
+            if next_year != curr_year + 1:
+                return False
 
-    # Save to database
-    conn = sqlite3.connect(f"{base_path}/ncaa.db")
+            if next_yr < curr_yr:
+                return False
 
-    def safe_to_sql(df: pd.DataFrame, table_name: str):
-        df.to_sql(table_name, conn, if_exists='replace', index=False)
-        row_count = pd.read_sql(
-            f"SELECT COUNT(*) as count FROM {table_name}", conn)['count'].iloc[0]
-        print(f"Wrote {row_count} rows to table {table_name}")
+        return True
 
-    safe_to_sql(batting_with_ids, f"{div_name}_batting_{year}")
-    safe_to_sql(pitching_with_ids, f"{div_name}_pitching_{year}")
+    def process_files(self, batting_files: List[str], pitching_files: List[str], roster_files: List[str]) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        self.reset_state()
 
-    conn.close()
+        batting_dfs = []
+        pitching_dfs = []
+        roster_dfs = []
 
-    # Save CSV files
-    batting_with_ids.to_csv(
-        f"{base_path}/data/stats/{div_name}_batting_{year}.csv", index=False)
-    pitching_with_ids.to_csv(
-        f"{base_path}/data/stats/{div_name}_pitching_{year}.csv", index=False)
+        for file in sorted(batting_files):
+            df = pd.read_csv(file)
+            year = int(file.split('_')[-1].split('.')[0])
+            df['year'] = year
+            df['data_type'] = 'batting'
+            df['original_id'] = df.index
+            batting_dfs.append(df)
 
-    # Return match statistics
-    return {
-        'batting_total': len(batting),
-        'batting_matched': batting_with_ids['player_id'].notna().sum(),
-        'pitching_total': len(pitching),
-        'pitching_matched': pitching_with_ids['player_id'].notna().sum()
-    }
+        for file in sorted(pitching_files):
+            df = pd.read_csv(file)
+            year = int(file.split('_')[-1].split('.')[0])
+            df['year'] = year
+            df['data_type'] = 'pitching'
+            df['original_id'] = df.index
+            pitching_dfs.append(df)
 
+        for file in sorted(roster_files):
+            df = pd.read_csv(file)
+            year = int(file.split('_')[-1].split('.')[0])
+            df['year'] = year
+            df['data_type'] = 'roster'
+            df['original_id'] = df.index
+            roster_dfs.append(df)
 
-def main():
-    for year in range(2021, 2025):
-        print(f"Processing year: {year}")
+        batting_df = pd.concat(batting_dfs, ignore_index=True)
+        pitching_df = pd.concat(pitching_dfs, ignore_index=True)
+        roster_df = pd.concat(roster_dfs, ignore_index=True)
 
-        for division in range(1, 4):
-            print(f"Processing division: {division}")
+        # Clean names
+        batting_df['clean_name'] = self._clean_name(batting_df['player_name'])
+        pitching_df['clean_name'] = self._clean_name(
+            pitching_df['player_name'])
+        roster_df['clean_name'] = self._clean_name(roster_df['player_name'])
 
-            results = process_stats_with_rosters(year, division)
+        # Standardize class/year columns
+        batting_df = batting_df.rename(columns={'Yr': 'class'})
+        pitching_df = pitching_df.rename(columns={'Yr': 'class'})
+        # roster_df already has 'class' column
 
-            print(f"Division {division} results:")
-            batting_pct = 100 * \
-                results['batting_matched'] / results['batting_total']
-            pitching_pct = 100 * \
-                results['pitching_matched'] / results['pitching_total']
-            print(
-                f"Batting: matched {results['batting_matched']} of {results['batting_total']} players ({batting_pct:.1f}%)")
-            print(
-                f"Pitching: matched {results['pitching_matched']} of {results['pitching_total']} players ({pitching_pct:.1f}%)")
+        self._match_players(batting_df, pitching_df, roster_df)
+
+        batting_output = self._create_output_dataframe(batting_df)
+        pitching_output = self._create_output_dataframe(pitching_df)
+        roster_output = self._create_output_dataframe(roster_df)
+
+        return batting_output, pitching_output, roster_output
+
+    def _match_players(self, batting_df: pd.DataFrame, pitching_df: pd.DataFrame, roster_df: pd.DataFrame):
+        """Match players across all three dataframes."""
+        combined_df = pd.concat(
+            [batting_df, pitching_df, roster_df], ignore_index=True)
+
+        # First pass: match within same school
+        for (name, school), group in combined_df.groupby(['clean_name', 'team_name']):
+            years = sorted(group['year'].unique())
+            class_values = group['class'].unique()
+
+            if self._is_valid_year_progression(years, class_values):
+                self._assign_same_id(group, confidence='high')
+                continue
+
+            # Check position compatibility
+            positions = group['Pos'].fillna(
+                '').unique() if 'Pos' in group.columns else []
+            positions = positions.tolist() + group['position'].fillna(
+                '').unique().tolist() if 'position' in group.columns else positions
+
+            if self._are_positions_compatible(positions):
+                self._assign_same_id(group, confidence='medium')
+            else:
+                # Split by data type to avoid mixing up different players
+                for _, subgroup in group.groupby('data_type'):
+                    self._assign_new_id(subgroup, confidence='low')
+
+    def _are_positions_compatible(self, positions: List[str]) -> bool:
+        positions = [str(pos).upper()
+                     for pos in positions if pd.notna(pos) and str(pos).strip()]
+
+        if not positions:
+            return True
+
+        if 'P' in positions or 'PITCHER' in positions:
+            return True
+
+        position_groups = {
+            'infield': {'IF', '1B', '2B', '3B', 'SS', 'INF'},
+            'outfield': {'OF', 'LF', 'CF', 'RF', 'OUTFIELD'},
+            'battery': {'C', 'P', 'CATCHER', 'PITCHER'},
+            'utility': {'DH', 'UT', 'PR', 'PH', 'UTILITY'}
+        }
+
+        player_groups = set()
+        for pos in positions:
+            for group, valid_pos in position_groups.items():
+                if pos in valid_pos:
+                    player_groups.add(group)
+
+        if 'utility' in player_groups:
+            return True
+
+        return len(player_groups - {'utility'}) <= 1
+
+    def _assign_new_id(self, group: pd.DataFrame, confidence: str):
+        internal_id = self._generate_id()
+        for _, row in group.iterrows():
+            self.player_info[internal_id].append(row.to_dict())
+            self.decisions.append({
+                'internal_id': internal_id,
+                'original_id': row['original_id'],
+                'decision': 'new_id',
+                'confidence': confidence
+            })
+
+    def _assign_same_id(self, group: pd.DataFrame, confidence: str):
+        internal_id = self._generate_id()
+        for _, row in group.iterrows():
+            self.player_info[internal_id].append(row.to_dict())
+            self.decisions.append({
+                'internal_id': internal_id,
+                'original_id': row['original_id'],
+                'decision': 'matched',
+                'confidence': confidence
+            })
+
+    def _create_output_dataframe(self, df_type: pd.DataFrame) -> pd.DataFrame:
+        mapped_records = []
+        df_type = df_type.drop(
+            columns=['player_id']) if 'player_id' in df_type.columns else df_type
+        original_columns = df_type.columns.tolist()
+        data_type = df_type['data_type'].iloc[0]
+
+        for internal_id, seasons in self.player_info.items():
+            for season in seasons:
+                if season['data_type'] == data_type:
+                    # Keep only columns that existed in original dataframe
+                    filtered_season = {
+                        k: v for k, v in season.items() if k in original_columns}
+                    # Add player_id
+                    filtered_season['player_id'] = internal_id
+                    mapped_records.append(filtered_season)
+
+        result_df = pd.DataFrame(mapped_records)
+
+        # Drop utility columns while preserving original columns plus player_id
+        columns_to_keep = [col for col in original_columns if col not in [
+            'clean_name', 'original_id', 'data_type']] + ['player_id']
+        return result_df[columns_to_keep]
 
 
 if __name__ == '__main__':
-    main()
+    batting_files = sorted(glob.glob('../data/stats/d3_batting_2*.csv'))
+    pitching_files = sorted(glob.glob('../data/stats/d3_pitching_2*.csv'))
+    roster_files = sorted(glob.glob('../data/rosters/d3_rosters_2*.csv'))
+
+    matcher = PlayerMatcher()
+    mapped_batting, mapped_pitching, mapped_rosters = matcher.process_files(
+        batting_files, pitching_files, roster_files)
+
+    for year in range(2021, 2025):
+        df_batting = mapped_batting.query(
+            f'year == {year}').rename(columns={'class': 'Yr'})
+        df_pitching = mapped_pitching.query(
+            f'year == {year}').rename(columns={'class': 'Yr'})
+        df_roster = mapped_rosters.query(f'year == {year}')
+
+        df_batting.to_csv(f'../data/stats/d3_batting_{year}.csv', index=False)
+        df_pitching.to_csv(
+            f'../data/stats/d3_pitching_{year}.csv', index=False)
+        df_roster.to_csv(f'../data/rosters/d3_rosters_{year}.csv', index=False)

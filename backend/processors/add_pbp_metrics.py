@@ -2,6 +2,7 @@ from fuzzywuzzy import fuzz, process
 import pandas as pd
 import numpy as np
 import os
+import math
 import sqlite3
 
 
@@ -19,6 +20,11 @@ def get_data(year, division):
         pbp_df['top_inning'], pbp_df['away_team'], pbp_df['home_team'])
     pbp_df['pitch_team'] = np.where(
         pbp_df['top_inning'] == 1.0, pbp_df['home_team'], pbp_df['away_team'])
+
+    if 'play_id' in pbp_df.columns:
+        pbp_df.sort_values('play_id')
+    elif 'X' in pbp_df.columns:
+        pbp_df.sort_values('X')
 
     le = pd.read_csv('../data/miscellaneous/leverage_index.csv')
     we = pd.read_csv(
@@ -211,109 +217,6 @@ def melt_run_expectancy(df):
     return melted
 
 
-def extend_baseball_metrics(we, le):
-    def melt_and_prepare_df(df, id_vars, score_range):
-        """
-        Melt the DataFrame and add missing score differences.
-        """
-        existing_cols = [
-            col for col in df.columns if col.lstrip('-').isdigit()]
-        melted = pd.melt(
-            df,
-            id_vars=id_vars,
-            value_vars=existing_cols,
-            var_name='score_diff',
-            value_name='metric_value'
-        )
-
-        # Add missing score differences
-        all_scores = set(str(i) for i in score_range)
-        missing_scores = all_scores - set(existing_cols)
-
-        if missing_scores:
-            # Create DataFrame for missing scores
-            missing_combinations = []
-            for score in missing_scores:
-                for vals in df[id_vars].drop_duplicates().values:
-                    row = list(vals) + [score, None]
-                    missing_combinations.append(row)
-
-            missing_df = pd.DataFrame(
-                missing_combinations,
-                columns=id_vars + ['score_diff', 'metric_value']
-            )
-            melted = pd.concat([melted, missing_df], ignore_index=True)
-
-        melted['score_diff'] = pd.to_numeric(melted['score_diff'])
-        return melted
-
-    def calculate_win_expectancy(score_diff, inning, max_inning):
-        """
-        Calculate win expectancy based on score difference and inning.
-        """
-        if score_diff >= 8:
-            return 0.99
-        elif score_diff <= -8:
-            return 0.01
-
-        # Adjust for inning context
-        # Weight increases as the game progresses
-        inning_weight = (inning / max_inning) ** 1.5
-        if score_diff > 0:
-            # Positive score difference: higher win expectancy
-            # Scale based on score difference
-            base_we = 0.5 + (score_diff / 16)
-            return min(base_we + (1 - base_we) * inning_weight, 0.99)
-        else:
-            # Negative score difference: lower win expectancy
-            # Scale based on score difference
-            base_we = 0.5 - (abs(score_diff) / 16)
-            return max(base_we * (1 - inning_weight), 0.01)
-
-    def calculate_leverage_index(score_diff, inning, max_inning):
-        """
-        Calculate leverage index based on score difference and inning.
-        """
-        # Base leverage for extreme score differences
-        if abs(score_diff) >= 8:
-            return 0.05  # Very low but not zero
-
-        # Adjust for inning context
-        # Weight increases as the game progresses
-        inning_weight = (inning / max_inning) ** 2.0
-        if abs(score_diff) <= 4:
-            # High leverage in close games
-            return 1.5 - (abs(score_diff) / 8) * inning_weight
-        else:
-            # Moderate leverage for larger score differences
-            return max(1.0 - (abs(score_diff) - 4) * 0.2, 0.1)
-
-    # Get the maximum inning from the data
-    max_inning = max(we['Inn'].max(), le['Inning'].max())
-
-    # Process win expectancy
-    we_melted = melt_and_prepare_df(
-        we, ['Runners', 'Outs', 'Inn', 'Top/Bot'], range(-8, 9))
-    we_melted['win_expectancy'] = we_melted.apply(
-        lambda row: row['metric_value'] if not np.isnan(row['metric_value'])
-        else calculate_win_expectancy(row['score_diff'], row['Inn'], max_inning),
-        axis=1
-    )
-
-    # Process leverage index
-    le_melted = melt_and_prepare_df(
-        le, ['Runners', 'Outs', 'Inning', 'Top/Bot'], range(-8, 9))
-    le_melted['leverage_index'] = le_melted.apply(
-        lambda row: row['metric_value'] if not np.isnan(row['metric_value'])
-        else calculate_leverage_index(row['score_diff'], row['Inning'], max_inning),
-        axis=1
-    )
-
-    le_melted['leverage_index'] /= le_melted['leverage_index'].mean()
-
-    return we_melted, le_melted
-
-
 def encode_bases(r1, r2, r3):
     state = ''
     state += '1 ' if pd.notna(r1) else '_ '
@@ -370,6 +273,7 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
     df_copy['top_inning'] = np.where(
         df_copy.away_team == df_copy.bat_team, 'Top', 'Bottom')
 
+    # First merge - leverage index
     merged_df = df_copy.merge(
         leverage_melted,
         left_on=[
@@ -389,7 +293,7 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         how='left'
     ).drop(columns=['Outs', 'Runners', 'Inning', 'Top/Bot', 'score_diff']).rename(columns={'leverage_index': 'li'})
 
-    # Merge for initial win expectancy
+    # Rest of merges remain the same
     merged_df = merged_df.merge(
         win_expectancy,
         left_on=[
@@ -409,7 +313,6 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         how='left'
     ).drop(columns=['Outs', 'Runners', 'Inn', 'Top/Bot', 'score_diff']).rename(columns={'win_expectancy': 'home_win_exp_before'})
 
-    # Merge for initial run expectancy
     merged_df = merged_df.merge(
         re_melted,
         left_on=[
@@ -423,11 +326,23 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         how='left'
     ).drop(columns=['outs', 'base_state']).rename(columns={'run_expectancy': 'run_expectancy_before'})
 
+    merged_df.loc[abs(merged_df['score_diff_before']) >= 10, 'li'] = 0
+    merged_df.loc[merged_df['score_diff_before']
+                  >= 10, 'home_win_exp_before'] = 1
+    merged_df.loc[merged_df['score_diff_before']
+                  <= -10, 'home_win_exp_before'] = 0
+
     merged_df['outs_after_new'] = merged_df['outs_after'] % 3
 
-    inning_transition = (merged_df['outs_after'] >= 3)
+    inning_transition = ((merged_df['inn_end'] == 1) & (
+        merged_df['outs_after'] >= 3))
+    game_transition = (merged_df['game_end'] == 1)
+
     merged_df['base_cd_after_new'] = np.where(
-        inning_transition, 0, merged_df['base_cd_after'])
+        inning_transition,
+        0,
+        merged_df['base_cd_after']
+    )
     merged_df['top_inning_new'] = np.where(
         inning_transition,
         np.where(merged_df['top_inning'] == 'Top', 'Bottom', 'Top'),
@@ -454,6 +369,9 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         how='left'
     ).drop(columns=['outs', 'base_state']).rename(columns={'run_expectancy': 'run_expectancy_after'})
 
+    merged_df.loc[inning_transition, 'run_expectancy_after'] = 0
+    merged_df.loc[game_transition, 'run_expectancy_after'] = 0
+
     merged_df = merged_df.merge(
         win_expectancy,
         left_on=[
@@ -472,6 +390,13 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         ],
         how='left'
     ).drop(columns=['Outs', 'Runners', 'Inn', 'Top/Bot', 'score_diff']).rename(columns={'win_expectancy': 'home_win_exp_after'})
+
+    # Also ensure high score differences after play have 0 leverage index
+    merged_df.loc[merged_df['score_diff_after']
+                  >= 10, 'home_win_exp_after'] = 1
+    merged_df.loc[merged_df['score_diff_after']
+                  <= -10, 'home_win_exp_after'] = 0
+    merged_df.loc[abs(merged_df['score_diff_after']) >= 10, 'li'] = 0
 
     merged_df['game_end'] = np.where(
         (merged_df['score_diff_after'] > 0) &
@@ -514,14 +439,10 @@ def fix_all_game_ends(df):
 
 def calculate_dre_and_dwe(df):
     df = df.loc[:, ~df.columns.duplicated()]
-    # Ensure all inputs are properly shaped arrays
-    inn_end_mask = (df['inn_end'] == 1) & (df['outs_after'] == 3)
 
     # Handle run expectancy calculations
     # Create a copy to avoid SettingWithCopyWarning
     df['run_expectancy_after'] = df['run_expectancy_after'].copy()
-    df.loc[inn_end_mask, 'run_expectancy_after'] = - \
-        df.loc[inn_end_mask, 'run_expectancy_before']
 
     # Handle win expectancy for game ends
     game_end_mask = df['game_end'] == 1
@@ -705,7 +626,7 @@ def process_single_year(args):
     year, division = args
     try:
         # Load data with error handling
-        batting, pitching, pbp_df, le, we, re, roster = get_data(
+        batting, pitching, pbp_df, leverage_melted, win_expectancy, re, roster = get_data(
             year, division)
     except FileNotFoundError as e:
         print(f"Error loading data for {year}: {e}")
@@ -713,7 +634,6 @@ def process_single_year(args):
     # Initial processing
     pbp_processed = process_pitchers(pbp_df)
     pbp_processed = standardize_names(pbp_processed, roster)
-
     pbp_processed = calculate_woba(pbp_processed, year, division)
 
     # Base states and scoring
@@ -736,7 +656,6 @@ def process_single_year(args):
 
     # Process expectancy matrices
     re_melted = melt_run_expectancy(re)
-    win_expectancy, leverage_melted = extend_baseball_metrics(we, le)
 
     # Map base states
     leverage_melted['Runners'] = leverage_melted['Runners'].replace(
@@ -750,31 +669,68 @@ def process_single_year(args):
 
     roster = roster.rename(columns={'player_id': 'roster_id'})
 
-    # Merge batter information (bats)
+    # Merge batting stats to get additional B/T information
+    batting = batting.rename(columns={'player_id': 'batter_id'})
+    batting_bt = batting[['batter_id', 'B/T']].drop_duplicates()
+
+    # Merge pitching stats to get additional B/T information
+    pitching = pitching.rename(columns={'player_id': 'pitcher_id'})
+    pitching_bt = pitching[['pitcher_id', 'B/T']].drop_duplicates()
+
+    # First merge with roster data
     pbp_processed = pbp_processed.merge(
-        roster[['roster_id', 'bats']],
+        roster[['roster_id', 'bats', 'throws']],
         how='left',
         left_on='batter_id',
-        right_on='roster_id'
+        right_on='roster_id',
+        suffixes=('', '_batter')
     )
 
-    # Merge pitcher information (throws)
     pbp_processed = pbp_processed.merge(
-        roster[['roster_id', 'throws']],
+        roster[['roster_id', 'bats', 'throws']],
         how='left',
         left_on='pitcher_id',
         right_on='roster_id',
-        # Avoids renaming non-conflicting columns unnecessarily
         suffixes=('', '_pitcher')
     )
 
-    columns_to_drop = ['roster_id', 'roster_id_pitcher']
-    pbp_processed = pbp_processed.drop(columns=columns_to_drop)
+    # Then merge with batting/pitching B/T information as backup
+    pbp_processed = pbp_processed.merge(
+        batting_bt,
+        how='left',
+        on='batter_id'
+    )
 
-    pbp_processed = pbp_processed.rename(columns={
-        'bats': 'batter_side',
-        'throws': 'pitcher_throws'
-    })
+    pbp_processed = pbp_processed.merge(
+        pitching_bt,
+        how='left',
+        on='pitcher_id',
+        suffixes=('_batter', '_pitcher')
+    )
+
+    # Standardize the formats
+    pbp_processed['B/T_batter'] = pbp_processed['B/T_batter'].replace(
+        {'R': 'right', 'L': 'left', 'S': 'switch', 'RIGHT': 'right', 'LEFT': 'left', 'SWITCH': 'switch'})
+    pbp_processed['B/T_pitcher'] = pbp_processed['B/T_pitcher'].replace(
+        {'R': 'right', 'L': 'left', 'S': 'switch', 'RIGHT': 'right', 'LEFT': 'left', 'SWITCH': 'switch'})
+
+    # Fill in missing values
+    pbp_processed['batter_side'] = pbp_processed['bats']
+    pbp_processed.loc[pbp_processed['batter_side'].isna(), 'batter_side'] = \
+        pbp_processed.loc[pbp_processed['batter_side'].isna(), 'B/T_batter']
+
+    pbp_processed['pitcher_throws'] = pbp_processed['throws']
+    pbp_processed.loc[pbp_processed['pitcher_throws'].isna(), 'pitcher_throws'] = \
+        pbp_processed.loc[pbp_processed['pitcher_throws'].isna(),
+                          'B/T_pitcher']
+
+    # Clean up by dropping unnecessary columns
+    columns_to_drop = [
+        'roster_id', 'roster_id_pitcher', 'roster_id_batter',
+        'bats', 'throws', 'B/T_batter', 'B/T_pitcher'
+    ]
+    pbp_processed = pbp_processed.drop(
+        columns=[col for col in columns_to_drop if col in pbp_processed.columns])
 
     merged_df = merge_baseball_stats(pbp_processed, leverage_melted, win_expectancy, re_melted).drop_duplicates(
         ['game_id', 'inning', 'home_score_after', 'away_score_after', 'home_text', 'away_text']).dropna(subset=['description'])
@@ -792,7 +748,7 @@ def process_single_year(args):
     columns = [
         'home_team', 'away_team', 'home_score', 'away_score', 'date',
         'inning', 'top_inning', 'game_id', 'description',
-        'home_win_exp_before', 'wpa', 'run_expectancy_delta',  'woba', 'home_win_exp_after',
+        'home_win_exp_before', 'wpa', 'run_expectancy_delta', 'woba', 'home_win_exp_after',
         'player_id', 'pitcher_id', 'batter_id', 'li', 'home_score_after',
         'away_score_after', 'batter_side', 'pitcher_throws'
     ]
@@ -809,13 +765,11 @@ def main():
 
     for year in years:
         for division in divisions:
-            # Check if file already exists
             filename = f"../data/play_by_play/d{division}_parsed_pbp_new_{year}.csv"
             if os.path.exists(filename):
                 print(f"File {filename} already exists, skipping...")
                 continue
 
-            # Process the year-division combination if file doesn't exist
             process_single_year((year, division))
 
 

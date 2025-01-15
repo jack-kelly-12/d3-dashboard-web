@@ -31,6 +31,7 @@ notebooks/
 
 backend/images
 backend/data/*/
+backend/scrapers/.Rhistory
 
 github-actions-key
 github-actions-key.pub

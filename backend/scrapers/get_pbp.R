@@ -185,6 +185,8 @@ for (division in c(1, 2)) {
     }
     
     pbp_data <- get_pbp_data(schedules)
+    all_games_pbp <- all_games_pbp %>%
+      mutate(play_id = row_number())
     
     if (nrow(pbp_data) == 0) {
       message(sprintf("No play-by-play data collected for Division %d, Year %d - skipping file write", division, year))

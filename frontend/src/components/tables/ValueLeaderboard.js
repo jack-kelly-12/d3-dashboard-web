@@ -15,7 +15,6 @@ const ValueLeaderboard = () => {
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
 
-  // Memoized fetch conferences function
   const fetchConferences = useCallback(async () => {
     try {
       const response = await fetchAPI("/conferences");
@@ -29,7 +28,6 @@ const ValueLeaderboard = () => {
     fetchConferences();
   }, [fetchConferences]);
 
-  // Memoized fetch data function
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -182,6 +180,20 @@ const ValueLeaderboard = () => {
         cell: (row) => row.Adjustment?.toFixed(1) || "—",
       },
       {
+        name: "RE24",
+        selector: (row) => row.REA,
+        sortable: true,
+        width: "120px",
+        cell: (row) => row.REA?.toFixed(1) || "—",
+      },
+      {
+        name: "Clutch",
+        selector: (row) => row["Clutch"],
+        sortable: true,
+        width: "80px",
+        cell: (row) => row["Clutch"]?.toFixed(1) || "—",
+      },
+      {
         name: "bWAR",
         selector: (row) => row.bWAR,
         sortable: true,
@@ -203,18 +215,18 @@ const ValueLeaderboard = () => {
         cell: (row) => row.WAR?.toFixed(1) || "—",
       },
       {
-        name: "WPA",
-        selector: (row) => row.WPA,
-        sortable: true,
-        width: "80px",
-        cell: (row) => row.WPA?.toFixed(1) || "—",
-      },
-      {
         name: "WPA/LI",
         selector: (row) => row["WPA/LI"],
         sortable: true,
         width: "80px",
         cell: (row) => row["WPA/LI"]?.toFixed(1) || "—",
+      },
+      {
+        name: "WPA",
+        selector: (row) => row.WPA,
+        sortable: true,
+        width: "80px",
+        cell: (row) => row.WPA?.toFixed(1) || "—",
       },
     ],
     []

@@ -8,40 +8,16 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       name: "Inning",
       selector: (row) => `${row.top_inning} ${row.inning}`,
       sortable: true,
-      width: "7.5%",
+      width: "130px",
       cell: (row) => (
         <div className="text-gray-600">{`${row.top_inning} ${row.inning}`}</div>
-      ),
-    },
-    {
-      name: "Pitcher",
-      selector: (row) =>
-        `${row.pitcher_standardized ? row.pitcher_standardized : "Starter"}`,
-      sortable: true,
-      width: "10%",
-      cell: (row) => (
-        <div className="text-gray-600">{`${
-          row.pitcher_standardized ? row.pitcher_standardized : "Starter"
-        }`}</div>
-      ),
-    },
-    {
-      name: "Player",
-      selector: (row) =>
-        `${row.player_standardized ? row.player_standardized : ""}`,
-      sortable: true,
-      width: "10%",
-      cell: (row) => (
-        <div className="text-gray-600">{`${
-          row.player_standardized ? row.player_standardized : ""
-        }`}</div>
       ),
     },
     {
       name: "Play",
       selector: (row) => row.description,
       sortable: false,
-      width: "22.5%",
+      width: "200px",
       cell: (row) => (
         <div className="text-gray-900 font-medium">{row.description}</div>
       ),
@@ -50,7 +26,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       name: "Score",
       selector: (row) => `${row.away_score_after}-${row.home_score_after}`,
       sortable: false,
-      width: "10%",
+      width: "80px",
       cell: (row) => (
         <div className="text-center text-gray-600">
           {`${row.away_score_after}-${row.home_score_after}`}
@@ -61,7 +37,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       name: "Win Prob",
       selector: (row) => row.home_win_exp_after,
       sortable: true,
-      width: "10%",
+      width: "150px",
       cell: (row) => {
         const homeWinProb = row.home_win_exp_after * 100;
         const probability = homeWinProb;
@@ -77,21 +53,21 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
     },
     {
       name: "Delta Win Prob",
-      selector: (row) => `${roundTo(row.WPA, 2)}`,
+      selector: (row) => `${roundTo(row.wpa, 2)}`,
       sortable: false,
-      width: "12.5%",
+      width: "150px",
       cell: (row) => (
         <div className="text-center text-gray-600">{`${roundTo(
-          row.WPA,
+          row.wpa,
           2
         )}`}</div>
       ),
     },
     {
       name: "Delta Run Exp",
-      selector: (row) => `${roundTo(row.run_expectancy_delta, 2)}`,
+      selector: (row) => `${roundTo(row.rea, 2)}`,
       sortable: false,
-      width: "12.5%",
+      width: "150px",
       cell: (row) => (
         <div className="text-center text-gray-600">{`${roundTo(
           row.run_expectancy_delta,
@@ -103,7 +79,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       name: "LI",
       selector: (row) => `${roundTo(row.li, 1)}`,
       sortable: false,
-      width: "5%",
+      width: "80px",
       cell: (row) => (
         <div className="text-center text-gray-600">{`${roundTo(
           row.li,
