@@ -1058,19 +1058,10 @@ def get_games_by_date():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name = ?
-        """, (table_name,))
-
-        if not cursor.fetchone():
-            conn.close()
-            return jsonify({"error": f"No games available for year {year}"}), 404
-
         cursor.execute(f"""
             SELECT DISTINCT 
                 p.game_id,
-                p.Year
+                p.year,
                 p.home_team,
                 p.away_team,
                 MAX(p.home_score_after) as home_score,
@@ -1083,9 +1074,9 @@ def get_games_by_date():
                 ON p.home_team = i_home.team_name
             LEFT JOIN ids_for_images i_away 
                 ON p.away_team = i_away.team_name
-            WHERE p.date = ? AND p.Division = 3 AND p.Year = ?
+            WHERE p.date = ? AND p.division = 3
             GROUP BY p.game_id, p.home_team, p.away_team, p.date
-        """, (game_date, year))
+        """, (game_date, ))
 
         games = [dict(row) for row in cursor.fetchall()]
         conn.close()
