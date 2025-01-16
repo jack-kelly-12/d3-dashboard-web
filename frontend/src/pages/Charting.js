@@ -192,23 +192,25 @@ const Charting = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <ChartsList
-        charts={charts}
-        onCreateClick={() => setIsChartModalOpen(true)}
-        onUploadClick={() => setIsUploadModalOpen(true)}
-        onChartSelect={setSelectedChart}
-        onDeleteChart={handleDeleteChart}
-      />
-      <ChartModal
-        isOpen={isChartModalOpen}
-        onClose={() => setIsChartModalOpen(false)}
-        onSubmit={handleCreateChart}
-      />
-      <UploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-        onUpload={handleUploadData}
-      />
+      <div className="container max-w-[calc(100vw-100px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
+        <ChartsList
+          charts={charts}
+          onCreateClick={() => setIsChartModalOpen(true)}
+          onUploadClick={() => setIsUploadModalOpen(true)}
+          onChartSelect={setSelectedChart}
+          onDeleteChart={handleDeleteChart}
+        />
+        <ChartModal
+          isOpen={isChartModalOpen}
+          onClose={() => setIsChartModalOpen(false)}
+          onSubmit={handleCreateChart}
+        />
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onUpload={handleUploadData}
+        />
+      </div>
     </div>
   );
 };

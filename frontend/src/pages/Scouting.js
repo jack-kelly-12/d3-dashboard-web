@@ -176,7 +176,7 @@ const ScoutingReport = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="main-content">
+      <div className="container max-w-[calc(100vw-100px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
         {currentView === "list" ? (
           <ReportsList
             reports={reports}

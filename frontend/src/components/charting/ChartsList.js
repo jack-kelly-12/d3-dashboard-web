@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
 import { Plus, Trash2, FileDown, FileText } from "lucide-react";
 import AdvanceReportModal from "../modals/AdvanceReportModal";
@@ -14,6 +14,56 @@ const ChartsList = ({
   onDeleteChart,
 }) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [normalizedCharts, setNormalizedCharts] = useState([]);
+
+  useEffect(() => {
+    // Normalize all charts when the charts prop changes or when chart data updates
+    const normalized = charts.map((chart) =>
+      normalizeChartData({
+        ...chart,
+        pitcher: chart.pitcher || null,
+        pitches: chart.pitches || [],
+        totalPitches: chart.pitches?.length || 0,
+      })
+    );
+    setNormalizedCharts(normalized);
+  }, [
+    charts,
+    charts
+      .map((chart) =>
+        // Include dependencies that should trigger re-normalization
+        JSON.stringify({
+          id: chart.id,
+          pitcher: chart.pitcher,
+          pitches: chart.pitches?.length,
+          updatedAt: chart.updatedAt,
+        })
+      )
+      .join(","),
+  ]);
+
+  const normalizeChartData = (chart) => {
+    const normalized = {
+      ...chart,
+      source: chart.source || "d3",
+      date: chart.date || chart.createdAt,
+      totalPitches: chart.totalPitches || chart.pitches?.length || 0,
+      updatedAt: chart.updatedAt || chart.createdAt || chart.date,
+      pitcher: chart.pitcher || null, // Ensure pitcher is always defined
+      pitches: chart.pitches || [], // Ensure pitches is always an array
+    };
+
+    // Special handling for bullpen sessions to ensure pitcher info is current
+    if (normalized.chartType === "bullpen") {
+      normalized.pitcher = chart.pitcher || null;
+      // Update description to reflect current pitcher state
+      normalized.description = `Bullpen Session: ${
+        normalized.pitcher?.name || "No Pitcher"
+      }`;
+    }
+
+    return normalized;
+  };
 
   const getTimeAgo = (dateString) => {
     if (!dateString) return "—";
@@ -157,7 +207,7 @@ const ChartsList = ({
         ]);
         break;
 
-      default:
+      default: // d3 format
         if (chartType === "bullpen") {
           headers = [
             "time",
@@ -183,7 +233,6 @@ const ChartsList = ({
             pitch.note || "",
           ]);
         } else {
-          console.log(pitches[0]?.chartType);
           headers = [
             "time",
             "pitcher",
@@ -325,14 +374,14 @@ const ChartsList = ({
       name: "Source",
       selector: (row) => row.source,
       sortable: true,
-      width: "15%",
+      width: "13%",
       cell: (row) => <SourceBadge source={row.source} />,
     },
     {
       name: "Pitches",
       selector: (row) => row.totalPitches || 0,
       sortable: true,
-      width: "10%",
+      width: "7%",
       cell: (row) => (
         <span className="font-medium text-blue-600">
           {row.totalPitches || 0}
@@ -348,7 +397,7 @@ const ChartsList = ({
     },
     {
       name: "Actions",
-      width: "25%",
+      width: "30%",
       cell: (row) => (
         <div className="flex gap-2">
           {(row.source || "d3").toLowerCase() === "d3" && (
@@ -357,7 +406,7 @@ const ChartsList = ({
                 e.stopPropagation();
                 onChartSelect(row);
               }}
-              className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+              className="px-2 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
             >
               View Chart
             </button>
@@ -420,7 +469,7 @@ const ChartsList = ({
 
         <BaseballTable
           title=""
-          data={charts}
+          data={normalizedCharts}
           columns={columns}
           filename="game_charts.csv"
           noDataComponent={
