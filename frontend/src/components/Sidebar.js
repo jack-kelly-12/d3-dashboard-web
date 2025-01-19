@@ -15,7 +15,6 @@ import {
   X,
   CalendarCheck,
   Trophy,
-  Bot,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
