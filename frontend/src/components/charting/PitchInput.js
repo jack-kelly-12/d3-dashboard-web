@@ -4,7 +4,7 @@ import { RotateCcw } from "lucide-react";
 const SelectButton = ({ selected, onClick, disabled, children }) => (
   <button
     onClick={onClick}
-    className={`px-3 py-2 text-sm rounded-md transition-all ${
+    className={`px-3 py-1.5 text-sm rounded-md transition-all ${
       selected
         ? "bg-blue-600 text-white font-medium shadow-sm"
         : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
@@ -26,12 +26,10 @@ const VelocityInput = ({ value, onChange, disabled }) => {
   const handleInputChange = (e) => {
     const newValue = e.target.value;
     setInputValue(newValue);
-
     if (newValue === "") {
       onChange("");
       return;
     }
-
     const numValue = parseInt(newValue);
     if (!isNaN(numValue) && numValue >= 50 && numValue <= 100) {
       onChange(numValue);
@@ -52,25 +50,25 @@ const VelocityInput = ({ value, onChange, disabled }) => {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       <label className="text-sm font-medium text-gray-700 block">
         Velocity (mph)
       </label>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={handleInputChange}
           onBlur={handleInputBlur}
-          className="w-16 px-2 py-1.5 border border-gray-200 rounded-md text-center
+          className="w-16 px-2 py-1 border border-gray-200 rounded-md text-center
             focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
             text-sm font-medium"
           placeholder="-"
           disabled={disabled}
         />
         <div className="flex-1 flex items-center gap-2">
-          <span className="text-sm text-gray-500">50</span>
+          <span className="text-xs text-gray-500">50</span>
           <input
             type="range"
             min="50"
@@ -81,7 +79,7 @@ const VelocityInput = ({ value, onChange, disabled }) => {
               focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
             disabled={disabled}
           />
-          <span className="text-sm text-gray-500">100</span>
+          <span className="text-xs text-gray-500">100</span>
         </div>
       </div>
     </div>
@@ -96,8 +94,23 @@ const formatOption = (option) => {
     .join(" ");
 };
 
-const PitchGrid = ({ options, selected, onChange, disabled, cols = 4 }) => (
-  <div className={`grid grid-cols-${cols} gap-2`}>
+const PitchGrid = ({ options, selected, onChange, disabled }) => (
+  <div className="grid grid-cols-4 gap-1.5">
+    {options.map((option) => (
+      <SelectButton
+        key={option}
+        selected={selected === option}
+        onClick={() => onChange(option)}
+        disabled={disabled}
+      >
+        {formatOption(option)}
+      </SelectButton>
+    ))}
+  </div>
+);
+
+const PitchResultGrid = ({ options, selected, onChange, disabled }) => (
+  <div className="grid grid-cols-3 gap-1.5">
     {options.map((option) => (
       <SelectButton
         key={option}
@@ -136,6 +149,21 @@ const PITCH_RESULTS = [
 
 const ZONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14];
 
+const ZoneGrid = ({ selected, onChange, disabled }) => (
+  <div className="grid grid-cols-7 gap-1.5">
+    {ZONES.map((zone) => (
+      <SelectButton
+        key={zone}
+        selected={selected === zone}
+        onClick={() => onChange(zone)}
+        disabled={disabled}
+      >
+        {zone}
+      </SelectButton>
+    ))}
+  </div>
+);
+
 const PitchInput = ({
   currentPitch,
   onChange,
@@ -152,64 +180,45 @@ const PitchInput = ({
 
   if (isScripted) {
     return (
-      <div className="space-y-6">
-        <div className="space-y-4">
-          {/* Current Target Display */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-sm font-medium text-gray-500">
-                Pitch Type
-              </div>
-              <div className="text-lg font-semibold text-gray-900 mt-1">
-                {scriptedPitch.type}
-              </div>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-sm font-medium text-gray-500">
-                Target Zone
-              </div>
-              <div className="text-lg font-semibold text-gray-900 mt-1">
-                {scriptedPitch.zone}
-              </div>
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="text-sm font-medium text-gray-500">Pitch Type</div>
+            <div className="text-lg font-semibold text-gray-900 mt-0.5">
+              {scriptedPitch.type}
             </div>
           </div>
-
-          {/* Velocity Input */}
-          <div>
-            <label
-              htmlFor="velocity"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Velocity
-            </label>
-            <div className="mt-1">
-              <VelocityInput
-                value={currentPitch.velocity}
-                onChange={(value) => handleChange("velocity", value)}
-                disabled={disabled}
-              />
+          <div className="bg-blue-50 p-3 rounded-lg">
+            <div className="text-sm font-medium text-gray-500">Target Zone</div>
+            <div className="text-lg font-semibold text-gray-900 mt-0.5">
+              {scriptedPitch.zone}
             </div>
-          </div>
-
-          {/* Optional Note */}
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">
-              Notes
-            </label>
-            <textarea
-              value={currentPitch.note || ""}
-              onChange={(e) => handleChange("note", e.target.value)}
-              placeholder="Optional notes about the pitch..."
-              className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm
-            focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-            resize-none"
-              rows={2}
-              disabled={disabled}
-            />
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <VelocityInput
+          value={currentPitch.velocity}
+          onChange={(value) => handleChange("velocity", value)}
+          disabled={disabled}
+        />
+
+        <div>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            Notes
+          </label>
+          <textarea
+            value={currentPitch.note || ""}
+            onChange={(e) => handleChange("note", e.target.value)}
+            placeholder="Optional notes about the pitch..."
+            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm
+              focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+              resize-none"
+            rows={2}
+            disabled={disabled}
+          />
+        </div>
+
+        <div className="flex gap-2 pt-1">
           <button
             type="button"
             onClick={onSubmit}
@@ -258,52 +267,14 @@ const PitchInput = ({
   const isFormEmpty =
     !currentPitch.velocity && !currentPitch.type && !currentPitch.location;
 
-  const commonFields = (
-    <>
-      <VelocityInput
-        value={currentPitch.velocity}
-        onChange={(value) => handleChange("velocity", value)}
-        disabled={disabled}
-      />
-
-      <div>
-        <label className="text-sm font-medium text-gray-700 mb-1 block">
-          Pitch Type
-        </label>
-        <PitchGrid
-          options={PITCH_TYPES}
-          selected={currentPitch.type}
-          onChange={(value) => handleChange("type", value)}
-          disabled={disabled}
-        />
-      </div>
-
-      <div>
-        <label className="text-sm font-medium text-gray-700 mb-1 block">
-          Notes
-        </label>
-        <textarea
-          value={currentPitch.note || ""}
-          onChange={(e) => handleChange("note", e.target.value)}
-          placeholder="Optional notes about the pitch..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm
-            focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-            resize-none"
-          rows={2}
-          disabled={disabled}
-        />
-      </div>
-    </>
-  );
-
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-      <div className="flex justify-between items-center mb-6">
+    <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
+      <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-gray-900">Pitch Details</h2>
         <button
           onClick={handleReset}
           disabled={disabled || isFormEmpty}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 bg-gray-100 
+          className="flex items-center gap-1.5 px-2.5 py-1 text-sm text-gray-600 bg-gray-100 
             rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
         >
@@ -312,58 +283,100 @@ const PitchInput = ({
         </button>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {isBullpen ? (
           <>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Intended Zone
               </label>
-              <PitchGrid
-                options={ZONES}
+              <ZoneGrid
                 selected={currentPitch.intendedZone}
                 onChange={(value) => handleChange("intendedZone", value)}
                 disabled={disabled}
               />
             </div>
-            {commonFields}
+            <VelocityInput
+              value={currentPitch.velocity}
+              onChange={(value) => handleChange("velocity", value)}
+              disabled={disabled}
+            />
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Pitch Type
+              </label>
+              <PitchGrid
+                options={PITCH_TYPES}
+                selected={currentPitch.type}
+                onChange={(value) => handleChange("type", value)}
+                disabled={disabled}
+              />
+            </div>
           </>
         ) : (
           <>
-            {commonFields}
+            <VelocityInput
+              value={currentPitch.velocity}
+              onChange={(value) => handleChange("velocity", value)}
+              disabled={disabled}
+            />
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Pitch Type
+              </label>
+              <PitchGrid
+                options={PITCH_TYPES}
+                selected={currentPitch.type}
+                onChange={(value) => handleChange("type", value)}
+                disabled={disabled}
+              />
+            </div>
             <div>
               <label className="text-sm font-medium text-gray-700 mb-1 block">
                 Result
               </label>
-              <PitchGrid
+              <PitchResultGrid
                 options={PITCH_RESULTS}
                 selected={currentPitch.result}
                 onChange={(value) => handleChange("result", value)}
                 disabled={disabled}
-                cols={2}
               />
             </div>
           </>
         )}
 
-        <div className="pt-2">
-          <button
-            onClick={onSubmit}
-            disabled={
-              disabled ||
-              !currentPitch.type ||
-              !currentPitch.location ||
-              (!isBullpen && !currentPitch.result)
-            }
-            className="w-full py-2.5 px-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-md 
-              hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 
-              focus:ring-blue-500 focus:ring-offset-2 
-              disabled:opacity-50 disabled:cursor-not-allowed 
-              transition-all font-medium shadow-sm"
-          >
-            Add Pitch
-          </button>
+        <div>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">
+            Notes
+          </label>
+          <textarea
+            value={currentPitch.note || ""}
+            onChange={(e) => handleChange("note", e.target.value)}
+            placeholder="Optional notes about the pitch..."
+            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm
+              focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+              resize-none"
+            rows={2}
+            disabled={disabled}
+          />
         </div>
+
+        <button
+          onClick={onSubmit}
+          disabled={
+            disabled ||
+            !currentPitch.type ||
+            !currentPitch.location ||
+            (!isBullpen && !currentPitch.result)
+          }
+          className="w-full py-2 px-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-md 
+            hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 
+            focus:ring-blue-500 focus:ring-offset-2 
+            disabled:opacity-50 disabled:cursor-not-allowed 
+            transition-all font-medium shadow-sm"
+        >
+          Add Pitch
+        </button>
       </div>
     </div>
   );
