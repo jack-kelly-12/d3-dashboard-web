@@ -8,6 +8,7 @@ const StrikeZone = ({
   currentPitch,
   shouldReset,
   isBullpen,
+  isPitcherView,
 }) => {
   const svgRef = useRef();
   const [hoverCoords, setHoverCoords] = useState(null);
@@ -68,7 +69,11 @@ const StrikeZone = ({
 
     const xScale = d3
       .scaleLinear()
-      .domain([-plotAreaWidth / 2, plotAreaWidth / 2])
+      .domain(
+        isPitcherView
+          ? [plotAreaWidth / 2, -plotAreaWidth / 2] // pitcher's view: left is positive, right is negative
+          : [-plotAreaWidth / 2, plotAreaWidth / 2] // batter's view: left is negative, right is positive
+      )
       .range([margin.left, width - margin.right]);
 
     const yScale = d3
@@ -99,21 +104,29 @@ const StrikeZone = ({
         .attr("stroke-width", 0.5);
     }
 
-    const plateLocationOffset = 2;
+    const plateLocationOffset = isPitcherView ? -2.3 : 0.5;
 
+    const plateX = (x) => (isPitcherView ? -x : x);
+    const plateY = (y) => (isPitcherView ? -y : y);
     mainGroup
       .append("path")
       .attr(
         "d",
         `
-        M ${xScale(-plateWidth / 2)} ${yScale(-plateLocationOffset)}  
-        L ${xScale(0)} ${yScale(-plateDepth / 2 - plateLocationOffset)} 
-        L ${xScale(plateWidth / 2)} ${yScale(-plateLocationOffset)}  
-        L ${xScale(plateWidth / 2)} ${yScale(
-          plateDepth / 4 - plateLocationOffset
+        M ${xScale(plateX(-plateWidth / 2))} ${yScale(
+          plateY(-plateLocationOffset)
         )}  
-        L ${xScale(-plateWidth / 2)} ${yScale(
-          plateDepth / 4 - plateLocationOffset
+        L ${xScale(plateX(0))} ${yScale(
+          plateY(-plateDepth / 2 - plateLocationOffset)
+        )} 
+        L ${xScale(plateX(plateWidth / 2))} ${yScale(
+          plateY(-plateLocationOffset)
+        )}  
+        L ${xScale(plateX(plateWidth / 2))} ${yScale(
+          plateY(plateDepth / 4 - plateLocationOffset)
+        )}  
+        L ${xScale(plateX(-plateWidth / 2))} ${yScale(
+          plateY(plateDepth / 4 - plateLocationOffset)
         )} 
         Z
       `
@@ -126,9 +139,17 @@ const StrikeZone = ({
 
     strikeZoneG
       .append("rect")
-      .attr("x", xScale(-plateWidth / 2))
+      .attr(
+        "x",
+        isPitcherView ? xScale(plateWidth / 2) : xScale(-plateWidth / 2)
+      )
       .attr("y", yScale(strikeZoneHeight + strikeZoneBottom))
-      .attr("width", xScale(plateWidth / 2) - xScale(-plateWidth / 2))
+      .attr(
+        "width",
+        isPitcherView
+          ? xScale(-plateWidth / 2) - xScale(plateWidth / 2)
+          : xScale(plateWidth / 2) - xScale(-plateWidth / 2)
+      )
       .attr(
         "height",
         yScale(strikeZoneBottom) - yScale(strikeZoneHeight + strikeZoneBottom)
@@ -175,22 +196,46 @@ const StrikeZone = ({
           .attr("stroke-width", 1);
       }
 
-      for (let row = 0; row < 3; row++) {
-        for (let col = 0; col < 3; col++) {
-          const zoneNum = row * 3 + col + 1;
-          const x = xScale(-plateWidth / 2) + col * zoneWidth + zoneWidth / 2;
-          const y = yScale(strikeZoneHeight - (row * zoneHeight) / 10 + 14);
+      // For the inner zone numbers (1-9)
+      if (isPitcherView) {
+        // Count right to left for pitcher's view
+        for (let row = 0; row < 3; row++) {
+          for (let col = 2; col >= 0; col--) {
+            const zoneNum = row * 3 + col + 1;
+            const x = xScale(-plateWidth / 2) + col * zoneWidth + zoneWidth / 2;
+            const y = yScale(strikeZoneHeight - (row * zoneHeight) / 10 + 14);
 
-          strikeZoneG
-            .append("text")
-            .attr("x", x)
-            .attr("y", y)
-            .attr("text-anchor", "middle")
-            .attr("dominant-baseline", "middle")
-            .attr("font-size", "14px")
-            .attr("font-weight", "500")
-            .attr("fill", "#64748b")
-            .text(zoneNum);
+            strikeZoneG
+              .append("text")
+              .attr("x", x)
+              .attr("y", y)
+              .attr("text-anchor", "middle")
+              .attr("dominant-baseline", "middle")
+              .attr("font-size", "14px")
+              .attr("font-weight", "500")
+              .attr("fill", "#64748b")
+              .text(zoneNum);
+          }
+        }
+      } else {
+        // Count left to right for batter's view
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 3; col++) {
+            const zoneNum = row * 3 + col + 1;
+            const x = xScale(-plateWidth / 2) + col * zoneWidth + zoneWidth / 2;
+            const y = yScale(strikeZoneHeight - (row * zoneHeight) / 10 + 14);
+
+            strikeZoneG
+              .append("text")
+              .attr("x", x)
+              .attr("y", y)
+              .attr("text-anchor", "middle")
+              .attr("dominant-baseline", "middle")
+              .attr("font-size", "14px")
+              .attr("font-weight", "500")
+              .attr("fill", "#64748b")
+              .text(zoneNum);
+          }
         }
       }
 
@@ -380,7 +425,14 @@ const StrikeZone = ({
       setPreviewPitch(newPitch);
       onPlotPitch(newPitch);
     });
-  }, [pitches, previewPitch, isBullpen, onPlotPitch, shouldReset]);
+  }, [
+    pitches,
+    previewPitch,
+    isBullpen,
+    onPlotPitch,
+    shouldReset,
+    isPitcherView,
+  ]);
 
   return (
     <div className="relative flex flex-col items-center">

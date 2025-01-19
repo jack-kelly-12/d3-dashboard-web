@@ -42,6 +42,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   const [inning, setInning] = useState(isBullpen ? null : 1);
   const [topBottom, setTopBottom] = useState(isBullpen ? null : "Top");
   const [nextModalType, setNextModalType] = useState(null);
+  const [isPitcherView, setIsPitcherView] = useState(false);
 
   useEffect(() => {
     if (shouldOpenCatcherModal) {
@@ -417,13 +418,25 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   isBullpen={true}
                 />
               </div>
-              <div className="flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative">
+                <div className="absolute top-4 right-4 z-10">
+                  <button
+                    onClick={() => setIsPitcherView(!isPitcherView)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-md shadow-sm
+        border border-gray-200 text-sm font-medium text-gray-700
+        hover:bg-gray-50 transition-colors"
+                  >
+                    Toggle View
+                  </button>
+                </div>
                 <StrikeZone
+                  key={isPitcherView ? "pitcher" : "catcher"}
                   onPlotPitch={handlePlotPitch}
                   pitches={pitches}
                   currentPitch={currentPitch}
                   shouldReset={shouldResetPlot}
                   isBullpen={true}
+                  isPitcherView={isPitcherView}
                 />
               </div>
             </div>
@@ -537,6 +550,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                 <div className="mt-14">
                   {isStrikeZone ? (
                     <StrikeZone
+                      key={isPitcherView ? "pitcher" : "catcher"}
                       onPlotPitch={handlePlotPitch}
                       pitches={pitches.filter(
                         (p) =>
