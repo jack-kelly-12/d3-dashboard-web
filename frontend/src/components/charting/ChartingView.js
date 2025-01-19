@@ -94,13 +94,16 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
             setOuts(0);
             setInning(1);
             setTopBottom("Top");
+          }
+
+          // Only open pitcher modal if there's no pitcher set
+          if (!updatedChart.pitcher) {
             setNextModalType("batter");
             setShouldOpenPitcherModal(true);
           }
         } else {
-          const lastPitch =
-            updatedChart.pitches?.[updatedChart.pitches.length - 1];
-          if (!lastPitch) {
+          // For bullpen, only prompt if no pitcher is set
+          if (!updatedChart.pitcher) {
             setShouldOpenPitcherModal(true);
           }
         }
