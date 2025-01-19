@@ -101,90 +101,6 @@ class ChartManager {
     });
   }
 
-  async createChart(chartData) {
-    await this.waitForAuth();
-    const userId = this.currentUser?.uid;
-    if (!userId) throw new Error("User must be authenticated");
-
-    const chart = {
-      ...chartData,
-      userId,
-      pitches: chartData.pitches || [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      totalPitches: chartData.pitches?.length || 0,
-    };
-
-    const docRef = await addDoc(this.chartsRef, chart);
-
-    return {
-      id: docRef.id,
-      ...chart,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      pitches: chartData.pitches || [],
-      totalPitches: chartData.pitches?.length || 0,
-    };
-  }
-
-  async getChartById(chartId) {
-    await this.waitForAuth();
-    const userId = AuthManager.getCurrentUser()?.uid;
-    if (!userId) throw new Error("User must be authenticated");
-
-    const chartDoc = await getDoc(doc(this.chartsRef, chartId));
-
-    if (!chartDoc.exists()) {
-      throw new Error("Chart not found");
-    }
-
-    const chartData = chartDoc.data();
-
-    if (chartData.userId !== userId) {
-      throw new Error("Unauthorized access to chart");
-    }
-
-    return {
-      id: chartDoc.id,
-      ...chartData,
-      source: chartData.source || "d3",
-      createdAt: chartData.createdAt?.toDate?.()?.toISOString() || null,
-      updatedAt: chartData.updatedAt?.toDate?.()?.toISOString() || null,
-    };
-  }
-
-  async addPitch(chartId, pitchData) {
-    await this.waitForAuth();
-    const userId = AuthManager.getCurrentUser()?.uid;
-    if (!userId) throw new Error("User must be authenticated");
-
-    const chartDoc = await getDoc(doc(this.chartsRef, chartId));
-    if (!chartDoc.exists()) {
-      throw new Error("Chart not found");
-    }
-
-    const chartData = chartDoc.data();
-    if (chartData.userId !== userId) {
-      throw new Error("Unauthorized access to chart");
-    }
-
-    const newPitch = {
-      ...pitchData,
-      timestamp: new Date().toISOString(),
-      id: Date.now().toString(),
-    };
-
-    const updatedPitches = [...(chartData.pitches || []), newPitch];
-
-    await updateDoc(doc(this.chartsRef, chartId), {
-      pitches: updatedPitches,
-      totalPitches: updatedPitches.length,
-      updatedAt: serverTimestamp(),
-    });
-
-    return newPitch;
-  }
-
   async updatePitches(chartId, pitches) {
     await this.waitForAuth();
     const userId = AuthManager.getCurrentUser()?.uid;
@@ -231,6 +147,99 @@ class ChartManager {
     });
   }
 
+  async deleteChart(chartId) {
+    await this.waitForAuth();
+    const userId = AuthManager.getCurrentUser()?.uid;
+    if (!userId) throw new Error("User must be authenticated");
+
+    const chartDoc = await getDoc(doc(this.chartsRef, chartId));
+    if (!chartDoc.exists()) {
+      throw new Error("Chart not found");
+    }
+    if (chartDoc.data().userId !== userId) {
+      throw new Error("Unauthorized access to chart");
+    }
+
+    await deleteDoc(doc(this.chartsRef, chartId));
+  }
+
+  _formatTimestamp(timestamp) {
+    return timestamp?.toDate?.()?.toISOString() || null;
+  }
+  async updateScript(chartId, script) {
+    await this.waitForAuth();
+    const userId = AuthManager.getCurrentUser()?.uid;
+    if (!userId) throw new Error("User must be authenticated");
+
+    const chartDoc = await getDoc(doc(this.chartsRef, chartId));
+    if (!chartDoc.exists()) {
+      throw new Error("Chart not found");
+    }
+    if (chartDoc.data().userId !== userId) {
+      throw new Error("Unauthorized access to chart");
+    }
+
+    await updateDoc(doc(this.chartsRef, chartId), {
+      script,
+      updatedAt: serverTimestamp(),
+    });
+  }
+
+  async createChart(chartData) {
+    await this.waitForAuth();
+    const userId = this.currentUser?.uid;
+    if (!userId) throw new Error("User must be authenticated");
+
+    const chart = {
+      ...chartData,
+      userId,
+      pitches: chartData.pitches || [],
+      script: chartData.script || [], // Add script support
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      totalPitches: chartData.pitches?.length || 0,
+    };
+
+    const docRef = await addDoc(this.chartsRef, chart);
+
+    return {
+      id: docRef.id,
+      ...chart,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      pitches: chartData.pitches || [],
+      script: chartData.script || [], // Include script in return
+      totalPitches: chartData.pitches?.length || 0,
+    };
+  }
+
+  async getChartById(chartId) {
+    await this.waitForAuth();
+    const userId = AuthManager.getCurrentUser()?.uid;
+    if (!userId) throw new Error("User must be authenticated");
+
+    const chartDoc = await getDoc(doc(this.chartsRef, chartId));
+
+    if (!chartDoc.exists()) {
+      throw new Error("Chart not found");
+    }
+
+    const chartData = chartDoc.data();
+
+    if (chartData.userId !== userId) {
+      throw new Error("Unauthorized access to chart");
+    }
+
+    return {
+      id: chartDoc.id,
+      ...chartData,
+      script: chartData.script || [], // Include script in return
+      source: chartData.source || "d3",
+      createdAt: chartData.createdAt?.toDate?.()?.toISOString() || null,
+      updatedAt: chartData.updatedAt?.toDate?.()?.toISOString() || null,
+    };
+  }
+
   async updateChart(chartId, updateData) {
     await this.waitForAuth();
     const userId = AuthManager.getCurrentUser()?.uid;
@@ -252,7 +261,7 @@ class ChartManager {
     });
   }
 
-  async deleteChart(chartId) {
+  async addPitch(chartId, pitchData) {
     await this.waitForAuth();
     const userId = AuthManager.getCurrentUser()?.uid;
     if (!userId) throw new Error("User must be authenticated");
@@ -261,15 +270,27 @@ class ChartManager {
     if (!chartDoc.exists()) {
       throw new Error("Chart not found");
     }
-    if (chartDoc.data().userId !== userId) {
+
+    const chartData = chartDoc.data();
+    if (chartData.userId !== userId) {
       throw new Error("Unauthorized access to chart");
     }
 
-    await deleteDoc(doc(this.chartsRef, chartId));
-  }
+    const newPitch = {
+      ...pitchData,
+      timestamp: new Date().toISOString(),
+      id: Date.now().toString(),
+    };
 
-  _formatTimestamp(timestamp) {
-    return timestamp?.toDate?.()?.toISOString() || null;
+    const updatedPitches = [...(chartData.pitches || []), newPitch];
+
+    await updateDoc(doc(this.chartsRef, chartId), {
+      pitches: updatedPitches,
+      totalPitches: updatedPitches.length,
+      updatedAt: serverTimestamp(),
+    });
+
+    return newPitch;
   }
 }
 

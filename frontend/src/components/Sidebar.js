@@ -15,6 +15,7 @@ import {
   X,
   CalendarCheck,
   Trophy,
+  Bot,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
@@ -244,6 +245,13 @@ const Sidebar = () => {
             isActive={isActiveRoute("/scoreboard")}
           >
             Scoreboard
+          </MenuItem>
+          <MenuItem
+            icon={Bot}
+            to="/insights"
+            isActive={isActiveRoute("/insights")}
+          >
+            Insights
           </MenuItem>
         </div>
 

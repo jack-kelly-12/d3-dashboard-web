@@ -1,6 +1,11 @@
 import { Trash2 } from "lucide-react";
 
-const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
+const PitchTable = ({
+  pitches,
+  onDeletePitch,
+  isBullpen = false,
+  showIntendedPitch = false,
+}) => {
   const formatDate = (timestamp) => {
     if (!timestamp) return "—";
     return new Date(timestamp).toLocaleString("en-US", {
@@ -19,6 +24,96 @@ const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
       y: y.toFixed(1),
     };
   };
+
+  if (isBullpen || showIntendedPitch) {
+    return (
+      <div className="relative overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-xs uppercase bg-gray-50 text-gray-500">
+            <tr>
+              <th className="px-3 py-3">Time</th>
+              <th className="px-3 py-3">Pitcher</th>
+              {showIntendedPitch && (
+                <>
+                  <th className="px-3 py-3">Intended Type</th>
+                  <th className="px-3 py-3">Intended Zone</th>
+                </>
+              )}
+              <th className="px-3 py-3">Pitch Type</th>
+              <th className="px-3 py-3">Velo</th>
+              <th className="px-3 py-3">Pitch X</th>
+              <th className="px-3 py-3">Pitch Z</th>
+              <th className="px-3 py-3">Notes</th>
+              <th className="px-3 py-3 w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {pitches.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={showIntendedPitch ? 9 : 7}
+                  className="text-center py-8 text-gray-500"
+                >
+                  No pitches recorded yet
+                </td>
+              </tr>
+            ) : (
+              pitches.map((pitch) => {
+                const coords = formatCoords(pitch.x, pitch.y);
+                return (
+                  <tr
+                    key={pitch.id}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-3 py-2.5 text-gray-600">
+                      {formatDate(pitch.timestamp)}
+                    </td>
+                    <td className="px-3 py-2.5 text-gray-600">
+                      {pitch.pitcher.name}
+                    </td>
+                    {showIntendedPitch && (
+                      <>
+                        <td className="px-3 py-2.5 font-medium capitalize">
+                          {pitch.scriptDetails?.intendedType || "—"}
+                        </td>
+                        <td className="px-3 py-2.5 font-medium text-center">
+                          {pitch.scriptDetails?.intendedZone || "—"}
+                        </td>
+                      </>
+                    )}
+                    <td className="px-3 py-2.5 font-medium capitalize">
+                      {pitch.type || "—"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      {pitch.velocity ? (
+                        <span className="font-mono">{pitch.velocity}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="px-3 py-2.5 font-mono">{coords.x}</td>
+                    <td className="px-3 py-2.5 font-mono">{coords.y}</td>
+                    <td className="px-3 py-2.5 text-gray-600">
+                      {pitch.note || "—"}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <button
+                        onClick={() => onDeletePitch?.(pitch.id)}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                        title="Delete pitch"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
   if (isBullpen) {
     return (

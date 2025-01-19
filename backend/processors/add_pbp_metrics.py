@@ -35,6 +35,20 @@ def get_data(year, division):
 
 
 def standardize_names(pbp_df, roster, threshold=50):
+    def format_name(name):
+        if pd.isna(name):
+            return name
+        if ',' in name:
+            last, first = name.split(',', 1)
+            return f"{first.strip()} {last.strip()}"
+        return name
+
+    # Format names in roster
+    roster = roster.copy()
+    roster['player_name'] = roster['player_name'].apply(format_name)
+    pbp_df['bat_name'] = pbp_df['bat_name'].apply(format_name)
+    pbp_df['pitcher'] = pbp_df['pitcher'].apply(format_name)
+
     roster_lookup = {
         team: group.set_index('player_name')['player_id'].to_dict()
         for team, group in roster.groupby('team_name')
@@ -164,34 +178,18 @@ def calculate_woba(df, year, division):
         f'../data/miscellaneous/d{division}_linear_weights_{year}.csv')
     weights = lw.set_index('events')['normalized_weight'].to_dict()
 
-    bb_weight = weights.get('walk', 0)
-    hbp_weight = weights.get('hit_by_pitch', 0)
-    single_weight = weights.get('single', 0)
-    double_weight = weights.get('double', 0)
-    triple_weight = weights.get('triple', 0)
-    hr_weight = weights.get('home_run', 0)
+    df = df.copy()
 
-    walks = (df['event_cd'] == 14).sum()  # BB
-    hbp = (df['event_cd'] == 16).sum()    # HBP
-    singles = (df['event_cd'] == 20).sum()  # 1B
-    doubles = (df['event_cd'] == 21).sum()  # 2B
-    triples = (df['event_cd'] == 22).sum()  # 3B
-    homers = (df['event_cd'] == 23).sum()  # HR
-    outs = df['event_cd'].isin([2, 3, 19]).sum()
-    errors = (df['event_cd'] == 18).sum()  # Error
-    ab = singles + doubles + triples + homers + outs + errors
-    sf = (df['sf_fl'] == 1).sum()
-    denom = (ab + walks + sf + hbp)
+    df['woba'] = 0.0
 
-    if denom == 0:
-        return 0
-
-    df['woba'] = (bb_weight * walks +
-                  hbp_weight * hbp +
-                  single_weight * singles +
-                  double_weight * doubles +
-                  triple_weight * triples +
-                  hr_weight * homers) / denom
+    # Set wOBA values based on event codes
+    df.loc[df['event_cd'] == 14, 'woba'] = weights.get('walk', 0)  # BB
+    df.loc[df['event_cd'] == 16, 'woba'] = weights.get(
+        'hit_by_pitch', 0)  # HBP
+    df.loc[df['event_cd'] == 20, 'woba'] = weights.get('single', 0)  # 1B
+    df.loc[df['event_cd'] == 21, 'woba'] = weights.get('double', 0)  # 2B
+    df.loc[df['event_cd'] == 22, 'woba'] = weights.get('triple', 0)  # 3B
+    df.loc[df['event_cd'] == 23, 'woba'] = weights.get('home_run', 0)  # HR
 
     return df
 
@@ -338,7 +336,7 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         merged_df['outs_after'] >= 3))
     game_transition = (merged_df['game_end'] == 1)
 
-    merged_df['base_cd_after_new'] = np.where(
+    merged_df['base_cd_after'] = np.where(
         inning_transition,
         0,
         merged_df['base_cd_after']
@@ -360,7 +358,7 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         re_melted,
         left_on=[
             'outs_after_new',
-            'base_cd_after_new'
+            'base_cd_after'
         ],
         right_on=[
             'outs',
@@ -377,7 +375,7 @@ def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
         left_on=[
             'score_diff_after',
             'outs_after_new',
-            'base_cd_after_new',
+            'base_cd_after',
             'effective_inning_new',
             'top_inning_new'
         ],
@@ -630,6 +628,7 @@ def process_single_year(args):
             year, division)
     except FileNotFoundError as e:
         print(f"Error loading data for {year}: {e}")
+        return None  # Return None if data loading fails
 
     # Initial processing
     pbp_processed = process_pitchers(pbp_df)
@@ -667,112 +666,77 @@ def process_single_year(args):
     pbp_processed['base_cd_after'] = pbp_processed['base_cd_after'].replace(
         base_state_map)
 
-    roster = roster.rename(columns={'player_id': 'roster_id'})
-
-    # Merge batting stats to get additional B/T information
-    batting = batting.rename(columns={'player_id': 'batter_id'})
-    batting_bt = batting[['batter_id', 'B/T']].drop_duplicates()
-
-    # Merge pitching stats to get additional B/T information
-    pitching = pitching.rename(columns={'player_id': 'pitcher_id'})
-    pitching_bt = pitching[['pitcher_id', 'B/T']].drop_duplicates()
-
-    # First merge with roster data
-    pbp_processed = pbp_processed.merge(
-        roster[['roster_id', 'bats', 'throws']],
-        how='left',
-        left_on='batter_id',
-        right_on='roster_id',
-        suffixes=('', '_batter')
-    )
-
-    pbp_processed = pbp_processed.merge(
-        roster[['roster_id', 'bats', 'throws']],
-        how='left',
-        left_on='pitcher_id',
-        right_on='roster_id',
-        suffixes=('', '_pitcher')
-    )
-
-    # Then merge with batting/pitching B/T information as backup
-    pbp_processed = pbp_processed.merge(
-        batting_bt,
-        how='left',
-        on='batter_id'
-    )
-
-    pbp_processed = pbp_processed.merge(
-        pitching_bt,
-        how='left',
-        on='pitcher_id',
-        suffixes=('_batter', '_pitcher')
-    )
-
-    # Standardize the formats
-    pbp_processed['B/T_batter'] = pbp_processed['B/T_batter'].str.split('/')[0].replace(
-        {'R': 'right', 'L': 'left', 'S': 'switch', 'RIGHT': 'right', 'LEFT': 'left', 'SWITCH': 'switch'})
-    pbp_processed['B/T_pitcher'] = pbp_processed['B/T_pitcher'].str.split('/')[0].replace(
-        {'R': 'right', 'L': 'left', 'S': 'switch', 'RIGHT': 'right', 'LEFT': 'left', 'SWITCH': 'switch'})
-
-    # Fill in missing values
-    pbp_processed['batter_side'] = pbp_processed['bats']
-    pbp_processed.loc[pbp_processed['batter_side'].isna(), 'batter_side'] = \
-        pbp_processed.loc[pbp_processed['batter_side'].isna(), 'B/T_batter']
-
-    pbp_processed['pitcher_throws'] = pbp_processed['throws']
-    pbp_processed.loc[pbp_processed['pitcher_throws'].isna(), 'pitcher_throws'] = \
-        pbp_processed.loc[pbp_processed['pitcher_throws'].isna(),
-                          'B/T_pitcher']
-
-    # Clean up by dropping unnecessary columns
-    columns_to_drop = [
-        'roster_id', 'roster_id_pitcher', 'roster_id_batter',
-        'bats', 'throws', 'B/T_batter', 'B/T_pitcher'
-    ]
-    pbp_processed = pbp_processed.drop(
-        columns=[col for col in columns_to_drop if col in pbp_processed.columns])
-
     merged_df = merge_baseball_stats(pbp_processed, leverage_melted, win_expectancy, re_melted).drop_duplicates(
         ['game_id', 'inning', 'home_score_after', 'away_score_after', 'home_text', 'away_text']).dropna(subset=['description'])
     merged_df = merged_df[~((merged_df['top_inning_new'] == 'Bottom') & (merged_df['score_diff_after'] > 0) & (
         merged_df['effective_inning'] == 9) & (merged_df['game_end'] == 0))]
     merged_df = calculate_dre_and_dwe(merged_df)
+
+    # Save individual CSV
     merged_df.to_csv(
         f'../data/play_by_play/d{division}_parsed_pbp_new_{year}.csv', index=False)
-
-    conn = sqlite3.connect('../ncaa.db')
-    situational = run_analysis(merged_df, year, division).fillna(0)
-    situational.to_sql(f'd{division}_situational_{year}',
-                       conn, if_exists='replace', index=False)
 
     columns = [
         'home_team', 'away_team', 'home_score', 'away_score', 'date',
         'inning', 'top_inning', 'game_id', 'description',
         'home_win_exp_before', 'wpa', 'run_expectancy_delta', 'woba', 'home_win_exp_after',
         'player_id', 'pitcher_id', 'batter_id', 'li', 'home_score_after',
-        'away_score_after', 'batter_side', 'pitcher_throws'
+        'away_score_after', 'event_cd', 'times_through_order', 'base_cd_before', 'base_cd_after'
     ]
-    merged_df = merged_df[columns]
-    merged_df.to_sql(f'd_{division}_pbp_{year}', conn,
-                     if_exists='replace', index=False)
 
-    conn.close()
-    print(f"Successfully processed data for D{division} {year}")
+    # Add year and division columns for combined table
+    final_df = merged_df[columns].copy()
+    final_df['year'] = year
+    final_df['division'] = division
+
+    return final_df
 
 
 def main():
     years = range(2021, 2025)
     divisions = range(1, 4)
+    all_pbp_data = []
+
+    columns = [
+        'home_team', 'away_team', 'home_score', 'away_score', 'date',
+        'inning', 'top_inning', 'game_id', 'description',
+        'home_win_exp_before', 'wpa', 'run_expectancy_delta', 'woba', 'home_win_exp_after',
+        'player_id', 'pitcher_id', 'batter_id', 'li', 'home_score_after',
+        'away_score_after', 'event_cd', 'times_through_order', 'base_cd_before', 'base_cd_after'
+    ]
 
     for year in years:
         for division in divisions:
             filename = f"../data/play_by_play/d{division}_parsed_pbp_new_{year}.csv"
             if os.path.exists(filename):
-                print(f"File {filename} already exists, skipping...")
+                print(
+                    f"File {filename} already exists, loading existing data...")
+                # Read existing CSV and add year/division columns
+                existing_data = pd.read_csv(filename)
+                existing_data['year'] = year
+                existing_data['division'] = division
+                all_pbp_data.append(
+                    existing_data[columns + ['year', 'division']])
                 continue
 
-            process_single_year((year, division))
+            processed_data = process_single_year((year, division))
+            if processed_data is not None:
+                all_pbp_data.append(processed_data)
+                print(f"Successfully processed data for D{division} {year}")
+
+    # Combine all data and save to database
+    if all_pbp_data:
+        combined_pbp = pd.concat(all_pbp_data, ignore_index=True)
+
+        # Save to database
+        conn = sqlite3.connect('../ncaa.db')
+        combined_pbp.to_sql('pbp', conn, if_exists='replace', index=False)
+        conn.close()
+
+        print("All data successfully combined and saved to database!")
+    else:
+        print("No data to process!")
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

@@ -15,14 +15,15 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
   const chartTypes = [
     { value: "game", label: "Game" },
     { value: "bullpen", label: "Bullpen" },
+    { value: "scripted_bullpen", label: "Scripted Bullpen" },
   ];
 
   const handleSubmit = () => {
     if (
       !formData.chartType ||
       !formData.date ||
-      (!formData.homeTeam && formData.chartType !== "bullpen") ||
-      (!formData.awayTeam && formData.chartType !== "bullpen")
+      (!formData.homeTeam && formData.chartType === "game") ||
+      (!formData.awayTeam && formData.chartType === "game")
     )
       return;
 
@@ -82,7 +83,7 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
           />
         </div>
 
-        {formData.chartType !== "bullpen" && (
+        {formData.chartType === "game" && (
           <>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -128,8 +129,8 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
             disabled={
               !formData.chartType ||
               !formData.date ||
-              (!formData.homeTeam && formData.chartType !== "bullpen") ||
-              (!formData.awayTeam && formData.chartType !== "bullpen")
+              (!formData.homeTeam && formData.chartType === "game") ||
+              (!formData.awayTeam && formData.chartType === "game")
             }
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >

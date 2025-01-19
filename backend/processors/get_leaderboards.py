@@ -80,7 +80,18 @@ class BaseballAnalytics:
 
         # Calculate run expectancy delta
         rea = group['rea'].sum()
-        woba = group['woba'].sum()
+
+        # Calculate wOBA using raw events
+        woba_numerator = (
+            self.weights.get('walk', 0) * events['WALK'] +
+            self.weights.get('hit_by_pitch', 0) * events['HBP'] +
+            self.weights.get('single', 0) * events['SINGLE'] +
+            self.weights.get('double', 0) * events['DOUBLE'] +
+            self.weights.get('triple', 0) * events['TRIPLE'] +
+            self.weights.get('home_run', 0) * events['HOME_RUN']
+        )
+
+        woba = woba_numerator / pa if pa > 0 else np.nan
 
         return pd.Series({
             'wOBA': woba,
@@ -155,25 +166,58 @@ def main():
     db_file = '../ncaa.db'
     conn = sqlite3.connect(db_file)
 
+    all_situational = []
+    all_baserunning = []
+
     for year in range(2021, 2025):
         for division in range(1, 4):
             print(f'Processing data for {year} D{division}')
-            pbp_df, bat_war, pitch_war, weights = get_data(year, division)
+            try:
+                pbp_df, bat_war, pitch_war, weights = get_data(year, division)
 
-            situational = run_analysis(pbp_df, year, division).fillna(0)
-            baserun = bat_war[['Player', 'player_id', 'Team', 'Conference', 'SB%', 'wSB', 'wGDP', 'wTEB', 'Baserunning',
-                               'EBT', 'OutsOB', 'Opportunities', 'CS', 'SB', 'Picked']].sort_values('Baserunning')
+                # Get situational data
+                situational = run_analysis(pbp_df, year, division).fillna(0)
+                situational['Year'] = year
+                situational['Division'] = division
+                all_situational.append(situational)
 
-            db_file = f'../ncaa.db'
+                # Get baserunning data
+                baserun = bat_war[['Player', 'player_id', 'Team', 'Conference', 'SB%', 'wSB',
+                                   'wGDP', 'wTEB', 'Baserunning', 'EBT', 'OutsOB', 'Opportunities',
+                                   'CS', 'SB', 'Picked']].sort_values('Baserunning')
+                baserun['Year'] = year
+                baserun['Division'] = division
+                all_baserunning.append(baserun)
 
-            situational.to_sql(f'd{division}_situational_{year}',
-                               conn, if_exists='replace', index=False)
-            situational.to_csv(f'd{division}_situational_{year}', index=False)
-            baserun.to_sql(f'd{division}_baserunning_{year}', conn,
-                           if_exists='replace', index=False)
-            baserun.to_csv(f'd{division}_baserunning_{year}', index=False)
+            except Exception as e:
+                print(f"Error processing {year} D{division}: {e}")
+                continue
+
+    # Combine all data
+    combined_situational = pd.concat(all_situational, ignore_index=True)
+    combined_baserunning = pd.concat(all_baserunning, ignore_index=True)
+
+    combined_situational = combined_situational.drop_duplicates(subset=[
+        'batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division'
+    ])
+
+    combined_baserunning = combined_baserunning.drop_duplicates(subset=[
+        'player_id', 'Team', 'Year', 'Division'
+    ])
+
+    combined_situational.to_sql(
+        'situational', conn, if_exists='replace', index=False)
+    combined_situational.to_csv(
+        '../data/leaderboards/situational.csv', index=False)
+
+    combined_baserunning.to_sql(
+        'baserunning', conn, if_exists='replace', index=False)
+    combined_baserunning.to_csv(
+        '../data/leaderboards/baserunning.csv', index=False)
 
     conn.close()
+
+    print("Processing complete!")
 
 
 if __name__ == '__main__':

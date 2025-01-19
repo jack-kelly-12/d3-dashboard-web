@@ -1,12 +1,44 @@
-<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/kellyjc/Desktop/d3_app_improved/backend/ncaa.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="125"/><column_width id="3" width="6904"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,11:mainbaserunning"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">-- Index on pbp.date and pbp.division for filtering
-CREATE INDEX idx_pbp_date_division ON pbp (date, division);
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/kellyjc/Desktop/d3_app_improved/backend/ncaa.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="0"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="125"/><column_width id="3" width="6244"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,11:mainbaserunning"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">-- First add the new column
+ALTER TABLE pbp ADD COLUMN play_sequence INTEGER;
 
--- Index on pbp.home_team for the join
-CREATE INDEX idx_pbp_home_team ON pbp (home_team);
+-- Create a temporary table with just the IDs we need
+CREATE TEMPORARY TABLE temp_order AS
+SELECT 
+    ROWID as orig_rowid,
+    game_id
+FROM pbp 
+ORDER BY 
+    game_id,
+    inning,
+    top_inning,
+    ROWID;
 
--- Index on pbp.away_team for the join
-CREATE INDEX idx_pbp_away_team ON pbp (away_team);
+-- Add a sequence column to our temporary table
+CREATE TEMPORARY TABLE temp_sequences AS
+SELECT 
+    orig_rowid,
+    game_id,
+    (SELECT COUNT(*) 
+     FROM temp_order t2 
+     WHERE t2.game_id = t1.game_id 
+     AND t2.orig_rowid &lt;= t1.orig_rowid) as seq_num
+FROM temp_order t1;
 
--- Index on pbp.game_id for grouping
-CREATE INDEX idx_pbp_game_id ON pbp (game_id);
+-- Update the main table with the sequences
+UPDATE pbp
+SET play_sequence = (
+    SELECT seq_num 
+    FROM temp_sequences 
+    WHERE temp_sequences.orig_rowid = pbp.ROWID
+);
+
+-- Create an index on the new column combined with game_id
+CREATE INDEX idx_pbp_game_sequence ON pbp (
+    game_id,
+    play_sequence
+) WHERE division = 3;
+
+-- Clean up temporary tables
+DROP TABLE temp_order;
+DROP TABLE temp_sequences;
 </sql><current_tab id="0"/></tab_sql></sqlb_project>

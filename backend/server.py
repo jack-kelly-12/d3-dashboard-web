@@ -13,6 +13,7 @@ import io
 from flask import Response
 import os
 import logging
+from llm_insights import InsightsProcessor
 from dotenv import load_dotenv
 
 
@@ -57,7 +58,7 @@ def get_batting_war(year):
         SELECT b.*, i.prev_team_id, i.conference_id
         FROM batting_war b
         LEFT JOIN ids_for_images i ON b.Team = i.team_name
-        WHERE b.Division = 3 AND b.Year = ?
+        WHERE b.Division = 3 AND b.Season = ?
         ORDER BY b.WAR DESC
     """
 
@@ -80,7 +81,7 @@ def get_pitching_war(year):
         SELECT p.*, i.prev_team_id, i.conference_id
         FROM pitching_war p
         LEFT JOIN ids_for_images i ON p.Team = i.team_name
-        WHERE p.Division = 3 AND p.Year = ?
+        WHERE p.Division = 3 AND p.Season = ?
         ORDER BY p.WAR DESC
     """
 
@@ -103,7 +104,7 @@ def get_batting_team_war(year):
         SELECT b.*, i.prev_team_id, i.conference_id
         FROM batting_team_war b
         LEFT JOIN ids_for_images i ON b.Team = i.team_name
-        WHERE b.Division = 3 AND b.Year = ?
+        WHERE b.Division = 3 AND b.Season = ?
         ORDER BY b.WAR DESC
     """, (year,))
 
@@ -124,7 +125,7 @@ def get_pitching_team_war(year):
         SELECT p.*, i.prev_team_id, i.conference_id
         FROM pitching_team_war p
         LEFT JOIN ids_for_images i ON p.Team = i.team_name
-        WHERE p.Division = 3 AND p.Year = ?
+        WHERE p.Division = 3 AND p.Season = ?
         ORDER BY p.WAR DESC
     """, (year,))
 
@@ -866,47 +867,57 @@ def get_baserunning_leaderboard():
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
-    # Validate the year range
     if start_year < 2021 or end_year > 2024 or start_year > end_year:
         return jsonify({"error": "Invalid year range"}), 400
 
-    # Initialize database connection
     conn = get_db_connection()
     cursor = conn.cursor()
     results = []
 
     try:
         for year in range(start_year, end_year + 1):
-            query = f"""
-                WITH baserunning AS (
-                    SELECT 
-                        p.Player,
-                        p.player_id,
-                        p.Team,
-                        p.Conference,
+            query = """
+                WITH baserunning_query AS (
+                    SELECT DISTINCT  -- Add DISTINCT to remove duplicates
+                        b.Player,
+                        b.player_id,
+                        b.Team,
+                        b.Conference,
                         i.prev_team_id,
                         i.conference_id,
-                        p.Baserunning,
-                        p.wSB,
-                        p.wGDP,
-                        p.wTEB,
-                        p.Picked,
-                        p.SB,
-                        p.CS,
-                        p.[SB%],
-                        p.Opportunities,
-                        p.Outs_On_Bases,
-                        p.Extra_Bases_Taken AS XBT,
-                        ? AS Year
-                    FROM baserunning p
+                        b.Baserunning,
+                        b.wSB,
+                        b.wGDP,
+                        b.wTEB,
+                        b.Picked,
+                        b.SB,
+                        b.CS,
+                        b.[SB%],
+                        b.Opportunities,
+                        b.OutsOB,
+                        b.EBT AS XBT,
+                        b.Year,
+                        b.Division
+                    FROM baserunning b
                     LEFT JOIN ids_for_images i 
-                        ON p.Team = i.team_name
-                    WHERE Division = 3 AND Year = ?
-                    ORDER BY p.Baserunning DESC
+                        ON b.Team = i.team_name
+                    WHERE b.Division = 3 
+                        AND b.Year = ?
+                        -- Add join to batting_war to get PA filter
+                        AND EXISTS (
+                            SELECT 1 
+                            FROM batting_war w 
+                            WHERE w.player_id = b.player_id 
+                            AND w.Team = b.Team 
+                            AND w.Year = b.Year 
+                            AND w.Division = b.Division
+                            AND w.PA >= ?
+                        )
+                    ORDER BY b.Baserunning DESC
                 )
-                SELECT * FROM baserunning
+                SELECT * FROM baserunning_query
             """
-            cursor.execute(query, (year, ))
+            cursor.execute(query, (year, min_pa))
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -935,24 +946,22 @@ def get_situational_leaderboard():
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
-    # Validate year range
     if start_year < 2021 or end_year > 2024 or start_year > end_year:
         return jsonify({"error": "Invalid year range"}), 400
 
-    # Initialize database connection
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    results = []  # To store combined results
+    results = []
 
     try:
         for year in range(start_year, end_year + 1):
-            # Use parameterized query to safely include dynamic table names
-            query = f"""
-                WITH situational AS (
-                    SELECT 
+            query = """
+                WITH situational_query AS (
+                    SELECT DISTINCT  -- Add DISTINCT to remove any remaining duplicates
                         p.Player,
                         p.Team,
+                        p.Year,
                         p.Conference,
                         p.player_id,
                         i.prev_team_id,
@@ -975,25 +984,30 @@ def get_situational_leaderboard():
                         s.REA_RISP, 
                         p.Clutch,
                         p.WPA,
-                        p.[WPA/li],
-                        p.REA,
+                        p.[WPA/LI],
+                        p.REA
                     FROM situational s
                     JOIN batting_war p 
                         ON s.batter_standardized = p.Player 
                         AND s.bat_team = p.Team
+                        AND s.year = p.Year
+                        AND s.division = p.Division
                     LEFT JOIN ids_for_images i 
                         ON p.Team = i.team_name
-                    WHERE s.PA_Overall >= ? AND Division = 3 AND Year = ?
+                    WHERE s.PA_Overall >= ? 
+                        AND p.Division = 3 
+                        AND p.Year = ?
+                        AND s.year = ?
                     ORDER BY s.wOBA_Overall DESC
                 )
-                SELECT * FROM situational
+                SELECT * FROM situational_query
             """
 
-            cursor.execute(query, (min_pa, year))
+            cursor.execute(query, (min_pa, year, year))
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
-            results.extend(year_results)  # Append year results to final list
+            results.extend(year_results)
 
         return jsonify(results)
 
@@ -1016,7 +1030,7 @@ def get_game(year, game_id):
                home_win_exp_before, home_win_exp_after, wpa, run_expectancy_delta, 
                batter_id, player_id, pitcher_id, li, home_score_after, away_score_after
         FROM pbp
-        WHERE game_id = ? AND description IS NOT NULL AND Division = 3 AND Year = ?
+        WHERE Division = 3 AND game_id = ? AND description IS NOT NULL AND Year = ?
     """, (game_id, year))
 
     plays = [dict(row) for row in cursor.fetchall()]
@@ -1225,35 +1239,32 @@ def get_projections_pitch():
         conn.close()
 
 
-# @app.route('/api/insights/query', methods=['POST'])
-# def query_insights():
-#     try:
-#         data = request.get_json()
-#         question = data.get('question')
-#         conn = get_db_connection()
+@app.route('/api/insights/query', methods=['POST'])
+def query_insights():
+    try:
+        insights_processor = InsightsProcessor()
+        data = request.get_json()
+        question = data['question'].strip()
 
-#         if not question:
-#             return jsonify({"error": "No question provided"}), 400
+        if len(question) > 1000:
+            return jsonify({
+                "status": "error",
+                "message": "Question too long",
+                "data": None
+            }), 400
 
-#         processor = InsightsProcessor(groq_api_key=os.getenv('GROQ_API_KEY'))
+        # Process with explicit thought process
+        result = insights_processor.process_question(question)
 
-#         result = processor.process_question(question, conn)
+        return jsonify(result), 200
 
-#         return jsonify(result)
-
-#     except Exception as e:
-#         logger.error(f"API error: {str(e)}", exc_info=True)
-#         return jsonify({
-#             "type": "error",
-#             "result": {
-#                 "answer": "Sorry, I encountered an error processing your request.",
-#                 "analysis": [f"Error: {str(e)}"],
-#                 "data": None
-#             }
-#         }), 500
-#     finally:
-#         if 'conn' in locals():
-#             conn.close()
+    except Exception as e:
+        logger.error(f"Error processing question: {str(e)}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "data": None
+        }), 500
 
 
 if __name__ == '__main__':

@@ -21,14 +21,14 @@ class BaseballStats:
             'Sac', 'BA', 'SlgPct', 'OBPct', 'ISO', 'wOBA', 'K%', 'BB%',
             'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR',
             'Clutch', 'WPA', 'REA', 'WPA/LI', 'wSB', 'wGDP', 'wTEB', 'EBT', "Opportunities", 'OutsOB',
-            'GDP_opps', 'GDP'
+            'GDPOpps', 'GDP', 'Season', 'Division'
         ]
         self.pitching_columns = [
             'Player', 'player_id', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
             'BB', 'SO', 'HR-A', '2B-A', '3B-A', 'HB', 'BF', 'FO', 'GO', 'Pitches',
             'gmLI', 'K9', 'BB9', 'HR9', 'RA9', 'H9', 'IR-A%', 'K%', 'BB%', 'K-BB%', 'HR/FB', 'FIP',
             'xFIP', 'ERA+', 'WAR', 'Season', 'Yr', 'Inh Run', 'Inh Run Score',
-            'Clutch', 'pWPA', 'pREA', 'pWPA/LI'
+            'Clutch', 'pWPA', 'pREA', 'pWPA/LI', 'Division'
         ]
         self.team_pitching_agg = {
             'App': 'sum', 'Conference': 'first', 'IP': 'sum', 'H': 'sum',
@@ -245,14 +245,14 @@ class BaseballStats:
                                                                    na=False)]
 
         gdp_stats = pd.DataFrame({
-            'GDP_opps': gdp_opps.groupby('batter_standardized').size(),
+            'GDPOpps': gdp_opps.groupby('batter_standardized').size(),
             'GDP': gdp_events.groupby('batter_standardized').size()
         }).fillna(0)
 
-        lg_gdp_rate = gdp_stats['GDP'].sum() / gdp_stats['GDP_opps'].sum()
+        lg_gdp_rate = gdp_stats['GDP'].sum() / gdp_stats['GDPOpps'].sum()
 
         gdp_stats['wGDP'] = (
-            (gdp_stats['GDP_opps'] * lg_gdp_rate - gdp_stats['GDP']) *
+            (gdp_stats['GDPOpps'] * lg_gdp_rate - gdp_stats['GDP']) *
             self.gdp_run_value
         )
 
@@ -283,7 +283,7 @@ class BaseballStats:
                         play.r1_name,
                         list(team_dict.keys()),
                         scorer=fuzz.token_sort_ratio,
-                        score_cutoff=65
+                        score_cutoff=50
                     )
                     if matches:
                         standardized_r1 = matches[0]
@@ -309,7 +309,7 @@ class BaseballStats:
                         play.r2_name,
                         list(team_dict.keys()),
                         scorer=fuzz.token_sort_ratio,
-                        score_cutoff=65
+                        score_cutoff=50
                     )
                     if matches:
                         standardized_r2 = matches[0]
@@ -344,7 +344,7 @@ class BaseballStats:
                         play.r1_name,
                         list(team_dict.keys()),
                         scorer=fuzz.token_sort_ratio,
-                        score_cutoff=65
+                        score_cutoff=50
                     )
                     if matches:
                         standardized_r1 = matches[0]
@@ -419,8 +419,8 @@ class BaseballStats:
             how='left'
         )
 
-        df[['wGDP', 'GDP_opps', 'GDP']] = df[[
-            'wGDP', 'GDP_opps', 'GDP']].fillna(0)
+        df[['wGDP', 'GDPOpps', 'GDP']] = df[[
+            'wGDP', 'GDPOpps', 'GDP']].fillna(0)
 
         fill_cols = ['HR', 'R', 'GP', 'GS', '2B', '3B', 'H', 'CS', 'BB', 'K',
                      'SB', 'IBB', 'RBI', 'Picked', 'SH', 'AB', 'HBP', 'SF']
@@ -553,7 +553,7 @@ class BaseballStats:
                     batting.append(batting_df)
 
                     roster_df = pd.read_sql(
-                        f"SELECT * FROM d{division}_rosters_{year}", conn)
+                        f"SELECT * FROM rosters", conn).query(f'Year == {year}').query(f'Division == {division}')
                     rosters.append(roster_df)
 
                     pbp_df = pd.read_csv(
@@ -740,6 +740,12 @@ class BaseballStats:
             batting, pitching, pbp, self.guts, self.park_factors, rosters = self.get_data()
             self.guts = self.guts.reset_index(drop=True)
 
+            # Initialize lists to store all DataFrames
+            all_batting_war = []
+            all_pitching_war = []
+            all_batting_team_war = []
+            all_pitching_team_war = []
+
             data_index = 0
             for division in [1, 2, 3]:
                 for year in range(start_year, end_year + 1):
@@ -783,19 +789,19 @@ class BaseballStats:
                         right_on=['player_id'],
                         how='left'
                     )
-                    bat_war = bat_war[self.batting_columns]
                     bat_war['Season'] = year
+                    bat_war['Division'] = division
+                    bat_war = bat_war[self.batting_columns]
 
                     bat_war[['Player', 'Team', 'Conference', 'Yr']] = bat_war[
                         ['Player', 'Team', 'Conference', 'Yr']].fillna('-')
                     bat_war = bat_war.fillna(0)
 
-                    # Save batting stats
-                    table_name = f'd{division}_batting_war_{year}'
-                    bat_war.to_sql(table_name, conn,
-                                   if_exists='replace', index=False)
                     bat_war.to_csv(
                         f'../data/war/d{division}_batting_war_{year}.csv', index=False)
+
+                    # Add to combined list
+                    all_batting_war.append(bat_war)
 
                     # Process batting team stats
                     bat_team_war = self.create_batting_team_war_table(
@@ -806,11 +812,14 @@ class BaseballStats:
                         right_on='bat_team',
                         how='left'
                     )
-                    table_name = f'd{division}_batting_team_war_{year}'
-                    bat_team_war.to_sql(
-                        table_name, conn, if_exists='replace', index=False)
+                    bat_team_war['Division'] = division
+                    bat_team_war['Season'] = year
+
                     bat_team_war.to_csv(
                         f'../data/war/d{division}_batting_team_war_{year}.csv', index=False)
+
+                    # Add to combined list
+                    all_batting_team_war.append(bat_team_war)
 
                     # Process pitching stats if available
                     if current_index < len(pitching):
@@ -830,6 +839,7 @@ class BaseballStats:
                             'team_name': 'Team'
                         })
                         pitch_war['Season'] = year
+                        pitch_war['Division'] = division
 
                         pitch_war[['Player', 'Team', 'Conference', 'Yr']] = pitch_war[
                             ['Player', 'Team', 'Conference', 'Yr']].fillna('-')
@@ -845,12 +855,11 @@ class BaseballStats:
                             how='left'
                         )
                         pitch_war = pitch_war[self.pitching_columns]
-
-                        table_name = f'd{division}_pitching_war_{year}'
-                        pitch_war.to_sql(table_name, conn,
-                                         if_exists='replace', index=False)
                         pitch_war.to_csv(
                             f'../data/war/d{division}_pitching_war_{year}.csv', index=False)
+
+                        # Add to combined list
+                        all_pitching_war.append(pitch_war)
 
                         pitch_team_war = self.create_pitching_team_war_table(
                             pitch_war, year)
@@ -860,13 +869,41 @@ class BaseballStats:
                             right_on='pitch_team',
                             how='left'
                         )
-                        table_name = f'd{division}_pitching_team_war_{year}'
-                        pitch_team_war.to_sql(
-                            table_name, conn, if_exists='replace', index=False)
+                        pitch_team_war['Season'] = division
+                        pitch_team_war['Year'] = year
+
                         pitch_team_war.to_csv(
                             f'../data/war/d{division}_pitching_team_war_{year}.csv', index=False)
 
+                        # Add to combined list
+                        all_pitching_team_war.append(pitch_team_war)
+
                 data_index += (end_year - start_year + 1)
+
+            # Combine and save all stats
+            if all_batting_war:
+                combined_batting = pd.concat(
+                    all_batting_war, ignore_index=True)
+                combined_batting.to_sql(
+                    'batting_war', conn, if_exists='replace', index=False)
+
+            if all_pitching_war:
+                combined_pitching = pd.concat(
+                    all_pitching_war, ignore_index=True)
+                combined_pitching.to_sql(
+                    'pitching_war', conn, if_exists='replace', index=False)
+
+            if all_batting_team_war:
+                combined_batting_team = pd.concat(
+                    all_batting_team_war, ignore_index=True)
+                combined_batting_team.to_sql(
+                    'batting_team_war', conn, if_exists='replace', index=False)
+
+            if all_pitching_team_war:
+                combined_pitching_team = pd.concat(
+                    all_pitching_team_war, ignore_index=True)
+                combined_pitching_team.to_sql(
+                    'pitching_team_war', conn, if_exists='replace', index=False)
 
         finally:
             conn.close()
