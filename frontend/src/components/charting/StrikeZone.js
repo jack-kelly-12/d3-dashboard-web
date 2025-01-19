@@ -9,10 +9,13 @@ const StrikeZone = ({
   shouldReset,
   isBullpen,
   isPitcherView,
+  zoneType,
 }) => {
   const svgRef = useRef();
   const [hoverCoords, setHoverCoords] = useState(null);
   const [previewPitch, setPreviewPitch] = useState(null);
+
+  console.log(zoneType);
 
   useEffect(() => {
     if (currentPitch.location) {
@@ -165,107 +168,160 @@ const StrikeZone = ({
         (yScale(strikeZoneBottom) -
           yScale(strikeZoneHeight + strikeZoneBottom)) /
         3;
-
-      for (let i = 1; i < 3; i++) {
-        strikeZoneG
-          .append("line")
-          .attr("x1", xScale(-plateWidth / 2))
-          .attr("x2", xScale(plateWidth / 2))
-          .attr(
-            "y1",
-            yScale(
-              strikeZoneHeight + strikeZoneBottom - (i * strikeZoneHeight) / 3
+      if (zoneType !== "rh-7-zone") {
+        for (let i = 1; i < 3; i++) {
+          strikeZoneG
+            .append("line")
+            .attr("x1", xScale(-plateWidth / 2))
+            .attr("x2", xScale(plateWidth / 2))
+            .attr(
+              "y1",
+              yScale(
+                strikeZoneHeight + strikeZoneBottom - (i * strikeZoneHeight) / 3
+              )
             )
-          )
-          .attr(
-            "y2",
-            yScale(
-              strikeZoneHeight + strikeZoneBottom - (i * strikeZoneHeight) / 3
+            .attr(
+              "y2",
+              yScale(
+                strikeZoneHeight + strikeZoneBottom - (i * strikeZoneHeight) / 3
+              )
             )
-          )
-          .attr("stroke", "#93c5fd")
-          .attr("stroke-width", 1);
+            .attr("stroke", "#93c5fd")
+            .attr("stroke-width", 1);
 
-        strikeZoneG
-          .append("line")
-          .attr("x1", xScale(-plateWidth / 2 + (i * plateWidth) / 3))
-          .attr("x2", xScale(-plateWidth / 2 + (i * plateWidth) / 3))
-          .attr("y1", yScale(strikeZoneHeight + strikeZoneBottom))
-          .attr("y2", yScale(strikeZoneBottom))
-          .attr("stroke", "#93c5fd")
-          .attr("stroke-width", 1);
-      }
+          strikeZoneG
+            .append("line")
+            .attr("x1", xScale(-plateWidth / 2 + (i * plateWidth) / 3))
+            .attr("x2", xScale(-plateWidth / 2 + (i * plateWidth) / 3))
+            .attr("y1", yScale(strikeZoneHeight + strikeZoneBottom))
+            .attr("y2", yScale(strikeZoneBottom))
+            .attr("stroke", "#93c5fd")
+            .attr("stroke-width", 1);
+        }
 
-      // For the inner zone numbers (1-9)
-      if (isPitcherView) {
-        // Count right to left for pitcher's view
-        for (let row = 0; row < 3; row++) {
-          for (let col = 2; col >= 0; col--) {
-            const zoneNum = row * 3 + col + 1;
-            const x = xScale(-plateWidth / 2) + col * zoneWidth + zoneWidth / 2;
-            const y = yScale(strikeZoneHeight - (row * zoneHeight) / 10 + 14);
+        if (isPitcherView) {
+          for (let row = 0; row < 3; row++) {
+            for (let col = 2; col >= 0; col--) {
+              const zoneNum = row * 3 + col + 1;
+              const x =
+                xScale(-plateWidth / 2) + col * zoneWidth + zoneWidth / 2;
+              const y = yScale(strikeZoneHeight - (row * zoneHeight) / 10 + 14);
 
-            strikeZoneG
-              .append("text")
-              .attr("x", x)
-              .attr("y", y)
-              .attr("text-anchor", "middle")
-              .attr("dominant-baseline", "middle")
-              .attr("font-size", "14px")
-              .attr("font-weight", "500")
-              .attr("fill", "#64748b")
-              .text(zoneNum);
+              strikeZoneG
+                .append("text")
+                .attr("x", x)
+                .attr("y", y)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .attr("font-size", "14px")
+                .attr("font-weight", "500")
+                .attr("fill", "#64748b")
+                .text(zoneNum);
+            }
+          }
+        } else {
+          // Count left to right for batter's view
+          for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 3; col++) {
+              const zoneNum = row * 3 + col + 1;
+              const x =
+                xScale(-plateWidth / 2) + col * zoneWidth + zoneWidth / 2;
+              const y = yScale(strikeZoneHeight - (row * zoneHeight) / 10 + 14);
+
+              strikeZoneG
+                .append("text")
+                .attr("x", x)
+                .attr("y", y)
+                .attr("text-anchor", "middle")
+                .attr("dominant-baseline", "middle")
+                .attr("font-size", "14px")
+                .attr("font-weight", "500")
+                .attr("fill", "#64748b")
+                .text(zoneNum);
+            }
           }
         }
+
+        const outsideZones = [
+          {
+            num: 11,
+            x: -plateWidth * 0.75,
+            y: strikeZoneHeight / 2 + strikeZoneBottom,
+          },
+          { num: 12, x: 0, y: strikeZoneHeight * 1.15 + strikeZoneBottom },
+          { num: 13, x: 0, y: -strikeZoneHeight * 0.18 + strikeZoneBottom },
+          {
+            num: 14,
+            x: plateWidth * 0.75,
+            y: strikeZoneHeight / 2 + strikeZoneBottom,
+          },
+        ];
+
+        outsideZones.forEach(({ num, x, y }) => {
+          strikeZoneG
+            .append("text")
+            .attr("x", xScale(x))
+            .attr("y", yScale(y))
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "middle")
+            .attr("font-size", "14px")
+            .attr("font-weight", "500")
+            .attr("fill", "#64748b")
+            .text(num);
+        });
       } else {
-        // Count left to right for batter's view
-        for (let row = 0; row < 3; row++) {
-          for (let col = 0; col < 3; col++) {
-            const zoneNum = row * 3 + col + 1;
-            const x = xScale(-plateWidth / 2) + col * zoneWidth + zoneWidth / 2;
-            const y = yScale(strikeZoneHeight - (row * zoneHeight) / 10 + 14);
+        // Seven zone layout for RHH
+        const zones = [
+          {
+            num: 1,
+            x: 0,
+            y: strikeZoneHeight + strikeZoneBottom + strikeZoneHeight / 6,
+          },
+          {
+            num: isPitcherView ? 7 : 2,
+            x: -plateWidth * 0.75,
+            y: strikeZoneHeight / 2 + strikeZoneBottom,
+          },
+          {
+            num: isPitcherView ? 6 : 3,
+            x: -plateWidth / 3,
+            y: strikeZoneBottom + strikeZoneHeight / 6,
+          },
+          {
+            num: 4,
+            x: 0,
+            y: strikeZoneBottom + strikeZoneHeight / 6,
+          },
+          {
+            num: 5,
+            x: 0,
+            y: strikeZoneBottom - strikeZoneHeight / 4,
+          },
+          {
+            num: isPitcherView ? 3 : 6,
+            x: plateWidth / 3,
+            y: strikeZoneBottom + strikeZoneHeight / 6,
+          },
+          {
+            num: isPitcherView ? 2 : 7,
+            x: plateWidth * 0.75,
+            y: strikeZoneHeight / 2 + strikeZoneBottom,
+          },
+        ];
 
-            strikeZoneG
-              .append("text")
-              .attr("x", x)
-              .attr("y", y)
-              .attr("text-anchor", "middle")
-              .attr("dominant-baseline", "middle")
-              .attr("font-size", "14px")
-              .attr("font-weight", "500")
-              .attr("fill", "#64748b")
-              .text(zoneNum);
-          }
-        }
+        zones.forEach(({ num, x, y }) => {
+          strikeZoneG
+            .append("text")
+            .attr("x", xScale(isPitcherView ? -x : x))
+            .attr("y", yScale(y))
+            .attr("text-anchor", "middle")
+            .attr("dominant-baseline", "middle")
+            .attr("font-size", "14px")
+            .attr("font-weight", "500")
+            .attr("fill", "#64748b")
+            .text(num);
+        });
       }
-
-      const outsideZones = [
-        {
-          num: 11,
-          x: -plateWidth * 0.75,
-          y: strikeZoneHeight / 2 + strikeZoneBottom,
-        },
-        { num: 12, x: 0, y: strikeZoneHeight * 1.15 + strikeZoneBottom },
-        { num: 13, x: 0, y: -strikeZoneHeight * 0.18 + strikeZoneBottom },
-        {
-          num: 14,
-          x: plateWidth * 0.75,
-          y: strikeZoneHeight / 2 + strikeZoneBottom,
-        },
-      ];
-
-      outsideZones.forEach(({ num, x, y }) => {
-        strikeZoneG
-          .append("text")
-          .attr("x", xScale(x))
-          .attr("y", yScale(y))
-          .attr("text-anchor", "middle")
-          .attr("dominant-baseline", "middle")
-          .attr("font-size", "14px")
-          .attr("font-weight", "500")
-          .attr("fill", "#64748b")
-          .text(num);
-      });
     }
 
     const sections = 3;
@@ -432,6 +488,7 @@ const StrikeZone = ({
     onPlotPitch,
     shouldReset,
     isPitcherView,
+    zoneType,
   ]);
 
   return (

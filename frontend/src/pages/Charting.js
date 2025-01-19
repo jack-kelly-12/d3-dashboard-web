@@ -56,6 +56,7 @@ const Charting = () => {
     }
   };
 
+  // In Charting.js, update the handleCreateChart function:
   const handleCreateChart = async (chartData) => {
     const user = await AuthManager.ensureUser("charts");
     if (!user) {
@@ -69,6 +70,7 @@ const Charting = () => {
         date: new Date(chartData.date).toISOString(),
         homeTeam: chartData.homeTeam,
         awayTeam: chartData.awayTeam,
+        zoneType: chartData.zoneType,
         userId: user.uid,
         isAnonymous: user.isAnonymous,
       });

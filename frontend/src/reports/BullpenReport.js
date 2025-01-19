@@ -91,7 +91,8 @@ const processPitchData = (charts, pitcher) => {
     return pitches;
   }, []);
 
-  const zoneBounds = {
+  // Standard 9+4 zone bounds
+  const standardZoneBounds = {
     1: { xMin: -8.5, yMin: 34, xMax: -2.833, yMax: 42 },
     2: { xMin: -2.833, yMin: 34, xMax: 2.833, yMax: 42 },
     3: { xMin: 2.833, yMin: 34, xMax: 8.5, yMax: 42 },
@@ -107,8 +108,23 @@ const processPitchData = (charts, pitcher) => {
     14: { xMin: 8.5, yMin: 18, xMax: 14.167, yMax: 42 },
   };
 
-  const isPitchInZone = (x, y, zone) => {
-    const bounds = zoneBounds[zone];
+  // RH 7-zone bounds
+  const rhSevenZoneBounds = {
+    1: { xMin: -8.5, xMax: 8.5, yMin: 42, yMax: 46 }, // Top of Zone
+    2: { xMin: -8.5 - 1.45, xMax: -8.5 + 1.45, yMin: 18, yMax: 42 }, // Inside to RHH (1 ball off)
+    3: { xMin: -8.5, xMax: -2.833, yMin: 18, yMax: 26 }, // Low Inside Corner
+    4: { xMin: -2.833, xMax: 2.833, yMin: 18, yMax: 26 }, // Strike Bottom
+    5: { xMin: -8.5, xMax: 8.5, yMin: 10, yMax: 18 }, // Chase Below
+    6: { xMin: 2.833, xMax: 8.5, yMin: 18, yMax: 26 }, // Low Outside Corner
+    7: { xMin: 8.5 - 1.45, xMax: 8.5 + 1.45, yMin: 18, yMax: 42 }, // Outside to RHH (1 ball off)
+  };
+  const isPitchInZone = (x, y, zone, zoneType) => {
+    const bounds =
+      zoneType === "rh-7-zone"
+        ? rhSevenZoneBounds[zone]
+        : standardZoneBounds[zone];
+    if (!bounds) return false;
+
     return (
       x >= bounds.xMin &&
       x <= bounds.xMax &&
@@ -117,12 +133,31 @@ const processPitchData = (charts, pitcher) => {
     );
   };
 
-  const calculateZoneCenter = (zone) => {
-    const bounds = zoneBounds[zone];
+  const calculateZoneCenter = (zone, zoneType) => {
+    const bounds =
+      zoneType === "rh-7-zone"
+        ? rhSevenZoneBounds[zone]
+        : standardZoneBounds[zone];
+    if (!bounds) return { x: 0, y: 0 };
+
     return {
       x: (bounds.xMin + bounds.xMax) / 2,
       y: (bounds.yMin + bounds.yMax) / 2,
     };
+  };
+
+  const isInStrikeZone = (x, y) => {
+    const plateHalfWidth = 8.5;
+    const strikeZoneBottom = 18;
+    const strikeZoneTop = 42;
+    const baseballRadius = 1.45;
+
+    const ballOverlapsX = Math.abs(x) <= plateHalfWidth + baseballRadius;
+    const ballOverlapsY =
+      y + baseballRadius >= strikeZoneBottom &&
+      y - baseballRadius <= strikeZoneTop;
+
+    return ballOverlapsX && ballOverlapsY;
   };
 
   const pitchTypes = allPitches.reduce((acc, pitch) => {
@@ -136,13 +171,12 @@ const processPitchData = (charts, pitcher) => {
         totalMissDistance: 0,
         inZoneCount: 0,
         strikeCount: 0,
-        missedZoneCount: 0, // New field to count pitches that missed the intended zone
+        missedZoneCount: 0,
       };
     }
 
     acc[type].count++;
 
-    // Track velocity
     if (pitch.velocity) {
       const velocity = Number(pitch.velocity);
       if (!isNaN(velocity)) {
@@ -151,34 +185,32 @@ const processPitchData = (charts, pitcher) => {
       }
     }
 
-    // Track accuracy and miss distance for pitches with intended zones
-    if (pitch.intendedZone) {
+    if (pitch.intendedZone && pitch.zoneType) {
       const { x: centerX, y: centerY } = calculateZoneCenter(
-        pitch.intendedZone
+        pitch.intendedZone,
+        pitch.zoneType
       );
 
-      // Check if the pitch landed in the intended zone
       if (
-        isPitchInZone(pitch.location.x, pitch.location.y, pitch.intendedZone)
+        isPitchInZone(
+          pitch.location.x,
+          pitch.location.y,
+          pitch.intendedZone,
+          pitch.zoneType
+        )
       ) {
         acc[type].inZoneCount++;
       } else {
-        // Calculate miss distance only if the pitch missed the intended zone
         const missDistance = Math.sqrt(
           Math.pow(pitch.location.x - centerX, 2) +
             Math.pow(pitch.location.y - centerY, 2)
         );
         acc[type].totalMissDistance += missDistance;
-        acc[type].missedZoneCount++; // Increment missed zone count
+        acc[type].missedZoneCount++;
       }
     }
 
-    // Track strikes
-    if (
-      [1, 2, 3, 4, 5, 6, 7, 8, 9].some((zone) =>
-        isPitchInZone(pitch.location.x, pitch.location.y, zone)
-      )
-    ) {
+    if (isInStrikeZone(pitch.location.x, pitch.location.y, pitch.zoneType)) {
       acc[type].strikeCount++;
     }
 
@@ -203,7 +235,6 @@ const processPitchData = (charts, pitcher) => {
       ? ((data.inZoneCount / data.count) * 100).toFixed(1)
       : "-";
 
-    // Calculate avgMissDistance only for pitches that missed the intended zone
     data.avgMissDistance = data.missedZoneCount
       ? (data.totalMissDistance / data.missedZoneCount).toFixed(2)
       : "-";
@@ -215,6 +246,7 @@ const processPitchData = (charts, pitcher) => {
 
   return pitchTypes;
 };
+
 function toTitleCase(str) {
   return str.replace(
     /\w\S*/g,

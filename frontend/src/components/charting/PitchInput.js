@@ -147,20 +147,32 @@ const PITCH_RESULTS = [
   "other",
 ];
 
-const ZONES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14];
+const ZONES_STANDARD = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14];
+const ZONES_RH = [1, 2, 3, 4, 5, 6, 7];
 
-const ZoneGrid = ({ selected, onChange, disabled }) => (
+const ZoneGrid = ({ selected, onChange, disabled, zoneType }) => (
   <div className="grid grid-cols-7 gap-1.5">
-    {ZONES.map((zone) => (
-      <SelectButton
-        key={zone}
-        selected={selected === zone}
-        onClick={() => onChange(zone)}
-        disabled={disabled}
-      >
-        {zone}
-      </SelectButton>
-    ))}
+    {zoneType === "rh-7-zone"
+      ? ZONES_RH.map((zone) => (
+          <SelectButton
+            key={zone}
+            selected={selected === zone}
+            onClick={() => onChange(zone)}
+            disabled={disabled}
+          >
+            {zone}
+          </SelectButton>
+        ))
+      : ZONES_STANDARD.map((zone) => (
+          <SelectButton
+            key={zone}
+            selected={selected === zone}
+            onClick={() => onChange(zone)}
+            disabled={disabled}
+          >
+            {zone}
+          </SelectButton>
+        ))}
   </div>
 );
 
@@ -173,6 +185,7 @@ const PitchInput = ({
   isBullpen,
   isScripted,
   scriptedPitch,
+  zoneType,
 }) => {
   const handleChange = (field, value) => {
     onChange({ ...currentPitch, [field]: value });
@@ -294,6 +307,7 @@ const PitchInput = ({
                 selected={currentPitch.intendedZone}
                 onChange={(value) => handleChange("intendedZone", value)}
                 disabled={disabled}
+                zoneType={zoneType}
               />
             </div>
             <VelocityInput

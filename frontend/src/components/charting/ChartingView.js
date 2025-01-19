@@ -33,6 +33,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   });
   const [shouldResetPlot, setShouldResetPlot] = useState(false);
   const isBullpen = chart.chartType === "bullpen";
+  const zoneType = chart.zoneType;
   const [shouldOpenCatcherModal, setShouldOpenCatcherModal] = useState(false);
   const [shouldOpenBatterModal, setShouldOpenBatterModal] = useState(false);
   const [shouldOpenPitcherModal, setShouldOpenPitcherModal] = useState(false);
@@ -419,6 +420,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   onReset={handleResetPitch}
                   disabled={!pitcher}
                   isBullpen={true}
+                  zoneType={zoneType}
                 />
               </div>
               <div className="flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative">
@@ -440,6 +442,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   shouldReset={shouldResetPlot}
                   isBullpen={true}
                   isPitcherView={isPitcherView}
+                  zoneType={zoneType}
                 />
               </div>
             </div>

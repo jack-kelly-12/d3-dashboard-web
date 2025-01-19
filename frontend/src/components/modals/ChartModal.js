@@ -8,6 +8,7 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
     homeTeam: "",
     awayTeam: "",
     source: "d3",
+    zoneType: "",
     lastUpdated: new Date().toISOString(),
     pitches: [],
   });
@@ -18,12 +19,18 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
     // { value: "scripted_bullpen", label: "Scripted Bullpen" },
   ];
 
+  const zoneTypes = [
+    { value: "standard", label: "Standard 9-Zone" },
+    { value: "rh-7-zone", label: "RH 7-Zone" },
+  ];
+
   const handleSubmit = () => {
     if (
       !formData.chartType ||
       !formData.date ||
       (!formData.homeTeam && formData.chartType === "game") ||
-      (!formData.awayTeam && formData.chartType === "game")
+      (!formData.awayTeam && formData.chartType === "game") ||
+      (formData.chartType === "bullpen" && !formData.zoneType)
     )
       return;
 
@@ -33,11 +40,13 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
     dateWithTime.setMinutes(now.getMinutes());
     dateWithTime.setSeconds(now.getSeconds());
 
-    onSubmit({
+    const submitData = {
       ...formData,
       date: dateWithTime.toISOString(),
       lastUpdated: now.toISOString(),
-    });
+    };
+
+    onSubmit(submitData);
   };
 
   const handleDateChange = (e) => {
@@ -58,7 +67,11 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
           <select
             value={formData.chartType}
             onChange={(e) =>
-              setFormData({ ...formData, chartType: e.target.value })
+              setFormData({
+                ...formData,
+                chartType: e.target.value,
+                zoneType: "",
+              })
             }
             className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -117,6 +130,28 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
           </>
         )}
 
+        {formData.chartType === "bullpen" && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Zone Type
+            </label>
+            <select
+              value={formData.zoneType}
+              onChange={(e) =>
+                setFormData({ ...formData, zoneType: e.target.value })
+              }
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select zone type...</option>
+              {zoneTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="flex justify-end gap-3 pt-4">
           <button
             onClick={onClose}
@@ -130,7 +165,8 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
               !formData.chartType ||
               !formData.date ||
               (!formData.homeTeam && formData.chartType === "game") ||
-              (!formData.awayTeam && formData.chartType === "game")
+              (!formData.awayTeam && formData.chartType === "game") ||
+              (formData.chartType === "bullpen" && !formData.zoneType)
             }
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >

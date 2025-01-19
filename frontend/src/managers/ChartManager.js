@@ -79,28 +79,6 @@ class ChartManager {
     }
   }
 
-  processChartDocuments(snapshot) {
-    return snapshot.docs.map((doc) => {
-      const data = doc.data();
-      const createdAt =
-        data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString();
-      const updatedAt = data.updatedAt?.toDate?.()?.toISOString() || createdAt;
-      const date = data.date || createdAt;
-      return {
-        id: doc.id,
-        ...data,
-        createdAt,
-        updatedAt,
-        source: data.source || "d3",
-        date,
-        totalPitches: data.totalPitches || data.pitches?.length || 0,
-        pitches: data.pitches || [],
-        homeTeam: data.homeTeam || "",
-        awayTeam: data.awayTeam || "",
-      };
-    });
-  }
-
   async createChart(chartData) {
     await this.waitForAuth();
     const userId = this.currentUser?.uid;
@@ -113,18 +91,84 @@ class ChartManager {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       totalPitches: chartData.pitches?.length || 0,
+      zoneType: chartData.zoneType,
     };
 
     const docRef = await addDoc(this.chartsRef, chart);
 
-    return {
+    const returnData = {
       id: docRef.id,
       ...chart,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       pitches: chartData.pitches || [],
       totalPitches: chartData.pitches?.length || 0,
+      zoneType: chartData.zoneType,
     };
+
+    return returnData;
+  }
+
+  processChartDocuments(snapshot) {
+    return snapshot.docs.map((doc) => {
+      const data = doc.data();
+      // Log the raw document data
+      console.log("Processing chart document:", data);
+
+      const createdAt =
+        data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString();
+      const updatedAt = data.updatedAt?.toDate?.()?.toISOString() || createdAt;
+      const date = data.date || createdAt;
+
+      const processedData = {
+        id: doc.id,
+        ...data,
+        createdAt,
+        updatedAt,
+        source: data.source || "d3",
+        date,
+        totalPitches: data.totalPitches || data.pitches?.length || 0,
+        pitches: data.pitches || [],
+        homeTeam: data.homeTeam || "",
+        awayTeam: data.awayTeam || "",
+        // Keep the exact zoneType from the document without any default
+        zoneType: data.zoneType,
+      };
+
+      // Log the processed document
+      console.log("Processed chart data:", processedData);
+      return processedData;
+    });
+  }
+
+  async updateChart(chartId, updateData) {
+    await this.waitForAuth();
+    const userId = AuthManager.getCurrentUser()?.uid;
+    if (!userId) throw new Error("User must be authenticated");
+
+    // Log update request
+    console.log("Updating chart with data:", updateData);
+
+    const chartDoc = await getDoc(doc(this.chartsRef, chartId));
+    if (!chartDoc.exists()) {
+      throw new Error("Chart not found");
+    }
+    if (chartDoc.data().userId !== userId) {
+      throw new Error("Unauthorized access to chart");
+    }
+
+    const { id, userId: _, createdAt, ...safeUpdateData } = updateData;
+
+    // Preserve the exact zoneType in updates
+    const updatePayload = {
+      ...safeUpdateData,
+      updatedAt: serverTimestamp(),
+    };
+
+    // Log what's being updated in Firestore
+    console.log("Update payload for Firestore:", updatePayload);
+
+    await updateDoc(doc(this.chartsRef, chartId), updatePayload);
   }
 
   async getChartById(chartId) {
@@ -227,27 +271,6 @@ class ChartManager {
     await updateDoc(doc(this.chartsRef, chartId), {
       pitches: updatedPitches,
       totalPitches: updatedPitches.length,
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  async updateChart(chartId, updateData) {
-    await this.waitForAuth();
-    const userId = AuthManager.getCurrentUser()?.uid;
-    if (!userId) throw new Error("User must be authenticated");
-
-    const chartDoc = await getDoc(doc(this.chartsRef, chartId));
-    if (!chartDoc.exists()) {
-      throw new Error("Chart not found");
-    }
-    if (chartDoc.data().userId !== userId) {
-      throw new Error("Unauthorized access to chart");
-    }
-
-    const { id, userId: _, createdAt, ...safeUpdateData } = updateData;
-
-    await updateDoc(doc(this.chartsRef, chartId), {
-      ...safeUpdateData,
       updatedAt: serverTimestamp(),
     });
   }
