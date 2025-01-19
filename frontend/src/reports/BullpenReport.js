@@ -289,7 +289,9 @@ const BullpenReportPDF = ({ charts = [], pitchers = [] }) => {
                   <Text style={styles.tableCell}>{data.maxVelo}</Text>
                   <Text style={styles.tableCell}>{data.strikeRate}</Text>
                   <Text style={styles.tableCell}>{data.accuracy}%</Text>
-                  <Text style={styles.tableCell}>{data.avgMissDistance}</Text>
+                  <Text style={styles.tableCell}>
+                    {data.avgMissDistance} in.
+                  </Text>
                 </View>
               ))}
             </View>
