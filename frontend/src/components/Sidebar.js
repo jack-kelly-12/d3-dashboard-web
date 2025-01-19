@@ -246,13 +246,6 @@ const Sidebar = () => {
           >
             Scoreboard
           </MenuItem>
-          <MenuItem
-            icon={Bot}
-            to="/insights"
-            isActive={isActiveRoute("/insights")}
-          >
-            Insights
-          </MenuItem>
         </div>
 
         {/* Footer */}

@@ -547,31 +547,40 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   </button>
                 </div>
 
-                <div className="mt-14">
-                  {isStrikeZone ? (
-                    <StrikeZone
-                      key={isPitcherView ? "pitcher" : "catcher"}
-                      onPlotPitch={handlePlotPitch}
-                      pitches={pitches.filter(
-                        (p) =>
-                          !p.isHit &&
-                          (!batter || p.batter?.name === batter?.name)
-                      )}
-                      currentPitch={currentPitch}
-                      shouldReset={shouldResetPlot}
-                      isBullpen={false}
-                    />
-                  ) : (
-                    <SprayChart
-                      hits={pitches.filter(
-                        (p) => p.isHit && p.batter?.name === batter?.name
-                      )}
-                      onPlotHit={handlePlotPitch}
-                      currentHit={currentHit}
-                      shouldReset={shouldResetPlot}
-                    />
-                  )}
+                <div className="absolute top-4 right-4 z-10">
+                  <button
+                    onClick={() => setIsPitcherView(!isPitcherView)}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-md shadow-sm
+      border border-gray-200 text-sm font-medium text-gray-700
+      hover:bg-gray-50 transition-colors"
+                  >
+                    Toggle View
+                  </button>
                 </div>
+
+                {isStrikeZone ? (
+                  <StrikeZone
+                    key={isPitcherView ? "pitcher" : "catcher"}
+                    onPlotPitch={handlePlotPitch}
+                    pitches={pitches.filter(
+                      (p) =>
+                        !p.isHit && (!batter || p.batter?.name === batter?.name)
+                    )}
+                    currentPitch={currentPitch}
+                    shouldReset={shouldResetPlot}
+                    isBullpen={false}
+                    isPitcherView={isPitcherView}
+                  />
+                ) : (
+                  <SprayChart
+                    hits={pitches.filter(
+                      (p) => p.isHit && p.batter?.name === batter?.name
+                    )}
+                    onPlotHit={handlePlotPitch}
+                    currentHit={currentHit}
+                    shouldReset={shouldResetPlot}
+                  />
+                )}
               </div>
             </div>
 
