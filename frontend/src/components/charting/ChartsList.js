@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
 import { Plus, Trash2, FileDown, FileText } from "lucide-react";
 import AdvanceReportModal from "../modals/AdvanceReportModal";
@@ -16,8 +16,23 @@ const ChartsList = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [normalizedCharts, setNormalizedCharts] = useState([]);
 
+  // Memoize the charts dependency value
+  const chartsDepValue = useMemo(
+    () =>
+      charts
+        .map((chart) =>
+          JSON.stringify({
+            id: chart.id,
+            pitcher: chart.pitcher,
+            pitches: chart.pitches?.length,
+            updatedAt: chart.updatedAt,
+          })
+        )
+        .join(","),
+    [charts]
+  );
+
   useEffect(() => {
-    // Normalize all charts when the charts prop changes or when chart data updates
     const normalized = charts.map((chart) =>
       normalizeChartData({
         ...chart,
@@ -27,20 +42,7 @@ const ChartsList = ({
       })
     );
     setNormalizedCharts(normalized);
-  }, [
-    charts,
-    charts
-      .map((chart) =>
-        // Include dependencies that should trigger re-normalization
-        JSON.stringify({
-          id: chart.id,
-          pitcher: chart.pitcher,
-          pitches: chart.pitches?.length,
-          updatedAt: chart.updatedAt,
-        })
-      )
-      .join(","),
-  ]);
+  }, [charts, chartsDepValue]);
 
   const normalizeChartData = (chart) => {
     const normalized = {
@@ -307,7 +309,7 @@ const ChartsList = ({
       );
     }
 
-    if (row.chartType === "bullpen") {
+    if (row.chartType === "bullpen" || row.chartType === "scripted_bullpen") {
       return (
         <div className="space-y-1">
           <span className="px-2 py-1 bg-red-100 text-gray-800 rounded-full text-sm">
