@@ -869,8 +869,8 @@ class BaseballStats:
                             right_on='pitch_team',
                             how='left'
                         )
-                        pitch_team_war['Season'] = division
-                        pitch_team_war['Year'] = year
+                        pitch_team_war['Division'] = division
+                        pitch_team_war['Season'] = year
 
                         pitch_team_war.to_csv(
                             f'../data/war/d{division}_pitching_team_war_{year}.csv', index=False)

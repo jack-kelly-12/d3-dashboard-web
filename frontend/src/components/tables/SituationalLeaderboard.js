@@ -136,7 +136,7 @@ const SituationalLeaderboard = () => {
       },
       {
         name: "Year",
-        selector: (row) => row.Year,
+        selector: (row) => row.Season,
         sortable: true,
         width: "80px",
       },

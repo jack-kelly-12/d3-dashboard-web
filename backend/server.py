@@ -160,7 +160,7 @@ def get_teams():
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT DISTINCT Team as team_name FROM batting_war WHERE Division = 3 AND Year = 2024")
+        "SELECT DISTINCT Team as team_name FROM batting_war WHERE Division = 3 AND Season = 2024")
     data = cursor.fetchall()
 
     conn.close()
@@ -178,7 +178,7 @@ def get_team_players(team_name):
 
     # Validate if team exists
     cursor.execute(
-        "SELECT DISTINCT Team FROM batting_war WHERE Division = 3 AND Year = 2024 AND Team = %s",
+        "SELECT DISTINCT Team FROM batting_war WHERE Division = 3 AND Season = 2024 AND Team = %s",
         (team_name,)
     )
     if not cursor.fetchone():
@@ -195,7 +195,7 @@ def get_team_players(team_name):
                SB,
                WAR
         FROM batting_war
-        WHERE Team = %s AND Division = 3 AND Year = 2024
+        WHERE Team = %s AND Division = 3 AND Season = 2024
     """, (team_name,))
 
     data = [dict(zip([col[0] for col in cursor.description], row))
@@ -212,7 +212,7 @@ def get_team_pitchers(team_name):
 
     # Validate if team exists
     cursor.execute(
-        "SELECT DISTINCT Team FROM pitching_war WHERE Division = 3 AND Year = 2024 AND Team = %s",
+        "SELECT DISTINCT Team FROM pitching_war WHERE Division = 3 AND Season = 2024 AND Team = %s",
         (team_name,)
     )
     if not cursor.fetchone():
@@ -228,7 +228,7 @@ def get_team_pitchers(team_name):
                IP,
                WAR
         FROM pitching_war
-        WHERE Team = %s AND Division = 3 AND Year = 2024
+        WHERE Team = %s AND Division = 3 AND Season = 2024
     """, (team_name,))
 
     data = [dict(zip([col[0] for col in cursor.description], row))
@@ -272,7 +272,7 @@ def get_player_percentiles(player_id):
         # Check if player exists in 2024 batting stats
         cursor.execute("""
             SELECT * FROM batting_war
-            WHERE player_id = ? AND Division = 3 AND Year == 2024
+            WHERE player_id = ? AND Division = 3 AND Season = 2024
         """, (player_id,))
         player = cursor.fetchone()
 
@@ -282,7 +282,7 @@ def get_player_percentiles(player_id):
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
                        "Baserunning", "Adjustment", WAR, PA, "wRC+"
                 FROM batting_war
-                WHERE PA > 25 AND Division = 3 AND Year == 2024
+                WHERE PA > 25 AND Division = 3 AND Season = 2024
                 ORDER BY PA DESC
             """)
             all_players = cursor.fetchall()
@@ -320,7 +320,7 @@ def get_player_percentiles(player_id):
             cursor.execute("""
                 SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, "RA9"
                 FROM pitching_war
-                WHERE IP > 10 AND Division = 3 AND Year = 2024
+                WHERE IP > 10 AND Division = 3 AND Season = 2024
                 ORDER BY IP DESC
             """)
             all_players = cursor.fetchall()
@@ -381,7 +381,7 @@ def get_player_stats(player_id):
                 SELECT b.*, i.prev_team_id, i.conference_id
                 FROM batting_war b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
-                WHERE b.player_id = ? AND Division = 3 AND year = ?
+                WHERE b.player_id = ? AND Division = 3 AND Season = ?
             """, (player_id, year))
             bat_stats = cursor.fetchone()
             if bat_stats:
@@ -400,7 +400,7 @@ def get_player_stats(player_id):
                 SELECT p.*, i.prev_team_id, i.conference_id
                 FROM pitching_war p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
-                WHERE p.player_id = ? AND Division = 3 AND Year = ?
+                WHERE p.player_id = ? AND Division = 3 AND Season = ?
             """, (player_id, year))
             pitch_stats = cursor.fetchone()
             if pitch_stats:
@@ -649,9 +649,9 @@ def get_conferences():
         cursor.execute("""
             SELECT DISTINCT Conference
             FROM (
-                SELECT Conference FROM batting_war WHERE Division = 3 AND Year = 2024
+                SELECT Conference FROM batting_war WHERE Division = 3 AND Season = 2024
                 UNION
-                SELECT Conference FROM pitching_war WHERE Division = 3 AND Year = 2024
+                SELECT Conference FROM pitching_war WHERE Division = 3 AND Season = 2024
             )
             WHERE Conference IS NOT NULL
             ORDER BY Conference
@@ -775,7 +775,7 @@ def get_value_leaderboard():
                     i.prev_team_id, i.conference_id, b.player_id, b.WPA, b.[WPA/LI], b.REA, b.Clutch
                 FROM batting_war b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
-                WHERE Division = 3 AND Year = ?
+                WHERE Division = 3 AND Season = ?
 
             """, (year,))
             batting_data = {(row['Player'], row['Team']): dict(row)
@@ -789,7 +789,7 @@ def get_value_leaderboard():
                     i.prev_team_id, i.conference_id, p.player_id, p.pWPA, p.[pWPA/LI], p.pREA, p.Clutch
                 FROM pitching_war p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
-                WHERE Division = 3 AND Year = ?
+                WHERE Division = 3 AND Season = ?
             """, (year, ))
             pitching_data = {(row['Player'], row['Team']): dict(row)
                              for row in cursor.fetchall()}
@@ -858,12 +858,10 @@ def get_value_leaderboard():
 def get_baserunning_leaderboard():
     start_year = request.args.get('start_year', '2024')
     end_year = request.args.get('end_year', '2024')
-    min_pa = request.args.get('min_pa', '50')
 
     try:
         start_year = int(start_year)
         end_year = int(end_year)
-        min_pa = int(min_pa)
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
@@ -878,7 +876,7 @@ def get_baserunning_leaderboard():
         for year in range(start_year, end_year + 1):
             query = """
                 WITH baserunning_query AS (
-                    SELECT DISTINCT  -- Add DISTINCT to remove duplicates
+                    SELECT DISTINCT 
                         b.Player,
                         b.player_id,
                         b.Team,
@@ -901,23 +899,12 @@ def get_baserunning_leaderboard():
                     FROM baserunning b
                     LEFT JOIN ids_for_images i 
                         ON b.Team = i.team_name
-                    WHERE b.Division = 3 
-                        AND b.Year = ?
-                        -- Add join to batting_war to get PA filter
-                        AND EXISTS (
-                            SELECT 1 
-                            FROM batting_war w 
-                            WHERE w.player_id = b.player_id 
-                            AND w.Team = b.Team 
-                            AND w.Year = b.Year 
-                            AND w.Division = b.Division
-                            AND w.PA >= ?
-                        )
+                    WHERE b.Division = 3 AND b.Year = ?
                     ORDER BY b.Baserunning DESC
                 )
                 SELECT * FROM baserunning_query
             """
-            cursor.execute(query, (year, min_pa))
+            cursor.execute(query, (year, ))
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -961,7 +948,7 @@ def get_situational_leaderboard():
                     SELECT DISTINCT  -- Add DISTINCT to remove any remaining duplicates
                         p.Player,
                         p.Team,
-                        p.Year,
+                        p.Season,
                         p.Conference,
                         p.player_id,
                         i.prev_team_id,
@@ -990,13 +977,13 @@ def get_situational_leaderboard():
                     JOIN batting_war p 
                         ON s.batter_standardized = p.Player 
                         AND s.bat_team = p.Team
-                        AND s.year = p.Year
+                        AND s.year = p.Season
                         AND s.division = p.Division
                     LEFT JOIN ids_for_images i 
                         ON p.Team = i.team_name
                     WHERE s.PA_Overall >= ? 
                         AND p.Division = 3 
-                        AND p.Year = ?
+                        AND p.Season = ?
                         AND s.year = ?
                     ORDER BY s.wOBA_Overall DESC
                 )
@@ -1030,7 +1017,7 @@ def get_game(year, game_id):
                home_win_exp_before, home_win_exp_after, wpa, run_expectancy_delta, 
                batter_id, player_id, pitcher_id, li, home_score_after, away_score_after
         FROM pbp
-        WHERE Division = 3 AND game_id = ? AND description IS NOT NULL AND Year = ?
+        WHERE division = 3 AND game_id = ? AND description IS NOT NULL AND year = ?
     """, (game_id, year))
 
     plays = [dict(row) for row in cursor.fetchall()]
