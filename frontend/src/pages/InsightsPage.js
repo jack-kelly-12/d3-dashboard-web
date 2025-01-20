@@ -7,7 +7,6 @@ import {
   Brain,
   BarChart3,
   TrendingUp,
-  Command,
   Terminal,
   ArrowRight,
 } from "lucide-react";
@@ -46,7 +45,6 @@ const InsightsPage = () => {
   const [query, setQuery] = useState("");
   const [currentResult, setCurrentResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showShortcut, setShowShortcut] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -129,8 +127,6 @@ const InsightsPage = () => {
                       type="text"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      onFocus={() => setShowShortcut(true)}
-                      onBlur={() => setShowShortcut(false)}
                       placeholder="Ask a question about D3 baseball..."
                       className="w-full px-6 pr-24 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 text-lg transition-all duration-200 group-hover:bg-gray-100"
                       disabled={isLoading}
