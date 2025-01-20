@@ -112,8 +112,6 @@ class ChartManager {
   processChartDocuments(snapshot) {
     return snapshot.docs.map((doc) => {
       const data = doc.data();
-      // Log the raw document data
-      console.log("Processing chart document:", data);
 
       const createdAt =
         data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString();
@@ -131,12 +129,9 @@ class ChartManager {
         pitches: data.pitches || [],
         homeTeam: data.homeTeam || "",
         awayTeam: data.awayTeam || "",
-        // Keep the exact zoneType from the document without any default
         zoneType: data.zoneType,
       };
 
-      // Log the processed document
-      console.log("Processed chart data:", processedData);
       return processedData;
     });
   }
@@ -145,9 +140,6 @@ class ChartManager {
     await this.waitForAuth();
     const userId = AuthManager.getCurrentUser()?.uid;
     if (!userId) throw new Error("User must be authenticated");
-
-    // Log update request
-    console.log("Updating chart with data:", updateData);
 
     const chartDoc = await getDoc(doc(this.chartsRef, chartId));
     if (!chartDoc.exists()) {
@@ -159,14 +151,10 @@ class ChartManager {
 
     const { id, userId: _, createdAt, ...safeUpdateData } = updateData;
 
-    // Preserve the exact zoneType in updates
     const updatePayload = {
       ...safeUpdateData,
       updatedAt: serverTimestamp(),
     };
-
-    // Log what's being updated in Firestore
-    console.log("Update payload for Firestore:", updatePayload);
 
     await updateDoc(doc(this.chartsRef, chartId), updatePayload);
   }

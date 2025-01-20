@@ -86,7 +86,11 @@ const styles = StyleSheet.create({
 const processPitchData = (charts, pitcher) => {
   const allPitches = charts.reduce((pitches, chart) => {
     if (chart.pitcher?.name === pitcher) {
-      return [...pitches, ...(chart.pitches || [])];
+      const pitchesWithZoneType = (chart.pitches || []).map((pitch) => ({
+        ...pitch,
+        zoneType: chart.zoneType,
+      }));
+      return [...pitches, ...pitchesWithZoneType];
     }
     return pitches;
   }, []);
@@ -118,11 +122,13 @@ const processPitchData = (charts, pitcher) => {
     6: { xMin: 2.833, xMax: 8.5, yMin: 18, yMax: 26 }, // Low Outside Corner
     7: { xMin: 8.5 - 1.45, xMax: 8.5 + 1.45, yMin: 18, yMax: 42 }, // Outside to RHH (1 ball off)
   };
+
   const isPitchInZone = (x, y, zone, zoneType) => {
     const bounds =
       zoneType === "rh-7-zone"
         ? rhSevenZoneBounds[zone]
         : standardZoneBounds[zone];
+
     if (!bounds) return false;
 
     return (
@@ -172,10 +178,12 @@ const processPitchData = (charts, pitcher) => {
         inZoneCount: 0,
         strikeCount: 0,
         missedZoneCount: 0,
+        pitchesWithIntendedZone: 0,
       };
     }
 
     acc[type].count++;
+    acc[type].pitches.push(pitch);
 
     if (pitch.velocity) {
       const velocity = Number(pitch.velocity);
@@ -185,20 +193,27 @@ const processPitchData = (charts, pitcher) => {
       }
     }
 
-    if (pitch.intendedZone && pitch.zoneType) {
+    if (pitch.location && isInStrikeZone(pitch.location.x, pitch.location.y)) {
+      acc[type].strikeCount++;
+    }
+
+    if (pitch.intendedZone && pitch.location) {
+      const zoneType = pitch.zoneType || "standard";
+      acc[type].pitchesWithIntendedZone++;
+
       const { x: centerX, y: centerY } = calculateZoneCenter(
         pitch.intendedZone,
-        pitch.zoneType
+        zoneType
       );
 
-      if (
-        isPitchInZone(
-          pitch.location.x,
-          pitch.location.y,
-          pitch.intendedZone,
-          pitch.zoneType
-        )
-      ) {
+      const inZone = isPitchInZone(
+        pitch.location.x,
+        pitch.location.y,
+        pitch.intendedZone,
+        zoneType
+      );
+
+      if (inZone) {
         acc[type].inZoneCount++;
       } else {
         const missDistance = Math.sqrt(
@@ -210,14 +225,10 @@ const processPitchData = (charts, pitcher) => {
       }
     }
 
-    if (isInStrikeZone(pitch.location.x, pitch.location.y, pitch.zoneType)) {
-      acc[type].strikeCount++;
-    }
-
-    acc[type].pitches.push(pitch);
     return acc;
   }, {});
 
+  // Calculate metrics for each pitch type
   Object.keys(pitchTypes).forEach((type) => {
     const data = pitchTypes[type];
     data.usage = ((data.count / allPitches.length) * 100).toFixed(1);
@@ -231,8 +242,8 @@ const processPitchData = (charts, pitcher) => {
       ? Math.max(...data.velocities).toFixed(1)
       : "-";
 
-    data.accuracy = data.count
-      ? ((data.inZoneCount / data.count) * 100).toFixed(1)
+    data.accuracy = data.pitchesWithIntendedZone
+      ? ((data.inZoneCount / data.pitchesWithIntendedZone) * 100).toFixed(1)
       : "-";
 
     data.avgMissDistance = data.missedZoneCount

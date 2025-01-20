@@ -9,7 +9,7 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
     awayTeam: "",
     source: "d3",
     zoneType: "",
-    lastUpdated: new Date().toISOString(),
+    lastUpdated: new Date().toLocaleDateString(),
     pitches: [],
   });
 
