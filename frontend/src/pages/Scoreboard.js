@@ -125,13 +125,6 @@ const Scoreboard = () => {
       try {
         const dateStr = formatAPIDate(currentDate);
 
-        if (dateStr.year < 2021 || dateStr.year > 2024) {
-          setError("Games are only available for years 2021-2024");
-          setGames([]);
-          setIsLoading(false);
-          return;
-        }
-
         const response = await fetchAPI(
           `/api/games?month=${dateStr.month}&day=${dateStr.day}&year=${dateStr.year}`
         );

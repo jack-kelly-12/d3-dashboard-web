@@ -1051,7 +1051,7 @@ def get_games_by_date():
     try:
         year = int(year)
 
-        if year < 2021 or year > 2024:  # Changed to 2024 as upper limit
+        if year < 2021:  # Changed to 2024 as upper limit
             return jsonify({"error": f"No games available for year {year}. Please select a year between 2021 and 2024"}), 400
 
         game_date = f"{month}/{day}/{year}"
