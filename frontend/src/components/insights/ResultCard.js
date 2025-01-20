@@ -1,14 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, memo } from "react";
 import {
   Brain,
-  Code,
   Database,
-  LineChart,
-  ChevronRight,
-  ClipboardCheck,
   Lightbulb,
   CheckCircle2,
-  AlertCircle,
   Zap,
   TableProperties,
 } from "lucide-react";
@@ -19,46 +14,49 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  LineChart as RechartsLineChart,
-  Line,
 } from "recharts";
 
-const ThoughtBubble = ({ type, content, isActive }) => {
-  const types = {
-    thought: {
-      icon: <Brain className="h-5 w-5 text-purple-500" />,
-      color: "border-purple-200 bg-purple-50",
-      iconBg: "bg-purple-100",
-    },
-    query: {
-      icon: <Database className="h-5 w-5 text-blue-500" />,
-      color: "border-blue-200 bg-blue-50",
-      iconBg: "bg-blue-100",
-    },
-    result: {
-      icon: <Lightbulb className="h-5 w-5 text-amber-500" />,
-      color: "border-amber-200 bg-amber-50",
-      iconBg: "bg-amber-100",
-    },
-    conclusion: {
-      icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
-      color: "border-emerald-200 bg-emerald-50",
-      iconBg: "bg-emerald-100",
-    },
-  };
+// Memoized ThoughtBubble component to prevent unnecessary re-renders
+const ThoughtBubble = memo(({ type, content, isActive }) => {
+  const types = useMemo(
+    () => ({
+      thought: {
+        icon: <Brain className="h-5 w-5 text-purple-500" />,
+        color: "border-purple-200 bg-purple-50",
+        iconBg: "bg-purple-100",
+      },
+      query: {
+        icon: <Database className="h-5 w-5 text-blue-500" />,
+        color: "border-blue-200 bg-blue-50",
+        iconBg: "bg-blue-100",
+      },
+      result: {
+        icon: <Lightbulb className="h-5 w-5 text-amber-500" />,
+        color: "border-amber-200 bg-amber-50",
+        iconBg: "bg-amber-100",
+      },
+      conclusion: {
+        icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
+        color: "border-emerald-200 bg-emerald-50",
+        iconBg: "bg-emerald-100",
+      },
+    }),
+    []
+  );
 
   const style = types[type];
-  const isSQLQuery =
-    content.toLowerCase().includes("select") &&
-    content.toLowerCase().includes("from");
+  const isSQLQuery = useMemo(() => {
+    const contentLower = content.toLowerCase();
+    return contentLower.includes("select") && contentLower.includes("from");
+  }, [content]);
 
   return (
     <div
       className={`
-      relative rounded-xl border p-4 transition-all duration-300
-      ${style.color} 
-      ${isActive ? "scale-100 shadow-md" : "scale-95 opacity-70"}
-    `}
+        relative rounded-xl border p-4 transition-all duration-300
+        ${style.color} 
+        ${isActive ? "scale-100 shadow-md" : "scale-95 opacity-70"}
+      `}
     >
       <div className="flex gap-4">
         <div className={`rounded-lg ${style.iconBg} p-2 h-fit`}>
@@ -83,17 +81,23 @@ const ThoughtBubble = ({ type, content, isActive }) => {
       )}
     </div>
   );
-};
+});
 
-const DataVisualizer = ({ data }) => {
+ThoughtBubble.displayName = "ThoughtBubble";
+
+// Memoized DataVisualizer component
+const DataVisualizer = memo(({ data }) => {
   const [visualizationType, setVisualizationType] = useState("table");
 
-  if (!data?.headers || !data?.rows?.length) return null;
+  const chartData = useMemo(() => {
+    if (!data?.headers || !data?.rows?.length) return [];
+    return data.rows.map((row) => ({
+      name: row[0],
+      value: typeof row[1] === "number" ? row[1] : parseFloat(row[1]) || 0,
+    }));
+  }, [data]);
 
-  const chartData = data.rows.map((row) => ({
-    name: row[0],
-    value: typeof row[1] === "number" ? row[1] : parseFloat(row[1]) || 0,
-  }));
+  if (!data?.headers || !data?.rows?.length) return null;
 
   return (
     <div className="space-y-4 bg-white rounded-xl border border-gray-200 p-4">
@@ -103,28 +107,20 @@ const DataVisualizer = ({ data }) => {
           Data Visualization
         </h3>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setVisualizationType("table")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-              ${
-                visualizationType === "table"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-          >
-            Table
-          </button>
-          <button
-            onClick={() => setVisualizationType("chart")}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-              ${
-                visualizationType === "chart"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-          >
-            Chart
-          </button>
+          {["table", "chart"].map((type) => (
+            <button
+              key={type}
+              onClick={() => setVisualizationType(type)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
+                ${
+                  visualizationType === type
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+            >
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -173,10 +169,79 @@ const DataVisualizer = ({ data }) => {
       )}
     </div>
   );
-};
+});
+
+DataVisualizer.displayName = "DataVisualizer";
 
 export const ResultCard = ({ result }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+
+  const processedSteps = useMemo(() => {
+    if (!result?.analysis || !Array.isArray(result.analysis)) {
+      return [];
+    }
+
+    return result.analysis
+      .map((step) => {
+        if (!step || typeof step !== "string") {
+          return { type: "thought", content: "Invalid step" };
+        }
+
+        const stepLower = step.toLowerCase();
+
+        // Helper function to safely extract content
+        const extractContent = (prefix) => {
+          const parts = step.split(prefix);
+          return parts.length > 1 ? parts[1].trim() : step.trim();
+        };
+
+        // Handle SQL queries specially
+        if (stepLower.includes("query:")) {
+          return {
+            type: "query",
+            content: extractContent("Query:"),
+          };
+        }
+
+        // Process other step types
+        if (stepLower.includes("thought:")) {
+          return {
+            type: "thought",
+            content: extractContent("Thought:"),
+          };
+        }
+        if (stepLower.includes("action:")) {
+          const content = extractContent("Action:");
+          // If it's a SQL action, wait for the actual query
+          if (content.toLowerCase().includes("execute_sql")) {
+            return null;
+          }
+          return { type: "query", content };
+        }
+        if (stepLower.includes("results:")) {
+          return {
+            type: "result",
+            content: extractContent("Results:"),
+          };
+        }
+        if (stepLower.includes("observation:")) {
+          return {
+            type: "result",
+            content: extractContent("Observation:"),
+          };
+        }
+        if (stepLower.includes("final answer:")) {
+          return {
+            type: "conclusion",
+            content: extractContent("Final Answer:"),
+          };
+        }
+
+        // Default case - treat as thought
+        return { type: "thought", content: step };
+      })
+      .filter(Boolean); // Remove null/undefined entries
+  }, [result?.analysis]);
 
   useEffect(() => {
     setCurrentStepIndex(0);
@@ -191,27 +256,11 @@ export const ResultCard = ({ result }) => {
     }, 1500);
 
     return () => clearInterval(timer);
-  }, [result]);
+  }, [result, processedSteps.length]);
 
-  const processedSteps = result.analysis.map((step) => {
-    const stepLower = step.toLowerCase();
-    if (stepLower.includes("thought:")) {
-      return { type: "thought", content: step.split("Thought:")[1].trim() };
-    }
-    if (stepLower.includes("action: execute_sql")) {
-      return { type: "query", content: step.split("Action Input:")[1].trim() };
-    }
-    if (stepLower.includes("observation:")) {
-      return { type: "result", content: step.split("Observation:")[1].trim() };
-    }
-    if (stepLower.includes("final answer:")) {
-      return {
-        type: "conclusion",
-        content: step.split("Final Answer:")[1].trim(),
-      };
-    }
-    return { type: "thought", content: step };
-  });
+  if (!result) {
+    return null;
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">

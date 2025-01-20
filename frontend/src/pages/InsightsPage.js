@@ -29,7 +29,7 @@ const EXAMPLE_QUESTIONS = [
     gradient: "from-blue-500 to-cyan-500",
   },
   {
-    text: "Show me the top 5 pitchers by strikeout rate in 2024",
+    text: "Who were the top 5 pitchers by strikeout rate in 2024?",
     icon: <Brain className="w-5 h-5" />,
     category: "Rankings",
     gradient: "from-violet-500 to-purple-500",
@@ -77,6 +77,8 @@ const InsightsPage = () => {
         method: "POST",
         body: JSON.stringify({ question: query }),
       });
+
+      console.log(data);
 
       if (data.status === "error" || data.type === "error") {
         throw new Error(
@@ -134,13 +136,6 @@ const InsightsPage = () => {
                       disabled={isLoading}
                     />
                     <div className="absolute right-4 flex items-center gap-2">
-                      <kbd
-                        className={`hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded border border-gray-200 bg-gray-100 text-xs text-gray-500 transition-opacity duration-200 ${
-                          showShortcut ? "opacity-100" : "opacity-0"
-                        }`}
-                      >
-                        <Command className="w-3 h-3" /> K
-                      </kbd>
                       <Search className="w-5 h-5 text-gray-400" />
                     </div>
                   </div>
