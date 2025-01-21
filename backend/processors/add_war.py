@@ -21,14 +21,14 @@ class BaseballStats:
             'Sac', 'BA', 'SlgPct', 'OBPct', 'ISO', 'wOBA', 'K%', 'BB%',
             'SB%', 'wRC+', 'wRC', 'Batting', 'Baserunning', 'Adjustment', 'WAR',
             'Clutch', 'WPA', 'REA', 'WPA/LI', 'wSB', 'wGDP', 'wTEB', 'EBT', "Opportunities", 'OutsOB',
-            'GDPOpps', 'GDP', 'Season', 'Division'
+            'GDPOpps', 'GDP', 'Division', 'Season'
         ]
         self.pitching_columns = [
             'Player', 'player_id', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
             'BB', 'SO', 'HR-A', '2B-A', '3B-A', 'HB', 'BF', 'FO', 'GO', 'Pitches',
             'gmLI', 'K9', 'BB9', 'HR9', 'RA9', 'H9', 'IR-A%', 'K%', 'BB%', 'K-BB%', 'HR/FB', 'FIP',
-            'xFIP', 'ERA+', 'WAR', 'Season', 'Yr', 'Inh Run', 'Inh Run Score',
-            'Clutch', 'pWPA', 'pREA', 'pWPA/LI', 'Division'
+            'xFIP', 'ERA+', 'WAR', 'Yr', 'Inh Run', 'Inh Run Score',
+            'Clutch', 'pWPA', 'pREA', 'pWPA/LI', 'Division', 'Season'
         ]
         self.team_pitching_agg = {
             'App': 'sum', 'Conference': 'first', 'IP': 'sum', 'H': 'sum',
@@ -43,7 +43,7 @@ class BaseballStats:
             '2B': 'sum', '3B': 'sum', 'HR': 'sum', 'R': 'sum', 'SB': 'sum',
             'Picked': 'sum', 'Sac': 'sum', 'wRC': 'sum', 'Batting': 'sum',
             'Baserunning': 'sum', 'Adjustment': 'sum', 'WAR': 'sum',
-            'K': 'sum', 'CS': 'sum', 'RBI': 'sum', 'GS': 'max'
+            'K': 'sum', 'CS': 'sum', 'RBI': 'sum', 'GS': 'max',
         }
 
         self.gdp_run_value = -.5
@@ -789,13 +789,15 @@ class BaseballStats:
                         right_on=['player_id'],
                         how='left'
                     )
+
                     bat_war['Season'] = year
                     bat_war['Division'] = division
-                    bat_war = bat_war[self.batting_columns]
 
                     bat_war[['Player', 'Team', 'Conference', 'Yr']] = bat_war[
                         ['Player', 'Team', 'Conference', 'Yr']].fillna('-')
                     bat_war = bat_war.fillna(0)
+
+                    bat_war = bat_war[self.batting_columns]
 
                     bat_war.to_csv(
                         f'../data/war/d{division}_batting_war_{year}.csv', index=False)
@@ -838,6 +840,7 @@ class BaseballStats:
                             'conference': 'Conference',
                             'team_name': 'Team'
                         })
+
                         pitch_war['Season'] = year
                         pitch_war['Division'] = division
 
@@ -854,10 +857,10 @@ class BaseballStats:
                             right_on=['pitcher_id'],
                             how='left'
                         )
+
                         pitch_war = pitch_war[self.pitching_columns]
                         pitch_war.to_csv(
                             f'../data/war/d{division}_pitching_war_{year}.csv', index=False)
-
                         # Add to combined list
                         all_pitching_war.append(pitch_war)
 

@@ -182,8 +182,8 @@ class PlayerMatcher:
 
     def _create_output_dataframe(self, df_type: pd.DataFrame) -> pd.DataFrame:
         mapped_records = []
-        df_type = df_type.drop(
-            columns=['player_id']) if 'player_id' in df_type.columns else df_type
+        df_type = df_type.rename(
+            columns={'player_id': 'ncaa_id'}) if 'player_id' in df_type.columns else df_type
         original_columns = df_type.columns.tolist()
         data_type = df_type['data_type'].iloc[0]
 
