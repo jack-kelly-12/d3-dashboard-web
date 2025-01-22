@@ -15,7 +15,7 @@ class BaseballStats:
             'RP': 0.62, 'SP': 0.62, '': 0
         }
         self.batting_columns = [
-            'Player', 'Pos', 'player_id', 'Team', 'Conference', 'Yr', 'R/PA', 'GP',
+            'Player', 'Pos', 'B/T', 'player_id', 'Team', 'Conference', 'Yr', 'R/PA', 'GP',
             'BB', 'CS', 'GS', 'HBP', 'IBB', 'K', 'RBI', 'SF', 'AB',
             'PA', 'H', '2B', '3B', 'HR', 'R', 'SB', 'OPS+', 'Picked',
             'Sac', 'BA', 'SlgPct', 'OBPct', 'ISO', 'wOBA', 'K%', 'BB%',
@@ -24,7 +24,7 @@ class BaseballStats:
             'GDPOpps', 'GDP', 'Division', 'Season'
         ]
         self.pitching_columns = [
-            'Player', 'player_id', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
+            'Player', 'player_id', 'B/T', 'Team', 'Conference', 'App', 'GS', 'ERA', 'IP', 'H', 'R', 'ER',
             'BB', 'SO', 'HR-A', '2B-A', '3B-A', 'HB', 'BF', 'FO', 'GO', 'Pitches',
             'gmLI', 'K9', 'BB9', 'HR9', 'RA9', 'H9', 'IR-A%', 'K%', 'BB%', 'K-BB%', 'HR/FB', 'FIP',
             'xFIP', 'ERA+', 'WAR', 'Yr', 'Inh Run', 'Inh Run Score',

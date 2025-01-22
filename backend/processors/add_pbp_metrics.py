@@ -151,9 +151,8 @@ def process_pitchers(df):
             check_text = row['away_text'] if row['top_inning'] else row['home_text']
 
             if isinstance(check_text, str) and 'to p for' in check_text:
-                parts = check_text.split('to p for')
-                current_pitcher = parts[0].strip()
-                previous_pitcher = parts[1].strip()
+                current_pitcher = row['sub_in']
+                previous_pitcher = row['sub_out']
 
                 if row['top_inning']:
                     home_pitcher = current_pitcher
@@ -702,7 +701,8 @@ def main():
         'inning', 'top_inning', 'game_id', 'description',
         'home_win_exp_before', 'wpa', 'run_expectancy_delta', 'woba', 'home_win_exp_after',
         'player_id', 'pitcher_id', 'batter_id', 'li', 'home_score_after',
-        'away_score_after', 'event_cd', 'times_through_order', 'base_cd_before', 'base_cd_after'
+        'away_score_after', 'event_cd', 'times_through_order', 'base_cd_before', 'base_cd_after',
+        'hit_type'
     ]
 
     for year in years:
