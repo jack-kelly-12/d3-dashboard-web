@@ -14,12 +14,14 @@ def get_data(year, division):
     roster = pd.read_csv(
         f'../data/rosters/d{division}_rosters_{year}.csv')
 
+    pbp_df['top_inning'] = pbp_df.top_inning.replace({0: 'Bottom', 1: 'Top'})
+
     pbp_df['description'] = np.where(
         pbp_df['away_text'].isna(), pbp_df['home_text'], pbp_df['away_text'])
     pbp_df['bat_team'] = np.where(
-        pbp_df['top_inning'], pbp_df['away_team'], pbp_df['home_team'])
+        pbp_df['top_inning'] == 'Top', pbp_df['away_team'], pbp_df['home_team'])
     pbp_df['pitch_team'] = np.where(
-        pbp_df['top_inning'] == 1.0, pbp_df['home_team'], pbp_df['away_team'])
+        pbp_df['top_inning'] == 'Top', pbp_df['home_team'], pbp_df['away_team'])
 
     if 'play_id' in pbp_df.columns:
         pbp_df.sort_values('play_id')
@@ -34,7 +36,7 @@ def get_data(year, division):
     return batting, pitching, pbp_df.dropna(subset=['description']), le, we, re, roster
 
 
-def standardize_names(pbp_df, roster, threshold=50):
+def standardize_names(pbp_df, roster, threshold=30):
     def format_name(name):
         if pd.isna(name):
             return name
@@ -137,9 +139,9 @@ def process_pitchers(df):
     df = df.copy()
 
     df['bat_team'] = np.where(
-        df['top_inning'], df['away_team'], df['home_team'])
+        df['top_inning'] == 'Top', df['away_team'], df['home_team'])
     df['pitch_team'] = np.where(
-        df['top_inning'], df['home_team'], df['away_team'])
+        df['top_inning'] == 'Top', df['home_team'], df['away_team'])
     df['pitcher'] = None
 
     for _, game_df in df.groupby('game_id'):
@@ -165,7 +167,7 @@ def process_pitchers(df):
 
         for idx, row in game_df.iterrows():
             if pd.isna(df.loc[idx, 'pitcher']):
-                if row['top_inning']:
+                if row['top_inning'] == 'Top':
                     df.loc[idx, 'pitcher'] = starter_pitchers.get('home', None)
                 else:
                     df.loc[idx, 'pitcher'] = starter_pitchers.get('away', None)
@@ -267,8 +269,6 @@ base_state_map = {
 def merge_baseball_stats(df, leverage_melted, win_expectancy, re_melted):
     df_copy = df.copy()
     df_copy['effective_inning'] = df_copy['inning'].clip(upper=9)
-    df_copy['top_inning'] = np.where(
-        df_copy.away_team == df_copy.bat_team, 'Top', 'Bottom')
 
     # First merge - leverage index
     merged_df = df_copy.merge(
@@ -625,6 +625,9 @@ def process_single_year(args):
         # Load data with error handling
         batting, pitching, pbp_df, leverage_melted, win_expectancy, re, roster = get_data(
             year, division)
+
+        pbp_df['top_inning'] = np.where(
+            pbp_df.away_team == pbp_df.bat_team, 'Top', 'Bottom')
     except FileNotFoundError as e:
         print(f"Error loading data for {year}: {e}")
         return None  # Return None if data loading fails
@@ -643,12 +646,8 @@ def process_single_year(args):
         pbp_processed['away_score_before']
     pbp_processed['score_diff_after'] = pbp_processed['home_score_after'] - \
         pbp_processed['away_score_after']
-    pbp_processed['top_inning'] = pbp_processed.groupby('game_id')['top_inning'].transform(
-        lambda x: x.fillna(method='ffill')
-    )
+
     pbp_processed = pbp_processed.dropna(subset=['top_inning'])
-    pbp_processed['top_inning'] = pbp_processed['top_inning'].map(
-        {1: 'Top', 0: 'Bottom'})
     pbp_processed['outs_before'] = pbp_processed['outs_after'] - \
         pbp_processed['outs_on_play']
 

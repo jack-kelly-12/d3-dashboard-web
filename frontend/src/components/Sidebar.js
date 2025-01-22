@@ -15,9 +15,52 @@ import {
   X,
   CalendarCheck,
   Trophy,
+  User2,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
+
+const UserSection = ({
+  user,
+  isPremiumUser,
+  onSignOut,
+  collapsed,
+  mobileOpen,
+}) => {
+  return (
+    <div className="w-full space-y-1">
+      <div
+        className={`flex items-center h-11 px-4 rounded-lg text-gray-600 ${
+          collapsed && !mobileOpen ? "justify-center" : ""
+        }`}
+      >
+        <User2 className="w-5 h-5" strokeWidth={1.5} />
+        {(!collapsed || mobileOpen) && (
+          <div className="ml-3 overflow-hidden">
+            <div className="text-sm font-medium truncate">
+              {user?.email || "Anonymous"}
+            </div>
+            <div className="text-xs text-gray-500">
+              {isPremiumUser ? "Premium" : "Free"}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <button
+        onClick={onSignOut}
+        className={`w-full flex items-center h-11 px-4 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 ${
+          collapsed && !mobileOpen ? "justify-center" : ""
+        }`}
+      >
+        <LogOut className="w-5 h-5" strokeWidth={1.5} />
+        {(!collapsed || mobileOpen) && (
+          <span className="ml-3 text-sm font-medium">Sign Out</span>
+        )}
+      </button>
+    </div>
+  );
+};
 
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -29,6 +72,7 @@ const Sidebar = () => {
   });
   const navigate = useNavigate();
   const location = useLocation();
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -36,13 +80,13 @@ const Sidebar = () => {
 
   useEffect(() => {
     const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+      setUser(user);
       setAuthState({
         isAuthenticated: !!user,
         isAnonymous: user?.isAnonymous || false,
       });
 
       if (user) {
-        // Listen to subscription updates
         SubscriptionManager.listenToSubscriptionUpdates(
           user.uid,
           (subscription) => {
@@ -98,22 +142,17 @@ const Sidebar = () => {
   const renderAuthButton = () => {
     if (authState.isAuthenticated && !authState.isAnonymous) {
       return (
-        <button
-          onClick={handleSignOut}
-          className={`w-full flex items-center h-11 px-4 text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 ${
-            collapsed && !mobileOpen ? "justify-center" : ""
-          } relative`}
-        >
-          <LogOut className="w-5 h-5" strokeWidth={1.5} />
-          {(!collapsed || mobileOpen) && (
-            <span className="ml-3 text-sm font-medium">Sign Out</span>
+        <>
+          {authState.isAuthenticated && !authState.isAnonymous && (
+            <UserSection
+              user={user}
+              isPremiumUser={isPremiumUser}
+              onSignOut={handleSignOut}
+              collapsed={collapsed}
+              mobileOpen={mobileOpen}
+            />
           )}
-          {isPremiumUser && (
-            <span className="absolute top-0 right-0 mt-1 mr-1 px-2 py-0.5 text-xs font-semibold text-white bg-blue-500 rounded-full">
-              Premium
-            </span>
-          )}
-        </button>
+        </>
       );
     }
 
