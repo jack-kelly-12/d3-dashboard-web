@@ -1011,13 +1011,21 @@ def get_game(year, game_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(f"""
-        SELECT home_team, away_team, home_score, away_score, date as game_date, 
-               inning, top_inning, game_id, description, 
-               home_win_exp_before, home_win_exp_after, wpa, run_expectancy_delta, 
-               batter_id, player_id, pitcher_id, li, home_score_after, away_score_after
-        FROM pbp
-        WHERE division = 3 AND game_id = ? AND description IS NOT NULL AND year = ?
+    cursor.execute("""
+        SELECT DISTINCT
+            p.home_team, p.away_team, p.home_score, p.away_score, p.date as game_date,
+            p.inning, p.top_inning, p.game_id, p.description,
+            p.home_win_exp_before, p.home_win_exp_after, p.wpa, p.run_expectancy_delta,
+            p.batter_id, p.player_id, p.pitcher_id, p.li, p.home_score_after, p.away_score_after,
+            bw.Player as batter_name,
+            pw.Player as pitcher_name, p.woba
+        FROM pbp p
+        LEFT JOIN batting_war bw ON p.batter_id = bw.player_id AND bw.Season = p.year 
+        LEFT JOIN pitching_war pw ON p.pitcher_id = pw.player_id AND pw.Season = p.year
+        WHERE p.division = 3 
+        AND p.game_id = ? 
+        AND p.description IS NOT NULL 
+        AND p.year = ?
     """, (game_id, year))
 
     plays = [dict(row) for row in cursor.fetchall()]

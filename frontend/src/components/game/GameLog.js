@@ -52,10 +52,32 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       },
     },
     {
-      name: "Delta Win Prob",
-      selector: (row) => `${roundTo(row.wpa, 2)}`,
+      name: "Batter",
+      selector: (row) => `${roundTo(row.batter_name, 1)}`,
       sortable: false,
       width: "150px",
+      cell: (row) => (
+        <div className="text-center text-gray-600">{`${
+          row.batter_name ? row.batter_name : ""
+        }`}</div>
+      ),
+    },
+    {
+      name: "Pitcher",
+      selector: (row) => `${roundTo(row.pitcher_name, 1)}`,
+      sortable: false,
+      width: "150px",
+      cell: (row) => (
+        <div className="text-center text-gray-600">{`${
+          row.pitcher_name ? row.pitcher_name : ""
+        }`}</div>
+      ),
+    },
+    {
+      name: "Δ Win Prob",
+      selector: (row) => `${roundTo(row.wpa, 2)}`,
+      sortable: false,
+      width: "100px",
       cell: (row) => (
         <div className="text-center text-gray-600">{`${roundTo(
           row.wpa,
@@ -64,10 +86,10 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       ),
     },
     {
-      name: "Delta Run Exp",
+      name: "Δ Run Exp",
       selector: (row) => `${roundTo(row.rea, 2)}`,
       sortable: false,
-      width: "150px",
+      width: "100px",
       cell: (row) => (
         <div className="text-center text-gray-600">{`${roundTo(
           row.run_expectancy_delta,
@@ -84,6 +106,18 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
         <div className="text-center text-gray-600">{`${roundTo(
           row.li,
           1
+        )}`}</div>
+      ),
+    },
+    {
+      name: "wOBA",
+      selector: (row) => `${roundTo(row.woba, 3)}`,
+      sortable: false,
+      width: "80px",
+      cell: (row) => (
+        <div className="text-center text-gray-600">{`${roundTo(
+          row.woba,
+          3
         )}`}</div>
       ),
     },
