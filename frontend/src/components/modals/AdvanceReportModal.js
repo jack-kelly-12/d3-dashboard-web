@@ -42,6 +42,8 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
   const [selectedCharts, setSelectedCharts] = useState([]);
   const [reportType, setReportType] = useState("bullpen");
   const [selectedPitchers, setSelectedPitchers] = useState([]);
+  const [nameFilter, setNameFilter] = useState("");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
   const availableCharts = useMemo(() => {
     const type = ReportTypes[reportType.toUpperCase()];
@@ -54,6 +56,20 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
       return true;
     });
   }, [charts, reportType]);
+
+  const filteredCharts = useMemo(() => {
+    return availableCharts.filter((chart) => {
+      const matchesName = chart.pitcher?.name
+        ?.toLowerCase()
+        .includes(nameFilter.toLowerCase());
+      const chartDate = new Date(chart.date);
+      const afterStart =
+        !dateRange.start || chartDate >= new Date(dateRange.start);
+      const beforeEnd = !dateRange.end || chartDate <= new Date(dateRange.end);
+
+      return matchesName && afterStart && beforeEnd;
+    });
+  }, [availableCharts, nameFilter, dateRange]);
 
   const availablePitchers = useMemo(() => {
     const pitchers = new Set();
@@ -91,6 +107,49 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
       console.error("Error generating report:", error);
     }
   };
+
+  const FilterSection = (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Pitcher Name
+        </label>
+        <input
+          type="text"
+          value={nameFilter}
+          onChange={(e) => setNameFilter(e.target.value)}
+          placeholder="Filter by name..."
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Start Date
+        </label>
+        <input
+          type="date"
+          value={dateRange.start}
+          onChange={(e) =>
+            setDateRange((prev) => ({ ...prev, start: e.target.value }))
+          }
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          End Date
+        </label>
+        <input
+          type="date"
+          value={dateRange.end}
+          onChange={(e) =>
+            setDateRange((prev) => ({ ...prev, end: e.target.value }))
+          }
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+    </div>
+  );
 
   if (!isOpen) return null;
 
@@ -144,12 +203,14 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
               </div>
             </div>
 
+            {FilterSection}
+
             {/* Chart Selection */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
                 Select Charts to Include
               </label>
-              {availableCharts.length === 0 ? (
+              {filteredCharts.length === 0 ? (
                 <div className="bg-gray-50 rounded-xl p-8 text-center border border-gray-200">
                   <div className="text-4xl mb-3">📈</div>
                   <p className="text-gray-600 font-medium">
@@ -163,7 +224,7 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {availableCharts.map((chart) => (
+                  {filteredCharts.map((chart) => (
                     <label
                       key={chart.id}
                       className={`flex items-start p-4 rounded-xl border-2 cursor-pointer transition-all duration-200

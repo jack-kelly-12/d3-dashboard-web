@@ -492,13 +492,17 @@ const StrikeZone = ({
   ]);
 
   return (
-    <div className="relative flex flex-col items-center">
-      <div className="w-[570px] h-[500px] bg-white rounded-lg overflow-hidden">
-        <svg
-          ref={svgRef}
-          className="w-full h-full"
-          style={{ display: "block" }}
-        />
+    <div className="relative w-full pt-[100%]">
+      {" "}
+      {/* 1:1 Aspect Ratio Container */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-[90%] h-[90%] max-w-[600px] max-h-[600px] aspect-square relative">
+          <svg
+            ref={svgRef}
+            className="w-full h-full"
+            style={{ display: "block" }}
+          />
+        </div>
       </div>
       {hoverCoords && (
         <div className="absolute bottom-4 right-4 bg-white px-3 py-1.5 rounded-full shadow-sm text-sm font-mono text-gray-600">

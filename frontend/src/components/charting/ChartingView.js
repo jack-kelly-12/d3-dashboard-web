@@ -9,6 +9,7 @@ import HitInput from "./HitInput";
 import PitchTable from "../tables/PitchTable";
 import PlayerModal from "../modals/PlayerModal";
 import ChartManager from "../../managers/ChartManager";
+import PitchCounter from "./PitchCounter";
 
 export const ChartingView = ({ chart, onSave, onBack }) => {
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
@@ -434,6 +435,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     Toggle View
                   </button>
                 </div>
+                <PitchCounter pitches={pitches} />
                 <StrikeZone
                   key={isPitcherView ? "pitcher" : "catcher"}
                   onPlotPitch={handlePlotPitch}
