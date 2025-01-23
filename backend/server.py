@@ -475,7 +475,7 @@ def search_players():
                 UNION
                 SELECT player_id, Player, Team, Conference
                 FROM pitching_war
-                WHERE Division = 3 AND Year == 2024
+                WHERE Division = 3 AND Season == 2024
             )
             WHERE Player LIKE ? OR Player LIKE ? OR Player LIKE ? OR Player LIKE ?
             ORDER BY

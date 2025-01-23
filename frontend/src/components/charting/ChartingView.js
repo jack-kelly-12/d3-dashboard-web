@@ -346,6 +346,19 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
     }
   };
 
+  const handleUpdatePitch = async (pitchId, updates) => {
+    const loadingToast = toast.loading("Updating pitch...");
+    try {
+      await ChartManager.updatePitch(chart.id, pitchId, updates);
+      const updatedChart = await ChartManager.getChartById(chart.id);
+      setPitches(updatedChart.pitches);
+      onSave(updatedChart.pitches);
+      toast.success("Pitch updated successfully", { id: loadingToast });
+    } catch (error) {
+      toast.error("Failed to update pitch", { id: loadingToast });
+    }
+  };
+
   const handleResetPitch = () => {
     setShouldResetPlot(true);
     if (isStrikeZone) {
@@ -456,11 +469,12 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <PitchTable
-                  pitches={pitches}
-                  onDeletePitch={handleDeletePitch}
-                  isBullpen={true}
-                />
+              <PitchTable
+  pitches={pitches}
+  onDeletePitch={handleDeletePitch}
+  onUpdatePitch={handleUpdatePitch}
+  isBullpen={true}
+/>
               </div>
             </div>
           </div>
@@ -599,12 +613,13 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                 </h2>
               </div>
               <div className="overflow-x-auto">
-                <PitchTable
-                  pitches={pitches}
-                  showBatter={true}
-                  onDeletePitch={handleDeletePitch}
-                  isBullpen={false}
-                />
+              <PitchTable
+  pitches={pitches}
+  onDeletePitch={handleDeletePitch}
+  onUpdatePitch={handleUpdatePitch}
+  showBatter={true}
+  isBullpen={isBullpen}
+/>
               </div>
             </div>
           </div>

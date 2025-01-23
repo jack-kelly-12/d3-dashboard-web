@@ -37,6 +37,6 @@ github-actions-key
 github-actions-key.pub
 github-actions-keys/
 
-backend/ncaa.sqbpro
+backend/ncaa*
 
 .venv/

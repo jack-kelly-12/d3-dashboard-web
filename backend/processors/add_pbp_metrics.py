@@ -23,9 +23,9 @@ def get_data(year, division):
     pbp_df['pitch_team'] = np.where(
         pbp_df['top_inning'] == 'Top', pbp_df['home_team'], pbp_df['away_team'])
 
-    if 'play_id' in pbp_df.columns:
+    if 'X' in pbp_df.columns:
         pbp_df.sort_values('play_id')
-    elif 'X' in pbp_df.columns:
+    elif 'play_id' in pbp_df.columns:
         pbp_df.sort_values('X')
 
     le = pd.read_csv('../data/miscellaneous/leverage_index.csv')
@@ -136,41 +136,49 @@ def extract_player_from_description(row):
 
 
 def process_pitchers(df):
+    """
+    Process pitchers with backfill when "to p for" appears in description.
+    Vectorized version for improved performance.
+    """
     df = df.copy()
 
-    df['bat_team'] = np.where(
-        df['top_inning'] == 'Top', df['away_team'], df['home_team'])
-    df['pitch_team'] = np.where(
-        df['top_inning'] == 'Top', df['home_team'], df['away_team'])
-    df['pitcher'] = None
+    # Create pitcher changes mask
+    pitcher_changes = df['description'].str.contains('to p for', na=False)
 
-    for _, game_df in df.groupby('game_id'):
-        home_pitcher = None
-        away_pitcher = None
+    # Create initial pitcher column
+    df['pitcher'] = pd.Series(dtype='string')
 
-        starter_pitchers = {}
-        for idx, row in game_df.iterrows():
-            check_text = row['away_text'] if row['top_inning'] else row['home_text']
+    # Set pitcher values at change points
+    df.loc[pitcher_changes, 'pitcher'] = df.loc[pitcher_changes,
+                                                'sub_in'].astype(str)
 
-            if isinstance(check_text, str) and 'to p for' in check_text:
-                current_pitcher = row['sub_in']
-                previous_pitcher = row['sub_out']
+    # Group by game and pitch team
+    grouped = df.groupby(['game_id', 'pitch_team'])
 
-                if row['top_inning']:
-                    home_pitcher = current_pitcher
-                    starter_pitchers['home'] = previous_pitcher
-                else:
-                    away_pitcher = current_pitcher
-                    starter_pitchers['away'] = previous_pitcher
+    # Process each group vectorized
+    def process_group(group):
+        # Get indices of pitcher changes
+        change_idx = group.index[pitcher_changes[group.index]]
 
-            df.loc[idx, 'pitcher'] = home_pitcher if row['top_inning'] else away_pitcher
+        if len(change_idx) > 0:
+            # Set exiting pitchers
+            for i in range(len(change_idx)):
+                start = change_idx[i-1] if i > 0 else group.index[0]
+                end = change_idx[i]
 
-        for idx, row in game_df.iterrows():
-            if pd.isna(df.loc[idx, 'pitcher']):
-                if row['top_inning'] == 'Top':
-                    df.loc[idx, 'pitcher'] = starter_pitchers.get('home', None)
-                else:
-                    df.loc[idx, 'pitcher'] = starter_pitchers.get('away', None)
+                # Backfill exiting pitcher
+                mask = (group.index >= start) & (group.index < end)
+                group.loc[mask, 'pitcher'] = str(group.loc[end, 'sub_out'])
+
+        # Forward fill remaining gaps
+        group['pitcher'] = group['pitcher'].ffill()
+        return group
+
+    # Apply processing to each group
+    result = grouped.apply(process_group)
+
+    df = result.reset_index(drop=True)
+
     return df
 
 
