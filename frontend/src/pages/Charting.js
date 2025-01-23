@@ -103,7 +103,11 @@ const Charting = () => {
     }
   };
 
-  const handleUpdateChart = async (chartId, updatedPitches) => {
+  const handleUpdateChart = async (
+    chartId,
+    updatedPitches,
+    updatedChartData
+  ) => {
     if (!user) {
       navigate("/signin");
       return;
@@ -111,20 +115,39 @@ const Charting = () => {
 
     const loadingToast = toast.loading("Updating chart...");
     try {
-      await ChartManager.updatePitches(chartId, updatedPitches);
-      setCharts((prevCharts) =>
-        prevCharts.map((chart) => {
-          if (chart.id === chartId) {
-            return {
-              ...chart,
-              pitches: updatedPitches,
-              totalPitches: updatedPitches.length,
-              updatedAt: new Date().toISOString(),
-            };
-          }
-          return chart;
-        })
-      );
+      if (updatedChartData) {
+        // If we have full chart data, update the entire chart in state
+        setCharts((prevCharts) =>
+          prevCharts.map((chart) => {
+            if (chart.id === chartId) {
+              return {
+                ...chart,
+                ...updatedChartData,
+                pitches: updatedPitches,
+                totalPitches: updatedPitches.length,
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            return chart;
+          })
+        );
+      } else {
+        // Handle pitch-only updates as before
+        await ChartManager.updatePitches(chartId, updatedPitches);
+        setCharts((prevCharts) =>
+          prevCharts.map((chart) => {
+            if (chart.id === chartId) {
+              return {
+                ...chart,
+                pitches: updatedPitches,
+                totalPitches: updatedPitches.length,
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            return chart;
+          })
+        );
+      }
       toast.success("Chart updated successfully", { id: loadingToast });
     } catch (err) {
       toast.error("Failed to update chart. Please try again.", {
@@ -186,7 +209,9 @@ const Charting = () => {
     return (
       <ChartingView
         chart={selectedChart}
-        onSave={(pitches) => handleUpdateChart(selectedChart.id, pitches)}
+        onSave={(pitches, updatedChart) =>
+          handleUpdateChart(selectedChart.id, pitches, updatedChart)
+        }
         onBack={() => setSelectedChart(null)}
       />
     );

@@ -16,7 +16,6 @@ const ChartsList = ({
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [normalizedCharts, setNormalizedCharts] = useState([]);
 
-  // Memoize the charts dependency value
   const chartsDepValue = useMemo(
     () =>
       charts

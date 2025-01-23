@@ -157,6 +157,9 @@ class ChartManager {
     };
 
     await updateDoc(doc(this.chartsRef, chartId), updatePayload);
+
+    const updatedDoc = await getDoc(doc(this.chartsRef, chartId));
+    return this.processChartDocuments({ docs: [updatedDoc] })[0];
   }
 
   async getChartById(chartId) {

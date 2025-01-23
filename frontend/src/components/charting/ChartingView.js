@@ -170,8 +170,13 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
           break;
       }
 
-      await ChartManager.updateChart(chart.id, updatedData);
+      const updatedChart = await ChartManager.updateChart(
+        chart.id,
+        updatedData
+      );
       setIsPlayerModalOpen(false);
+
+      onSave(updatedChart.pitches, updatedChart);
 
       if (nextModalType) {
         setTimeout(() => {
@@ -469,12 +474,12 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                 </h2>
               </div>
               <div className="overflow-x-auto">
-              <PitchTable
-  pitches={pitches}
-  onDeletePitch={handleDeletePitch}
-  onUpdatePitch={handleUpdatePitch}
-  isBullpen={true}
-/>
+                <PitchTable
+                  pitches={pitches}
+                  onDeletePitch={handleDeletePitch}
+                  onUpdatePitch={handleUpdatePitch}
+                  isBullpen={true}
+                />
               </div>
             </div>
           </div>
@@ -613,13 +618,13 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                 </h2>
               </div>
               <div className="overflow-x-auto">
-              <PitchTable
-  pitches={pitches}
-  onDeletePitch={handleDeletePitch}
-  onUpdatePitch={handleUpdatePitch}
-  showBatter={true}
-  isBullpen={isBullpen}
-/>
+                <PitchTable
+                  pitches={pitches}
+                  onDeletePitch={handleDeletePitch}
+                  onUpdatePitch={handleUpdatePitch}
+                  showBatter={true}
+                  isBullpen={isBullpen}
+                />
               </div>
             </div>
           </div>

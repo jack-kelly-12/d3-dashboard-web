@@ -15,8 +15,6 @@ const StrikeZone = ({
   const [hoverCoords, setHoverCoords] = useState(null);
   const [previewPitch, setPreviewPitch] = useState(null);
 
-  console.log(zoneType);
-
   useEffect(() => {
     if (currentPitch.location) {
       setPreviewPitch(currentPitch.location);
