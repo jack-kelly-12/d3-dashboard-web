@@ -311,7 +311,7 @@ def get_player_percentiles(player_id):
         # Check if player exists in 2024 pitching stats
         cursor.execute("""
             SELECT * FROM pitching_war
-            WHERE player_id = ? AND Division = 3 AND Year == 2024
+            WHERE player_id = ? AND Division = 3 AND Season == 2024
         """, (player_id,))
         player = cursor.fetchone()
 
@@ -553,14 +553,14 @@ def upload_rapsodo():
                     'type': str(pitch_type).lower(),
                     'velocity': float(row['Velocity']) if pd.notna(row.get('Velocity')) else None,
                     'spinRate': float(row['Total Spin']) if pd.notna(row.get('Total Spin')) else None,
-                    'spinEff':  float(row['Spin Efficiency (release)']) if pd.notna(row.get('Spin Efficiency (release)')) else None,
+                    'spinEff': float(row['Spin Efficiency (release)']) if pd.notna(row.get('Spin Efficiency (release)')) else None,
                     'horzBreak': float(row['HB (trajectory)']) if pd.notna(row.get('HB (trajectory)')) else None,
-                    'horzBreak': float(row['VB (trajectory)']) if pd.notna(row.get('VB (trajectory)')) else None,
+                    'vertBreak': float(row['VB (trajectory)']) if pd.notna(row.get('VB (trajectory)')) else None,
                     'strikeZoneX': float(row['Strike Zone Side']) if pd.notna(row.get('Strike Zone Side')) else None,
                     'strikeZoneZ': float(row['Strike Zone Height']) if pd.notna(row.get('Strike Zone Height')) else None,
                     'relSide': float(row['Release Side']) if pd.notna(row.get('Release Side')) else None,
                     'relHeight': float(row['Release Height']) if pd.notna(row.get('Release Height')) else None,
-                    'source': 'rapsodo'
+                    'zoneType': 'standard'
                 }
                 processed_pitches.append(pitch)
 
@@ -571,7 +571,8 @@ def upload_rapsodo():
             return jsonify({"error": "No valid pitches found in file"}), 400
 
         return jsonify({
-            'pitches': processed_pitches
+            'pitches': processed_pitches,
+            'zoneType': 'standard'
         })
 
     except Exception as e:
@@ -623,7 +624,8 @@ def upload_trackman():
                 'plateLocHeight': float(row.get('PlateLocHeight')) if pd.notna(row.get('PlateLocHeight')) else None,
                 'plateLocSide': float(row.get('PlateLocSide')) if pd.notna(row.get('PlateLocSide')) else None,
                 'extension': float(row.get('Extension')) if pd.notna(row.get('Extension')) else None,
-                'source': 'trackman'
+                'source': 'trackman',
+                'zoneType': 'standard'
             }
             processed_pitches.append(pitch)
 
@@ -632,7 +634,8 @@ def upload_trackman():
             'playerInfo': {
                 'pitcher': df['Pitcher'].iloc[0] if 'Pitcher' in df.columns else None,
                 'team': df['PitcherTeam'].iloc[0] if 'PitcherTeam' in df.columns else None
-            }
+            },
+            'zoneType': 'standard'
         })
 
     except Exception as e:

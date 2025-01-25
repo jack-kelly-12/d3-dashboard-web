@@ -91,22 +91,25 @@ class ChartManager {
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       totalPitches: chartData.pitches?.length || 0,
-      zoneType: chartData.zoneType,
+      // Only include zoneType if it's a bullpen chart
+      ...(chartData.chartType === "bullpen"
+        ? { zoneType: chartData.zoneType || "standard" }
+        : {}),
     };
 
     const docRef = await addDoc(this.chartsRef, chart);
 
-    const returnData = {
+    return {
       id: docRef.id,
       ...chart,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       pitches: chartData.pitches || [],
       totalPitches: chartData.pitches?.length || 0,
-      zoneType: chartData.zoneType,
+      ...(chartData.chartType === "bullpen"
+        ? { zoneType: chartData.zoneType || "standard" }
+        : {}),
     };
-
-    return returnData;
   }
 
   processChartDocuments(snapshot) {

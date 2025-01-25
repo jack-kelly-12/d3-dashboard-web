@@ -1,6 +1,28 @@
 import { Trash2 } from "lucide-react";
+import React, { useState } from "react";
 
-const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
+const PitchTable = ({
+  pitches,
+  onDeletePitch,
+  onUpdatePitch,
+  isBullpen = false,
+}) => {
+  const [editingVelocity, setEditingVelocity] = useState(null);
+  const [velocityValue, setVelocityValue] = useState("");
+
+  const handleVelocityEdit = (pitch) => {
+    setEditingVelocity(pitch.id);
+    setVelocityValue(pitch.velocity || "");
+  };
+
+  const handleVelocityUpdate = (pitchId) => {
+    const velocity = parseFloat(velocityValue);
+    if (!isNaN(velocity)) {
+      onUpdatePitch?.(pitchId, { velocity });
+    }
+    setEditingVelocity(null);
+  };
+
   const formatDate = (timestamp) => {
     if (!timestamp) return "—";
     return new Date(timestamp).toLocaleString("en-US", {
@@ -62,10 +84,27 @@ const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
                       {pitch.type || "—"}
                     </td>
                     <td className="px-3 py-2.5">
-                      {pitch.velocity ? (
-                        <span className="font-mono">{pitch.velocity}</span>
+                      {editingVelocity === pitch.id ? (
+                        <input
+                          type="number"
+                          value={velocityValue}
+                          onChange={(e) => setVelocityValue(e.target.value)}
+                          onBlur={() => handleVelocityUpdate(pitch.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter")
+                              handleVelocityUpdate(pitch.id);
+                            if (e.key === "Escape") setEditingVelocity(null);
+                          }}
+                          className="w-16 px-1 py-0.5 border rounded"
+                          autoFocus
+                        />
                       ) : (
-                        "—"
+                        <span
+                          className="font-mono cursor-pointer hover:text-blue-600"
+                          onClick={() => handleVelocityEdit(pitch)}
+                        >
+                          {pitch.velocity || "—"}
+                        </span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 font-medium text-center">
@@ -157,10 +196,26 @@ const PitchTable = ({ pitches, onDeletePitch, isBullpen = false }) => {
                     {pitch.type || "—"}
                   </td>
                   <td className="px-3 py-2.5">
-                    {pitch.velocity ? (
-                      <span className="font-mono">{pitch.velocity}</span>
+                    {editingVelocity === pitch.id ? (
+                      <input
+                        type="number"
+                        value={velocityValue}
+                        onChange={(e) => setVelocityValue(e.target.value)}
+                        onBlur={() => handleVelocityUpdate(pitch.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleVelocityUpdate(pitch.id);
+                          if (e.key === "Escape") setEditingVelocity(null);
+                        }}
+                        className="w-16 px-1 py-0.5 border rounded"
+                        autoFocus
+                      />
                     ) : (
-                      "—"
+                      <span
+                        className="font-mono cursor-pointer hover:text-blue-600"
+                        onClick={() => handleVelocityEdit(pitch)}
+                      >
+                        {pitch.velocity || "—"}
+                      </span>
                     )}
                   </td>
                   <td className="px-3 py-2.5">
