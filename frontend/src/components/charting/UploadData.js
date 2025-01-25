@@ -7,6 +7,7 @@ const DataUpload = ({ onUpload, chartType }) => {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dataSource, setDataSource] = useState("trackman");
+  const [description, setDescription] = useState("");
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -25,13 +26,25 @@ const DataUpload = ({ onUpload, chartType }) => {
         credentials: "include",
       });
 
-      return {
+      const defaultDescription = `${
+        dataSource.charAt(0).toUpperCase() + dataSource.slice(1)
+      } Upload - ${new Date().toLocaleDateString()}`;
+
+      const chartDescription = description
+        ? description.trim()
+        : defaultDescription;
+
+      const chartData = {
         chartType: chartType || "bullpen",
         date: new Date().toISOString(),
         pitches: data.pitches,
         source: dataSource,
         playerInfo: data.playerInfo,
+        description: chartDescription, // Make sure this is included
       };
+
+      console.log("Chart data before upload:", chartData); // Add this log
+      return chartData;
     } catch (err) {
       console.error("Upload error:", err);
       throw new Error(err.message || "Upload failed");
@@ -100,6 +113,14 @@ const DataUpload = ({ onUpload, chartType }) => {
           Rapsodo
         </button>
       </div>
+
+      <textarea
+        value={description}
+        placeholder="Add a description (optional)"
+        onChange={(e) => setDescription(e.target.value)}
+        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        rows={1}
+      />
 
       <div
         onDragEnter={handleDrag}

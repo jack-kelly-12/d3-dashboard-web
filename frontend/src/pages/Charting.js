@@ -165,26 +165,15 @@ const Charting = () => {
 
     const loadingToast = toast.loading("Processing uploaded data...");
     try {
-      // Verify the data structure
-      console.log("Received chart data:", {
-        ...chartData,
-        pitches: `${chartData.pitches.length} pitches`,
-      });
-
       const newChart = await ChartManager.createChart({
         chartType: "bullpen",
         date: chartData.date,
         source: chartData.source,
         pitches: chartData.pitches,
         totalPitches: chartData.pitches.length,
+        description: chartData.description || "User uploaded data",
         userId: user.uid,
         isAnonymous: user.isAnonymous,
-      });
-
-      // Verify the created chart
-      console.log("Created chart:", {
-        ...newChart,
-        pitches: `${newChart.pitches.length} pitches`,
       });
 
       setCharts((prevCharts) => [newChart, ...prevCharts]);

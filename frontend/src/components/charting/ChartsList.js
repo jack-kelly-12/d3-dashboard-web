@@ -50,14 +50,11 @@ const ChartsList = ({
       date: chart.date || chart.createdAt,
       totalPitches: chart.totalPitches || chart.pitches?.length || 0,
       updatedAt: chart.updatedAt || chart.createdAt || chart.date,
-      pitcher: chart.pitcher || null, // Ensure pitcher is always defined
-      pitches: chart.pitches || [], // Ensure pitches is always an array
+      pitcher: chart.pitcher || null,
+      pitches: chart.pitches || [],
     };
 
-    // Special handling for bullpen sessions to ensure pitcher info is current
-    if (normalized.chartType === "bullpen") {
-      normalized.pitcher = chart.pitcher || null;
-      // Update description to reflect current pitcher state
+    if (normalized.chartType === "bullpen" && normalized.source === "d3") {
       normalized.description = `Bullpen Session: ${
         normalized.pitcher?.name || "No Pitcher"
       }`;
@@ -302,13 +299,13 @@ const ChartsList = ({
       return (
         <div className="space-y-1">
           <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
-            User uploaded data
+            {row.description}
           </span>
         </div>
       );
     }
 
-    if (row.chartType === "bullpen" || row.chartType === "scripted_bullpen") {
+    if (row.chartType === "bullpen") {
       return (
         <div className="space-y-1">
           <span className="px-2 py-1 bg-red-100 text-gray-800 rounded-full text-sm">
@@ -318,12 +315,12 @@ const ChartsList = ({
       );
     }
 
-    if (!row.homeTeam || !row.awayTeam) return "—";
-
     return (
       <div className="space-y-1">
         <span className="font-medium text-gray-800">
-          {`${row.awayTeam} @ ${row.homeTeam}`}
+          {row.homeTeam && row.awayTeam
+            ? `${row.awayTeam} @ ${row.homeTeam}`
+            : "—"}
         </span>
       </div>
     );
