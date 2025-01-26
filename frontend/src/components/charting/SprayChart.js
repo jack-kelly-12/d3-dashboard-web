@@ -33,9 +33,9 @@ const SprayChart = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    svg.attr("viewBox", `0 0 ${width} ${height + 20}`);
+    svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-    const margin = { top: 40, right: 60, bottom: 40, left: 60 };
+    const margin = { top: 40, right: -20, bottom: 40, left: -20 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -43,7 +43,7 @@ const SprayChart = ({
       .append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-    const xScale = d3.scaleLinear().domain([-400, 400]).range([0, innerWidth]);
+    const xScale = d3.scaleLinear().domain([-550, 550]).range([0, innerWidth]); // Wider domain
     const yScale = d3.scaleLinear().domain([-20, 200]).range([innerHeight, 0]);
 
     const field = g.append("g").attr("class", "field");
