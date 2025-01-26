@@ -1,32 +1,39 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check } from "lucide-react";
+import {
+  ChartBar,
+  ClipboardList,
+  Target,
+  Upload,
+  Database,
+  Search,
+  FileBarChart,
+  Check,
+  X,
+  HelpCircle,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import AuthManager from "../managers/AuthManager";
+import SubscriptionManager from "../managers/SubscriptionManager";
 
-const PlanFeature = ({ children, isPremium }) => (
-  <li className="flex items-start gap-3">
-    <Check
-      className={`h-5 w-5 ${
-        isPremium ? "text-blue-500" : "text-gray-400"
-      } flex-shrink-0`}
-    />
-    <span className={`text-gray-600 ${isPremium ? "font-medium" : ""}`}>
-      {children}
-    </span>
-  </li>
+const Feature = ({ children, available, icon: Icon }) => (
+  <div className="flex items-center gap-3">
+    <Icon className="h-4 w-4 text-gray-600" />
+    <span className="text-sm text-gray-700">{children}</span>
+    {available ? (
+      <Check className="h-4 w-4 text-blue-600 ml-auto" />
+    ) : (
+      <X className="h-4 w-4 text-red-400 ml-auto" />
+    )}
+  </div>
 );
 
-function SubscriptionPlans() {
+function SubscriptionManagement({ isPremium, subscriptionEndsAt }) {
   const navigate = useNavigate();
+  const user = AuthManager.getCurrentUser();
+  const [showFeatureInfo, setShowFeatureInfo] = useState(false);
 
-  const handleStartFree = () => {
-    navigate("/data");
-  };
-
-  const handleBuyPremium = async (planType) => {
-    const user = AuthManager.getCurrentUser();
-
+  const handleUpgrade = async (planType) => {
     if (!user || user.isAnonymous) {
       toast.error("Please create an account to purchase a subscription");
       navigate("/signin?signup=true", {
@@ -55,86 +62,117 @@ function SubscriptionPlans() {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-16">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Choose Your Plan
-          </h1>
-          <p className="text-xl text-gray-600">
-            Start with our free plan or unlock all features with Premium
-          </p>
-        </div>
+  const handleCancel = async () => {
+    try {
+      await SubscriptionManager.cancelSubscription(user.uid);
+      toast.success("Your subscription has been cancelled");
+    } catch (error) {
+      console.error("Cancellation error:", error);
+      toast.error("Unable to cancel subscription. Please try again later.");
+    }
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Free Plan */}
-          <div className="flex flex-col p-8 bg-white rounded-2xl shadow-sm ring-1 ring-gray-200">
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold text-gray-900">Free</h3>
-              <div className="mt-4 flex items-baseline text-gray-900">
-                <span className="text-4xl font-bold tracking-tight">$0</span>
-                <span className="ml-1 text-xl font-semibold">/forever</span>
-              </div>
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+      <div className="w-full max-w-lg bg-white rounded-lg shadow-sm p-8">
+        <div className="space-y-6">
+          <h1 className="text-xl font-semibold text-gray-900">
+            {isPremium ? "Premium Plan" : "Free Plan"}
+          </h1>
+
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-sm font-medium text-gray-900">
+                Available Features
+              </h2>
+              <button
+                onClick={() => setShowFeatureInfo(!showFeatureInfo)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
             </div>
 
-            <ul className="flex-1 space-y-4 mb-8">
-              <PlanFeature>Access to all basic statistics</PlanFeature>
-              <PlanFeature>Create scouting reports</PlanFeature>
-              <PlanFeature>Basic charting features</PlanFeature>
-              <PlanFeature>Community support</PlanFeature>
-            </ul>
+            {showFeatureInfo && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg text-sm text-gray-600">
+                Premium features include access to all divisions' data,
+                AI-powered insights, and advanced reporting capabilities.
+              </div>
+            )}
 
-            <button
-              onClick={handleStartFree}
-              className="block w-full py-3 px-6 text-center rounded-lg text-gray-700 font-medium border-2 border-gray-200 hover:border-gray-300 transition-colors duration-200"
-            >
-              Get Started Free
-            </button>
+            <div className="space-y-4">
+              <Feature icon={ChartBar} available={true}>
+                Division 3 Basic/Advance Stats Access
+              </Feature>
+              <Feature icon={ClipboardList} available={true}>
+                Scouting Reports
+              </Feature>
+              <Feature icon={Target} available={true}>
+                Bullpen, Game Charting
+              </Feature>
+              <Feature icon={Upload} available={true}>
+                Trackman, Rapsodo Data Upload
+              </Feature>
+              <Feature icon={Database} available={isPremium}>
+                D1-D3 Data Access
+              </Feature>
+              <Feature icon={Search} available={isPremium}>
+                AI Powered Interactive Analytics Engine
+              </Feature>
+              <Feature icon={FileBarChart} available={isPremium}>
+                Advanced Report Generation
+              </Feature>
+            </div>
           </div>
 
-          {/* Premium Plan */}
-          <div className="flex flex-col p-8 bg-white rounded-2xl shadow-sm ring-2 ring-blue-500 relative">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-3 py-1 bg-blue-500 text-white text-sm font-medium rounded-full">
-              Premium Features
-            </div>
-
-            <div className="mb-8">
-              <h3 className="text-2xl font-bold text-gray-900">Premium</h3>
-              <div className="mt-4 flex items-baseline text-gray-900">
-                <span className="text-4xl font-bold tracking-tight">$10</span>
-                <span className="ml-1 text-xl font-semibold">/month</span>
+          {!isPremium && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600 text-center">
+                Upgrade to Premium to unlock all features
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => handleUpgrade("monthly")}
+                  className="w-full flex flex-col items-center justify-center py-2 px-4 rounded bg-blue-600 hover:bg-blue-700 transition-colors"
+                >
+                  <span className="text-sm font-medium text-white">
+                    Monthly
+                  </span>
+                  <span className="text-blue-200 text-xs">$10/month</span>
+                </button>
+                <div className="relative">
+                  <div className="absolute -top-2 right-0 bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">
+                    67% off
+                  </div>
+                  <button
+                    onClick={() => handleUpgrade("yearly")}
+                    className="w-full flex flex-col items-center justify-center py-2 px-4 rounded bg-blue-600 hover:bg-blue-700 transition-colors"
+                  >
+                    <span className="text-sm font-medium text-white">
+                      Yearly
+                    </span>
+                    <span className="text-blue-200 text-xs">$40/year</span>
+                  </button>
+                </div>
               </div>
-              <p className="mt-2 text-sm text-blue-600 font-medium">
-                or $40/year (save 67%)
+              <p className="text-xs text-gray-500 text-center">
+                Secure payment via Stripe • Cancel anytime
               </p>
             </div>
+          )}
 
-            <ul className="flex-1 space-y-4 mb-8">
-              <PlanFeature isPremium>Everything in Free plan</PlanFeature>
-              <PlanFeature isPremium>Data upload capability</PlanFeature>
-              <PlanFeature isPremium>Custom analytical reports</PlanFeature>
-            </ul>
-
-            <div className="flex flex-row gap-4">
-              <button
-                onClick={() => handleBuyPremium("monthly")}
-                className="block w-full py-3 px-6 text-center rounded-lg text-white font-medium bg-blue-600 hover:bg-blue-700 transition-colors duration-200"
-              >
-                Get Monthly Plan ($10/mo)
-              </button>
-              <button
-                onClick={() => handleBuyPremium("yearly")}
-                className="block w-full py-3 px-6 text-center rounded-lg text-white font-medium bg-green-600 hover:bg-green-700 transition-colors duration-200"
-              >
-                Get Yearly Plan ($40/yr)
-              </button>
-            </div>
-          </div>
+          {isPremium && (
+            <button
+              onClick={handleCancel}
+              className="w-full py-2 px-4 text-center rounded text-red-600 text-sm font-medium border border-red-200 hover:bg-red-50 transition-colors"
+            >
+              Cancel Subscription
+            </button>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-export default SubscriptionPlans;
+export default SubscriptionManagement;

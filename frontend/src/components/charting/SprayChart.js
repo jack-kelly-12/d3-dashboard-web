@@ -7,7 +7,7 @@ const SprayChart = ({
   height = 570,
   title = "",
   onPlotHit,
-  currentHit,
+  currentHit = {},
   shouldReset,
 }) => {
   const svgRef = useRef();
@@ -22,10 +22,10 @@ const SprayChart = ({
   }, [shouldReset]);
 
   useEffect(() => {
-    if (currentHit.location) {
+    if (currentHit?.location) {
       setPreviewHit(currentHit.location);
     }
-  }, [currentHit.location]);
+  }, [currentHit?.location]);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -33,7 +33,9 @@ const SprayChart = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const margin = { top: 40, right: 10, bottom: 40, left: 10 };
+    svg.attr("viewBox", `0 0 ${width} ${height + 20}`);
+
+    const margin = { top: 40, right: 60, bottom: 40, left: 60 };
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
@@ -41,12 +43,12 @@ const SprayChart = ({
       .append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-    const xScale = d3.scaleLinear().domain([-250, 250]).range([0, innerWidth]);
-    const yScale = d3.scaleLinear().domain([-50, 200]).range([innerHeight, 0]);
+    const xScale = d3.scaleLinear().domain([-400, 400]).range([0, innerWidth]);
+    const yScale = d3.scaleLinear().domain([-20, 200]).range([innerHeight, 0]);
 
     const field = g.append("g").attr("class", "field");
 
-    const outfieldRadius = 330;
+    const outfieldRadius = Math.min(innerWidth, innerHeight) * 0.8;
     const outfieldArc = d3
       .arc()
       .innerRadius(0)
@@ -62,22 +64,23 @@ const SprayChart = ({
       .attr("stroke", "#666")
       .attr("stroke-width", 1);
 
-    const infieldRadius = 125;
+    const infieldRadius = outfieldRadius * 0.7;
     field
       .append("path")
       .attr(
         "d",
-        `
-        M ${xScale(-95)} ${yScale(51.5)}
-        A ${infieldRadius} ${infieldRadius} 0 0 1 ${xScale(95)} ${yScale(51.5)}
-        L ${xScale(0)} ${yScale(0)}
-        Z
-      `
+        `M ${xScale(-infieldRadius * 0.8)} ${yScale(infieldRadius * 0.193)}
+         A ${infieldRadius} ${infieldRadius} 0 0 1 ${xScale(
+          infieldRadius * 0.8
+        )} ${yScale(infieldRadius * 0.193)}
+         L ${xScale(0)} ${yScale(0)}
+         Z`
       )
       .attr("fill", "#DEB887")
       .attr("stroke", "#666")
       .attr("stroke-width", 1);
 
+    // Preview crosshairs
     const previewGroup = g
       .append("g")
       .attr("class", "preview")
@@ -103,6 +106,7 @@ const SprayChart = ({
 
       const group = g.append("g");
 
+      // Draw crosshair
       group
         .append("line")
         .attr("x1", xScale(hit.x))
@@ -123,6 +127,7 @@ const SprayChart = ({
         .attr("stroke-width", 2)
         .attr("opacity", isPreview ? 0.6 : 1);
 
+      // Draw hit point
       group
         .append("circle")
         .attr("cx", xScale(hit.x))
@@ -132,9 +137,11 @@ const SprayChart = ({
         .attr("opacity", isPreview ? 0.6 : 1);
     };
 
+    // Draw existing and preview hits
     hits.forEach((hit) => drawHit(hit));
     if (previewHit) drawHit(previewHit, true);
 
+    // Handle mouse interactions
     svg.on("mousemove", (event) => {
       const [x, y] = d3.pointer(event, g.node());
 
@@ -187,14 +194,12 @@ const SprayChart = ({
   }, [hits, width, height, title, onPlotHit, previewHit]);
 
   return (
-    <div className="relative flex flex-col items-center">
-      <div className="w-[550px] h-[500px] bg-white rounded-lg overflow-hidden">
-        <svg
-          ref={svgRef}
-          className="w-full h-full"
-          style={{ display: "block" }}
-        />
-      </div>
+    <div className="relative w-full h-3/4" style={{ zIndex: 0 }}>
+      <svg
+        ref={svgRef}
+        className="w-full h-full"
+        style={{ display: "block" }}
+      />
       {hoverCoords && (
         <div className="absolute bottom-4 right-4 bg-white px-3 py-1.5 rounded-full shadow-sm text-sm font-mono text-gray-600">
           ({hoverCoords.x.toFixed(1)}, {hoverCoords.y.toFixed(1)})

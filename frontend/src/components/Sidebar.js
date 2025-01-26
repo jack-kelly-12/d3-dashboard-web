@@ -40,9 +40,13 @@ const UserSection = ({
             <div className="text-sm font-medium truncate">
               {user?.email || "Anonymous"}
             </div>
-            <div className="text-xs text-gray-500">
-              {isPremiumUser ? "Premium" : "Free"}
-            </div>
+            <Link
+              to="/subscriptions"
+              className="text-xs flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors"
+            >
+              <span>{isPremiumUser ? "Premium" : "Free"}</span>
+              <span className="text-blue-600">• Manage subscription</span>
+            </Link>
           </div>
         )}
       </div>

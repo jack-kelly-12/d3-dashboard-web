@@ -367,7 +367,7 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "IP",
-          selector: (row) => row.IP,
+          selector: (row) => roundTo(row.IP, 1),
           sortable: true,
           width: "80px",
         },

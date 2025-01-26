@@ -9,7 +9,7 @@ import HitInput from "./HitInput";
 import PitchTable from "../tables/PitchTable";
 import PlayerModal from "../modals/PlayerModal";
 import ChartManager from "../../managers/ChartManager";
-import PitchCounter from "./PitchCounter";
+import { BullpenPitchCounter, GamePitchCounter } from "./PitchCounter";
 
 export const ChartingView = ({ chart, onSave, onBack }) => {
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
@@ -453,7 +453,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     Toggle View
                   </button>
                 </div>
-                <PitchCounter pitches={pitches} />
+                <BullpenPitchCounter pitches={pitches} />{" "}
                 <StrikeZone
                   key={isPitcherView ? "pitcher" : "catcher"}
                   onPlotPitch={handlePlotPitch}
@@ -551,24 +551,28 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
               <div className="flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative">
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 inline-flex rounded-lg p-1 bg-gray-100 shadow-sm">
                   <button
-                    onClick={() => setIsStrikeZone(true)}
-                    className={`px-8 py-2.5 rounded-md text-sm font-medium transition-all duration-300 ease-in-out transform
-                      ${
-                        isStrikeZone
-                          ? "bg-white text-blue-600 shadow translate-y-0 scale-100"
-                          : "text-gray-600 hover:text-gray-800 hover:bg-gray-50 scale-95"
-                      }`}
+                    onClick={() => {
+                      setIsStrikeZone(true);
+                      handleResetPitch();
+                    }}
+                    className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                      isStrikeZone
+                        ? "bg-white text-blue-600 shadow"
+                        : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                    }`}
                   >
                     Strike Zone
                   </button>
                   <button
-                    onClick={() => setIsStrikeZone(false)}
-                    className={`px-8 py-2.5 rounded-md text-sm font-medium transition-all duration-300 ease-in-out transform
-                      ${
-                        !isStrikeZone
-                          ? "bg-white text-blue-600 shadow translate-y-0 scale-100"
-                          : "text-gray-600 hover:text-gray-800 hover:bg-gray-50 scale-95"
-                      }`}
+                    onClick={() => {
+                      setIsStrikeZone(false);
+                      handleResetPitch();
+                    }}
+                    className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
+                      !isStrikeZone
+                        ? "bg-white text-blue-600 shadow"
+                        : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
+                    }`}
                   >
                     Spray Chart
                   </button>
@@ -584,7 +588,12 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     Toggle View
                   </button>
                 </div>
-
+                <GamePitchCounter
+                  pitches={pitches.filter(
+                    (p) => p.pitcher?.name === pitcher?.name
+                  )}
+                  currentPitcher={pitcher}
+                />
                 {isStrikeZone ? (
                   <StrikeZone
                     key={isPitcherView ? "pitcher" : "catcher"}
