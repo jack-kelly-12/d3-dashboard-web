@@ -84,43 +84,29 @@ class ChartManager {
     const userId = this.currentUser?.uid;
     if (!userId) throw new Error("User must be authenticated");
 
-    console.log("ChartManager received data:", chartData);
-
-    // Check if description exists in incoming data
-    console.log("Incoming description:", chartData.description);
-
-    // Don't set a default description if one already exists
-    let description = chartData.description;
-    if (!description) {
-      description = `${
-        chartData.source.charAt(0).toUpperCase() + chartData.source.slice(1)
-      } Upload - ${new Date().toLocaleDateString()}`;
-    }
-
-    console.log("Final description to be used:", description);
-
     const chart = {
       ...chartData,
       userId,
-      description: description.trim(),
       pitches: chartData.pitches || [],
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       totalPitches: chartData.pitches?.length || 0,
-      ...(chartData.chartType === "bullpen"
-        ? { zoneType: chartData.zoneType || "standard" }
-        : {}),
+      zoneType: chartData.zoneType,
     };
 
-    console.log("Final chart data before saving:", chart);
-
     const docRef = await addDoc(this.chartsRef, chart);
-    return {
+
+    const returnData = {
       id: docRef.id,
       ...chart,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      pitches: chartData.pitches || [],
+      totalPitches: chartData.pitches?.length || 0,
+      zoneType: chartData.zoneType,
     };
+
+    return returnData;
   }
 
   processChartDocuments(snapshot) {
