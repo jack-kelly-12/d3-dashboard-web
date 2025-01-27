@@ -15,9 +15,12 @@ import os
 import logging
 from llm_insights import InsightsProcessor
 from dotenv import load_dotenv
+import stripe
+from firebase_admin import firestore
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
 CORS(app, resources={
     r"/api/*": {
@@ -1263,6 +1266,212 @@ def query_insights():
             "status": "error",
             "message": str(e),
             "data": None
+        }), 500
+
+
+@app.route('/api/subscriptions/cancel', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def cancel_subscription():
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+
+        if not user_id:
+            return jsonify({
+                'error': 'User ID is required'
+            }), 400
+
+        # Get the subscription from Firestore
+        db = firestore.client()
+        subscription_ref = db.collection('subscriptions').document(user_id)
+        subscription_doc = subscription_ref.get()
+
+        if not subscription_doc.exists:
+            return jsonify({
+                'error': 'No active subscription found'
+            }), 404
+
+        subscription_data = subscription_doc.to_dict()
+        stripe_customer_id = subscription_data.get('stripeCustomerId')
+
+        if not stripe_customer_id:
+            return jsonify({
+                'error': 'No Stripe customer ID found'
+            }), 404
+
+        # Get customer's subscriptions from Stripe
+        subscriptions = stripe.Subscription.list(
+            customer=stripe_customer_id,
+            status='active',
+            limit=1
+        )
+
+        if not subscriptions.data:
+            return jsonify({
+                'error': 'No active Stripe subscription found'
+            }), 404
+
+        stripe_subscription = subscriptions.data[0]
+
+        # Cancel the subscription at period end
+        stripe.Subscription.modify(
+            stripe_subscription.id,
+            cancel_at_period_end=True
+        )
+
+        # Update Firestore
+        subscription_ref.update({
+            'status': 'active',  # Still active until end of period
+            'cancelAtPeriodEnd': True,
+            'updatedAt': datetime.now(),
+            'canceledAt': datetime.now()
+        })
+
+        return jsonify({
+            'message': 'Subscription cancelled successfully',
+            'willEndAt': datetime.fromtimestamp(stripe_subscription.current_period_end)
+        })
+
+    except stripe.error.StripeError as e:
+        print(f"Stripe error: {str(e)}")
+        return jsonify({
+            'error': 'Payment processor error',
+            'details': str(e)
+        }), 500
+    except Exception as e:
+        print(f"Server error: {str(e)}")
+        return jsonify({
+            'error': 'Server error',
+            'details': str(e)
+        }), 500
+
+
+@app.route('/api/subscriptions/reactivate', methods=['POST'])
+@cross_origin(supports_credentials=True)
+def reactivate_subscription():
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+
+        if not user_id:
+            return jsonify({
+                'error': 'User ID is required'
+            }), 400
+
+        # Get the subscription from Firestore
+        db = firestore.client()
+        subscription_ref = db.collection('subscriptions').document(user_id)
+        subscription_doc = subscription_ref.get()
+
+        if not subscription_doc.exists:
+            return jsonify({
+                'error': 'No subscription found'
+            }), 404
+
+        subscription_data = subscription_doc.to_dict()
+        stripe_customer_id = subscription_data.get('stripeCustomerId')
+
+        if not stripe_customer_id:
+            return jsonify({
+                'error': 'No Stripe customer ID found'
+            }), 404
+
+        # Get customer's subscriptions from Stripe
+        subscriptions = stripe.Subscription.list(
+            customer=stripe_customer_id,
+            status='active',
+            limit=1
+        )
+
+        if not subscriptions.data:
+            return jsonify({
+                'error': 'No active Stripe subscription found'
+            }), 404
+
+        stripe_subscription = subscriptions.data[0]
+
+        # Remove the cancellation at period end
+        stripe.Subscription.modify(
+            stripe_subscription.id,
+            cancel_at_period_end=False
+        )
+
+        # Update Firestore
+        subscription_ref.update({
+            'cancelAtPeriodEnd': False,
+            'updatedAt': datetime.now(),
+            'canceledAt': None
+        })
+
+        return jsonify({
+            'message': 'Subscription reactivated successfully'
+        })
+
+    except stripe.error.StripeError as e:
+        print(f"Stripe error: {str(e)}")
+        return jsonify({
+            'error': 'Payment processor error',
+            'details': str(e)
+        }), 500
+    except Exception as e:
+        print(f"Server error: {str(e)}")
+        return jsonify({
+            'error': 'Server error',
+            'details': str(e)
+        }), 500
+
+
+@app.route('/api/subscriptions/status/<user_id>', methods=['GET'])
+@cross_origin(supports_credentials=True)
+def get_subscription_status(user_id):
+    try:
+        # Get the subscription from Firestore
+        db = firestore.client()
+        subscription_ref = db.collection('subscriptions').document(user_id)
+        subscription_doc = subscription_ref.get()
+
+        if not subscription_doc.exists:
+            return jsonify({
+                'status': 'inactive',
+                'isPremium': False
+            })
+
+        subscription_data = subscription_doc.to_dict()
+
+        # Check if subscription is active and not expired
+        is_active = (
+            subscription_data.get('status') == 'active' and
+            subscription_data.get('expiresAt', datetime.now(
+            )).timestamp() > datetime.now().timestamp()
+        )
+
+        return jsonify({
+            'status': subscription_data.get('status'),
+            'isPremium': is_active,
+            'cancelAtPeriodEnd': subscription_data.get('cancelAtPeriodEnd', False),
+            'expiresAt': subscription_data.get('expiresAt'),
+            'planType': subscription_data.get('planType')
+        })
+
+    except Exception as e:
+        print(f"Server error: {str(e)}")
+        return jsonify({
+            'error': 'Server error',
+            'details': str(e)
         }), 500
 
 
