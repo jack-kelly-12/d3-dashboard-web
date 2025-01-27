@@ -1,3 +1,4 @@
+// SubscriptionManager.js
 import { db } from "../config/firebase";
 import {
   collection,
@@ -7,6 +8,10 @@ import {
   updateDoc,
   serverTimestamp,
   onSnapshot,
+  query,
+  where,
+  getDocs,
+  arrayUnion,
 } from "firebase/firestore";
 
 class SubscriptionManager {
@@ -16,7 +21,6 @@ class SubscriptionManager {
   }
 
   async getUserSubscription(userId) {
-    console.log(userId);
     if (!userId) throw new Error("User ID is required");
 
     const docRef = doc(this.subscriptionsRef, userId);
@@ -25,14 +29,47 @@ class SubscriptionManager {
     if (!docSnap.exists()) return null;
 
     const data = docSnap.data();
+    const now = new Date();
+    const expirationDate = data.expiresAt.toDate();
+
     return {
       ...data,
-      isActive:
-        data.status === "active" &&
-        new Date(data.expiresAt.toDate()) > new Date(),
+      isActive: data.status === "active" && expirationDate > now,
+      daysUntilExpiration: Math.ceil(
+        (expirationDate - now) / (1000 * 60 * 60 * 24)
+      ),
+      features: this.getFeatureAccess(data),
     };
   }
 
+  getFeatureAccess(subscription) {
+    const baseFeatures = {
+      d3Access: true,
+      scoutingReports: true,
+      bullpenCharting: true,
+      dataUpload: true,
+    };
+
+    if (!subscription || !subscription.status === "active") {
+      return {
+        ...baseFeatures,
+        d1Access: false,
+        d2Access: false,
+        aiAnalytics: false,
+        advancedReports: false,
+      };
+    }
+
+    return {
+      ...baseFeatures,
+      d1Access: true,
+      d2Access: true,
+      aiAnalytics: true,
+      advancedReports: true,
+    };
+  }
+
+  // Enhanced subscription listener with feature updates
   listenToSubscriptionUpdates(userId, callback) {
     if (this.unsubscribeFromFirestore) {
       this.unsubscribeFromFirestore();
@@ -49,11 +86,16 @@ class SubscriptionManager {
       (doc) => {
         if (doc.exists()) {
           const data = doc.data();
+          const now = new Date();
+          const expirationDate = data.expiresAt.toDate();
+
           callback({
             ...data,
-            isActive:
-              data.status === "active" &&
-              new Date(data.expiresAt.toDate()) > new Date(),
+            isActive: data.status === "active" && expirationDate > now,
+            daysUntilExpiration: Math.ceil(
+              (expirationDate - now) / (1000 * 60 * 60 * 24)
+            ),
+            features: this.getFeatureAccess(data),
           });
         } else {
           callback(null);
@@ -68,56 +110,124 @@ class SubscriptionManager {
     return this.unsubscribeFromFirestore;
   }
 
-  // This method will be called by your webhook handler
+  // Enhanced webhook handler with better error handling and logging
   async handleStripeWebhook(event) {
     const { type, data } = event;
-    const userId = data.object.client_reference_id; // From your URL parameter
+    const userId = data.object.client_reference_id;
     const subscriptionRef = doc(this.subscriptionsRef, userId);
 
     try {
+      const updateData = {
+        updatedAt: serverTimestamp(),
+      };
+
       switch (type) {
         case "checkout.session.completed":
-          // When checkout completes successfully
           await setDoc(subscriptionRef, {
             status: "active",
             stripeCustomerId: data.object.customer,
             customerId: data.object.customer,
-            planType: data.object.metadata.planType, // 'monthly' or 'yearly'
+            planType: data.object.metadata.planType,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
             expiresAt: new Date(
               data.object.subscription.current_period_end * 1000
             ),
+            lastPayment: serverTimestamp(),
+            paymentHistory: [
+              {
+                amount: data.object.amount_total,
+                date: serverTimestamp(),
+                status: "succeeded",
+              },
+            ],
           });
           break;
 
         case "customer.subscription.updated":
-          // When subscription is updated (renewal, plan change, etc.)
-          await updateDoc(subscriptionRef, {
+          Object.assign(updateData, {
             status: data.object.status,
             planType: data.object.metadata.planType,
             currentPeriodEnd: new Date(data.object.current_period_end * 1000),
             expiresAt: new Date(data.object.current_period_end * 1000),
             cancelAtPeriodEnd: data.object.cancel_at_period_end,
-            updatedAt: serverTimestamp(),
           });
+          await updateDoc(subscriptionRef, updateData);
           break;
 
         case "customer.subscription.deleted":
-          // When subscription is cancelled or expires
-          await updateDoc(subscriptionRef, {
+          Object.assign(updateData, {
             status: "canceled",
             cancelAtPeriodEnd: false,
-            updatedAt: serverTimestamp(),
+            canceledAt: serverTimestamp(),
+          });
+          await updateDoc(subscriptionRef, updateData);
+          break;
+
+        case "invoice.payment_succeeded":
+          await updateDoc(subscriptionRef, {
+            lastPayment: serverTimestamp(),
+            paymentHistory: arrayUnion({
+              amount: data.object.amount_paid,
+              date: serverTimestamp(),
+              status: "succeeded",
+            }),
           });
           break;
+
+        case "invoice.payment_failed":
+          await updateDoc(subscriptionRef, {
+            status: "past_due",
+            paymentHistory: arrayUnion({
+              amount: data.object.amount_due,
+              date: serverTimestamp(),
+              status: "failed",
+            }),
+          });
+          break;
+
         default:
+          console.log(`Unhandled webhook event type: ${type}`);
           break;
       }
     } catch (error) {
       console.error("Error handling subscription webhook:", error);
+      // Add error reporting to your monitoring service here
       throw error;
     }
+  }
+
+  // New method to get all active premium members
+  async getActivePremiumMembers() {
+    const q = query(
+      this.subscriptionsRef,
+      where("status", "==", "active"),
+      where("expiresAt", ">", new Date())
+    );
+
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map((doc) => ({
+      userId: doc.id,
+      ...doc.data(),
+    }));
+  }
+
+  // New method to handle subscription cancellation
+  async cancelSubscription(userId) {
+    const docRef = doc(this.subscriptionsRef, userId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      throw new Error("No subscription found for this user");
+    }
+
+    await updateDoc(docRef, {
+      cancelAtPeriodEnd: true,
+      updatedAt: serverTimestamp(),
+    });
+
+    // You would also need to call Stripe's API here to cancel the subscription
+    // This would typically be done through your backend
   }
 
   stopListening() {

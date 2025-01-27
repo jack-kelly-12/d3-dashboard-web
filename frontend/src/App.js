@@ -18,6 +18,33 @@ import GamePage from "./pages/GamePage.js";
 import Scoreboard from "./pages/Scoreboard.js";
 import InsightsPage from "./pages/InsightsPage.js";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
+import { Navigate, useLocation } from "react-router-dom";
+import { useSubscription } from "./contexts/SubscriptionContext";
+
+export const ProtectedRoute = ({ children, requiresPremium = false }) => {
+  const { isLoading, isPremium } = useSubscription();
+  const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  if (requiresPremium && !isPremium) {
+    return (
+      <Navigate
+        to="/subscriptions"
+        state={{ from: location.pathname }}
+        replace
+      />
+    );
+  }
+
+  return children;
+};
 
 function App() {
   return (
@@ -27,20 +54,95 @@ function App() {
           <SidebarComponent />
           <div className="content flex-grow overflow-auto">
             <Routes>
-              <Route path="/guts" element={<Guts />} />
-              <Route path="/scouting" element={<Scouting />} />
-              <Route path="/charting" element={<Charting />} />
-              <Route path="/data" element={<Data />} />
+              {/* Public routes */}
               <Route path="/signin" element={<SignIn />} />
               <Route path="/" element={<HomePage />} />
-              <Route path="/spraychart" element={<SprayChart />} />
               <Route path="/subscriptions" element={<SubscriptionPlans />} />
-              <Route path="/player/:playerId" element={<PlayerPage />} />
               <Route path="/documentation" element={<Documentation />} />
-              <Route path="/leaderboards" element={<Leaderboards />} />
-              <Route path="/scoreboard" element={<Scoreboard />} />
-              <Route path="/insights" element={<InsightsPage />} />
-              <Route path="/games/:year/:gameId" element={<GamePage />} />
+
+              {/* Basic feature routes (require authentication but not premium) */}
+              <Route
+                path="/guts"
+                element={
+                  <ProtectedRoute>
+                    <Guts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/scouting"
+                element={
+                  <ProtectedRoute>
+                    <Scouting />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/charting"
+                element={
+                  <ProtectedRoute>
+                    <Charting />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/data"
+                element={
+                  <ProtectedRoute>
+                    <Data />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/spraychart"
+                element={
+                  <ProtectedRoute>
+                    <SprayChart />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/player/:playerId"
+                element={
+                  <ProtectedRoute>
+                    <PlayerPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/leaderboards"
+                element={
+                  <ProtectedRoute>
+                    <Leaderboards />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/scoreboard"
+                element={
+                  <ProtectedRoute>
+                    <Scoreboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/games/:year/:gameId"
+                element={
+                  <ProtectedRoute>
+                    <GamePage />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Premium routes */}
+              <Route
+                path="/insights"
+                element={
+                  <ProtectedRoute requiresPremium>
+                    <InsightsPage />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </div>
           <Toaster

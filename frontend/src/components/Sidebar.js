@@ -40,13 +40,19 @@ const UserSection = ({
             <div className="text-sm font-medium truncate">
               {user?.email || "Anonymous"}
             </div>
-            <Link
-              to="/subscriptions"
-              className="text-xs flex items-center space-x-1 text-gray-500 hover:text-blue-600 transition-colors"
-            >
-              <span>{isPremiumUser ? "Premium" : "Free"}</span>
-              <span className="text-blue-600">• Manage subscription</span>
-            </Link>
+            <div className="flex items-center space-x-2">
+              {isPremiumUser && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-yellow-600 to-blue-500 text-white">
+                  Premium
+                </span>
+              )}
+              <Link
+                to="/subscriptions"
+                className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                {isPremiumUser ? "View plan" : "Upgrade to Premium"}
+              </Link>
+            </div>
           </div>
         )}
       </div>
