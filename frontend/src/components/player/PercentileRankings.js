@@ -119,10 +119,22 @@ export const StatBar = ({
 };
 
 export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
-  const isQualified =
+  if (!percentiles || (!percentiles.batting && !percentiles.pitching))
+    return null;
+
+  const currentPercentiles =
+    activeTab === "batting" ? percentiles.batting : percentiles.pitching;
+  if (!currentPercentiles) return null;
+
+  const isQualified = currentPercentiles.qualified;
+  const threshold =
     activeTab === "batting"
-      ? percentiles?.playerPA >= percentiles?.paThreshold
-      : percentiles?.playerIP >= percentiles?.ipThreshold;
+      ? currentPercentiles.paThreshold
+      : currentPercentiles.ipThreshold;
+  const appearances =
+    activeTab === "batting"
+      ? currentPercentiles.playerPA
+      : currentPercentiles.playerIP;
 
   const stats =
     activeTab === "batting"
@@ -131,49 +143,41 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
             key: "Baserunning",
             label: "Baserunning Value",
             decimals: 1,
-            percentileKey: "BaserunningPercentile",
           },
           {
             key: "Batting",
             label: "Batting Value",
             decimals: 1,
-            percentileKey: "BattingPercentile",
           },
           {
             key: "Adjustment",
             label: "Positional Value",
             decimals: 1,
-            percentileKey: "AdjustmentPercentile",
           },
           {
             key: "wOBA",
             label: "wOBA",
             decimals: 3,
-            percentileKey: "wOBAPercentile",
           },
           {
             key: "OPS+",
             label: "OPS+",
             decimals: 0,
-            percentileKey: "OPS+Percentile",
           },
           {
             key: "wRC+",
             label: "wRC+",
             decimals: 0,
-            percentileKey: "wRC+Percentile",
           },
           {
             key: "BA",
             label: "AVG",
             decimals: 3,
-            percentileKey: "BAPercentile",
           },
           {
             key: "SlgPct",
             label: "SLG",
             decimals: 3,
-            percentileKey: "SlgPctPercentile",
           },
         ]
       : [
@@ -181,35 +185,30 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
             key: "WAR",
             label: "WAR",
             decimals: 1,
-            percentileKey: "WARPercentile",
           },
           {
             key: "ERA",
             label: "ERA",
             decimals: 2,
             reverse: true,
-            percentileKey: "ERAPercentile",
           },
           {
             key: "FIP",
             label: "FIP",
             decimals: 2,
             reverse: true,
-            percentileKey: "FIPPercentile",
           },
           {
             key: "xFIP",
             label: "xFIP",
             decimals: 2,
             reverse: true,
-            percentileKey: "xFIPPercentile",
           },
           {
             key: "K%",
             label: "K%",
             decimals: 1,
             suffix: "%",
-            percentileKey: "K%Percentile",
           },
           {
             key: "BB%",
@@ -217,33 +216,19 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
             decimals: 1,
             suffix: "%",
             reverse: true,
-            percentileKey: "BB%Percentile",
           },
           {
             key: "K-BB%",
             label: "K-BB%",
             decimals: 1,
             suffix: "%",
-            percentileKey: "K-BB%Percentile",
           },
           {
             key: "RA9",
             label: "RA9",
             decimals: 2,
-            percentileKey: "RA9Percentile",
           },
         ];
-
-  // Get current stats safely, with fallback to empty object
-  const currentStats =
-    activeTab === "batting"
-      ? playerData?.battingStats?.[0] || {}
-      : playerData?.pitchingStats?.[0] || {};
-
-  // If there are no stats, don't render the section
-  if (!playerData?.battingStats?.length && !playerData?.pitchingStats?.length) {
-    return null;
-  }
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 mb-8">
@@ -253,7 +238,8 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
         </h2>
         {!isQualified && (
           <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            Below qualification threshold
+            Below qualification threshold ({appearances}/{threshold}{" "}
+            {activeTab === "batting" ? "PA" : "IP"})
           </div>
         )}
       </div>
@@ -261,12 +247,12 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
       <PercentileLegend />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-        {stats.map(({ key, label, decimals, suffix = "", percentileKey }) => (
+        {stats.map(({ key, label, decimals, suffix = "" }) => (
           <StatBar
             key={key}
             label={label}
-            value={currentStats[key]}
-            percentile={percentiles?.stats?.[percentileKey] || 0}
+            value={currentPercentiles.stats[key]}
+            percentile={currentPercentiles.stats[`${key}Percentile`]}
             decimals={decimals}
             suffix={suffix}
             qualified={isQualified}

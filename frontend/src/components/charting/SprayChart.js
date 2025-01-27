@@ -3,7 +3,7 @@ import * as d3 from "d3";
 
 const SprayChart = ({
   hits = [],
-  width = 550,
+  width = 600,
   height = 570,
   title = "",
   onPlotHit,
@@ -64,15 +64,15 @@ const SprayChart = ({
       .attr("stroke", "#666")
       .attr("stroke-width", 1);
 
-    const infieldRadius = outfieldRadius * 0.7;
+    const infieldRadius = outfieldRadius * 1.4;
     field
       .append("path")
       .attr(
         "d",
-        `M ${xScale(-infieldRadius * 0.8)} ${yScale(infieldRadius * 0.193)}
+        `M ${xScale(-infieldRadius * 0.305)} ${yScale(infieldRadius * 0.08)}
          A ${infieldRadius} ${infieldRadius} 0 0 1 ${xScale(
-          infieldRadius * 0.8
-        )} ${yScale(infieldRadius * 0.193)}
+          infieldRadius * 0.305
+        )} ${yScale(infieldRadius * 0.08)}
          L ${xScale(0)} ${yScale(0)}
          Z`
       )
@@ -80,7 +80,6 @@ const SprayChart = ({
       .attr("stroke", "#666")
       .attr("stroke-width", 1);
 
-    // Preview crosshairs
     const previewGroup = g
       .append("g")
       .attr("class", "preview")
@@ -106,7 +105,6 @@ const SprayChart = ({
 
       const group = g.append("g");
 
-      // Draw crosshair
       group
         .append("line")
         .attr("x1", xScale(hit.x))
@@ -127,7 +125,6 @@ const SprayChart = ({
         .attr("stroke-width", 2)
         .attr("opacity", isPreview ? 0.6 : 1);
 
-      // Draw hit point
       group
         .append("circle")
         .attr("cx", xScale(hit.x))

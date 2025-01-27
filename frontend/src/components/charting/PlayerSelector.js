@@ -1,11 +1,21 @@
-const PlayerSelector = ({ type, player, onEdit, required = false }) => {
+const PlayerSelector = ({
+  type,
+  player,
+  onEdit,
+  required = false,
+  isBullpen = false,
+}) => {
+  const isDisabled = isBullpen && type === "Pitcher" && player;
+
   return (
     <div className="relative">
       <button
         onClick={onEdit}
-        className={`w-full px-4 py-3 bg-white border rounded-lg text-left transition-colors hover:bg-gray-50 
+        disabled={isDisabled}
+        className={`w-full px-4 py-3 bg-white border rounded-lg text-left transition-colors 
           ${!player ? "border-dashed" : "border-gray-200"} 
           ${required ? "border-gray-300" : "border-gray-200"}
+          ${isDisabled ? "opacity-75 cursor-not-allowed" : "hover:bg-gray-50"}
           group`}
       >
         {player ? (

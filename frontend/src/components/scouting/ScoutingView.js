@@ -293,120 +293,122 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
-        >
-          <ChevronLeft size={18} />
-          <span>Back to Reports</span>
-        </button>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="container max-w-[calc(100vw-100px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+          >
+            <ChevronLeft size={18} />
+            <span>Back to Reports</span>
+          </button>
 
-        <div className="mt-8 space-y-6">
-          <DragDropContext onDragEnd={handleDragEnd}>
-            {/* Position Players Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Position Players
-                  </h2>
+          <div className="mt-8 space-y-6">
+            <DragDropContext onDragEnd={handleDragEnd}>
+              {/* Position Players Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Position Players
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => {
+                      fetchPlayers(report.teamId);
+                      setIsAddPlayerModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
+                  >
+                    <UserPlus size={14} />
+                    Add Hitter
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    fetchPlayers(report.teamId);
-                    setIsAddPlayerModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
-                >
-                  <UserPlus size={14} />
-                  Add Hitter
-                </button>
+
+                <Droppable droppableId="positionPlayers">
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps}>
+                      <PlayersTable
+                        players={report.positionPlayers}
+                        onEditPlayer={(player) => {
+                          setEditingPlayer(player);
+                          setIsAddPlayerModalOpen(true);
+                        }}
+                        onDeletePlayer={handleDeletePlayer}
+                        isPitcherTable={false}
+                      />
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
               </div>
 
-              <Droppable droppableId="positionPlayers">
-                {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps}>
-                    <PlayersTable
-                      players={report.positionPlayers}
-                      onEditPlayer={(player) => {
-                        setEditingPlayer(player);
-                        setIsAddPlayerModalOpen(true);
-                      }}
-                      onDeletePlayer={handleDeletePlayer}
-                      isPitcherTable={false}
-                    />
-                    {provided.placeholder}
+              {/* Pitchers Section */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-5 h-5 text-blue-600" />
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Pitchers
+                    </h2>
                   </div>
-                )}
-              </Droppable>
-            </div>
-
-            {/* Pitchers Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Pitchers
-                  </h2>
+                  <button
+                    onClick={() => {
+                      fetchPitchers(report.teamId);
+                      setIsAddPitcherModalOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
+                  >
+                    <UserPlus size={14} />
+                    Add Pitcher
+                  </button>
                 </div>
-                <button
-                  onClick={() => {
-                    fetchPitchers(report.teamId);
-                    setIsAddPitcherModalOpen(true);
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
-                >
-                  <UserPlus size={14} />
-                  Add Pitcher
-                </button>
-              </div>
 
-              <Droppable droppableId="pitchers">
-                {(provided) => (
-                  <div ref={provided.innerRef} {...provided.droppableProps}>
-                    <PlayersTable
-                      players={report.pitchers || []}
-                      onEditPlayer={(pitcher) => {
-                        setEditingPitcher(pitcher);
-                        setIsAddPitcherModalOpen(true);
-                      }}
-                      onDeletePlayer={handleDeletePitcher}
-                      isPitcherTable={true}
-                    />
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          </DragDropContext>
+                <Droppable droppableId="pitchers">
+                  {(provided) => (
+                    <div ref={provided.innerRef} {...provided.droppableProps}>
+                      <PlayersTable
+                        players={report.pitchers || []}
+                        onEditPlayer={(pitcher) => {
+                          setEditingPitcher(pitcher);
+                          setIsAddPitcherModalOpen(true);
+                        }}
+                        onDeletePlayer={handleDeletePitcher}
+                        isPitcherTable={true}
+                      />
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            </DragDropContext>
+          </div>
+
+          {/* Modals */}
+          <AddPlayerModal
+            isOpen={isAddPlayerModalOpen}
+            onClose={() => {
+              setIsAddPlayerModalOpen(false);
+              setEditingPlayer(null);
+            }}
+            onSubmit={editingPlayer ? handleEditPlayer : handleAddPlayer}
+            availablePlayers={availablePlayers}
+            editingPlayer={editingPlayer}
+          />
+
+          <AddPitcherModal
+            isOpen={isAddPitcherModalOpen}
+            onClose={() => {
+              setIsAddPitcherModalOpen(false);
+              setEditingPitcher(null);
+            }}
+            onSubmit={editingPitcher ? handleEditPitcher : handleAddPitcher}
+            availablePlayers={availablePitchers}
+            editingPitcher={editingPitcher}
+          />
         </div>
-
-        {/* Modals */}
-        <AddPlayerModal
-          isOpen={isAddPlayerModalOpen}
-          onClose={() => {
-            setIsAddPlayerModalOpen(false);
-            setEditingPlayer(null);
-          }}
-          onSubmit={editingPlayer ? handleEditPlayer : handleAddPlayer}
-          availablePlayers={availablePlayers}
-          editingPlayer={editingPlayer}
-        />
-
-        <AddPitcherModal
-          isOpen={isAddPitcherModalOpen}
-          onClose={() => {
-            setIsAddPitcherModalOpen(false);
-            setEditingPitcher(null);
-          }}
-          onSubmit={editingPitcher ? handleEditPitcher : handleAddPitcher}
-          availablePlayers={availablePitchers}
-          editingPitcher={editingPitcher}
-        />
       </div>
     </div>
   );

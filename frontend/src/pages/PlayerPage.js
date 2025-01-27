@@ -22,106 +22,10 @@ const PlayerPage = () => {
         const playerResponse = await fetchAPI(
           `/api/player/${decodeURIComponent(playerId)}`
         );
-
-        // Sort function for stats
-        const sortBySeasonDesc = (a, b) => b.Season - a.Season;
-
-        const enhancedPlayerData = {
-          ...playerResponse,
-          renderedTeam: playerResponse.currentTeam ? (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={playerResponse.prev_team_id}
-                conferenceId={playerResponse.conference_id}
-                teamName={playerResponse.currentTeam}
-                className="h-8 w-8"
-              />
-            </div>
-          ) : null,
-          renderedConference: playerResponse.conference ? (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={playerResponse.prev_team_id}
-                conferenceId={playerResponse.conference_id}
-                teamName={playerResponse.conference}
-                showConference={true}
-                className="h-8 w-8"
-              />
-            </div>
-          ) : null,
-          battingStats: playerResponse.battingStats
-            ?.map((stat) => ({
-              ...stat,
-              renderedTeam: (
-                <div className="w-full flex justify-center items-center">
-                  <TeamLogo
-                    teamId={stat.prev_team_id}
-                    conferenceId={stat.conference_id}
-                    teamName={stat.Team}
-                    className="h-8 w-8"
-                  />
-                </div>
-              ),
-              renderedConference: (
-                <div className="w-full flex justify-center items-center">
-                  <TeamLogo
-                    teamId={stat.prev_team_id}
-                    conferenceId={stat.conference_id}
-                    teamName={stat.Conference}
-                    showConference={true}
-                    className="h-8 w-8"
-                  />
-                </div>
-              ),
-            }))
-            .sort(sortBySeasonDesc),
-          pitchingStats: playerResponse.pitchingStats
-            ?.map((stat) => ({
-              ...stat,
-              renderedTeam: (
-                <div className="w-full flex justify-center items-center">
-                  <TeamLogo
-                    teamId={stat.prev_team_id}
-                    conferenceId={stat.conference_id}
-                    teamName={stat.Team}
-                    className="h-8 w-8"
-                  />
-                </div>
-              ),
-              renderedConference: (
-                <div className="w-full flex justify-center items-center">
-                  <TeamLogo
-                    teamId={stat.prev_team_id}
-                    conferenceId={stat.conference_id}
-                    teamName={stat.Conference}
-                    showConference={true}
-                    className="h-8 w-8"
-                  />
-                </div>
-              ),
-            }))
-            .sort(sortBySeasonDesc),
-        };
-
+        const enhancedPlayerData = enhancePlayerData(playerResponse);
         setPlayerData(enhancedPlayerData);
 
-        const has2024Stats =
-          enhancedPlayerData.battingStats?.some(
-            (stat) => stat.Season === 2024
-          ) ||
-          enhancedPlayerData.pitchingStats?.some(
-            (stat) => stat.Season === 2024
-          );
-        setIsActive(has2024Stats);
-
-        if (has2024Stats) {
-          const percentileResponse = await fetchAPI(
-            `/api/player-percentiles/${decodeURIComponent(playerId)}`
-          );
-          setPercentiles(percentileResponse);
-        } else {
-          setPercentiles(null);
-        }
+        await fetchAndSetPercentiles(enhancedPlayerData);
 
         if (
           !enhancedPlayerData.battingStats?.length &&
@@ -136,8 +40,115 @@ const PlayerPage = () => {
       }
     };
 
+    const fetchAndSetPercentiles = async (playerData) => {
+      const has2024Stats =
+        playerData.battingStats?.some((stat) => stat.Season === 2024) ||
+        playerData.pitchingStats?.some((stat) => stat.Season === 2024);
+
+      setIsActive(has2024Stats);
+
+      if (has2024Stats) {
+        const percentileResponse = await fetchAPI(
+          `/api/player-percentiles/${decodeURIComponent(playerId)}`
+        );
+
+        if (percentileResponse.inactive) {
+          setIsActive(false);
+          setPercentiles(null);
+        } else {
+          setPercentiles(percentileResponse);
+          if (!percentileResponse.batting && percentileResponse.pitching) {
+            setActiveTab("pitching");
+          }
+        }
+      } else {
+        setPercentiles(null);
+      }
+    };
+
     fetchData();
   }, [playerId]);
+
+  const enhancePlayerData = (playerResponse) => {
+    const sortBySeasonDesc = (a, b) => b.Season - a.Season;
+
+    return {
+      ...playerResponse,
+      renderedTeam: playerResponse.currentTeam ? (
+        <div className="w-full flex justify-center items-center">
+          <TeamLogo
+            teamId={playerResponse.prev_team_id}
+            conferenceId={playerResponse.conference_id}
+            teamName={playerResponse.currentTeam}
+            className="h-8 w-8"
+          />
+        </div>
+      ) : null,
+      renderedConference: playerResponse.conference ? (
+        <div className="w-full flex justify-center items-center">
+          <TeamLogo
+            teamId={playerResponse.prev_team_id}
+            conferenceId={playerResponse.conference_id}
+            teamName={playerResponse.conference}
+            showConference={true}
+            className="h-8 w-8"
+          />
+        </div>
+      ) : null,
+      battingStats: playerResponse.battingStats
+        ?.map((stat) => ({
+          ...stat,
+          renderedTeam: (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={stat.prev_team_id}
+                conferenceId={stat.conference_id}
+                teamName={stat.Team}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+          renderedConference: (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={stat.prev_team_id}
+                conferenceId={stat.conference_id}
+                teamName={stat.Conference}
+                showConference={true}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+        }))
+        .sort(sortBySeasonDesc),
+      pitchingStats: playerResponse.pitchingStats
+        ?.map((stat) => ({
+          ...stat,
+          renderedTeam: (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={stat.prev_team_id}
+                conferenceId={stat.conference_id}
+                teamName={stat.Team}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+          renderedConference: (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={stat.prev_team_id}
+                conferenceId={stat.conference_id}
+                teamName={stat.Conference}
+                showConference={true}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+        }))
+        .sort(sortBySeasonDesc),
+    };
+  };
 
   if (isLoading) {
     return (

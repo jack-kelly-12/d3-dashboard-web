@@ -73,6 +73,7 @@ main <- function() {
   setwd('C:/Users/kellyjc/Desktop/d3_app_improved/backend/scrapers')
   
   for (division in 1:3) {
+    year <- 2021
     batting <- ncaa_stats_bulk(year = year, type = "batting", divisions = division)
     pitching <- ncaa_stats_bulk(year = year, type = "pitching", divisions = division)
     

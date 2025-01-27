@@ -87,7 +87,18 @@ const styles = StyleSheet.create({
   },
 });
 
-const PitcherAdvanceReport = ({ charts = [], pitchers = [] }) => {
+const getPitchers = (charts) => {
+  return [
+    ...new Set(
+      charts.flatMap((chart) =>
+        chart.pitches.map((pitch) => pitch.pitcher?.name).filter(Boolean)
+      )
+    ),
+  ];
+};
+
+const PitcherAdvanceReport = ({ charts = [] }) => {
+  const pitchers = getPitchers(charts);
   if (!charts.length || !pitchers.length) {
     return (
       <Document>

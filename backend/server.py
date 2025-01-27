@@ -267,9 +267,10 @@ def get_expected_runs():
 def get_player_percentiles(player_id):
     conn = get_db_connection()
     cursor = conn.cursor()
+    response = {"batting": None, "pitching": None}
 
     try:
-        # Check if player exists in 2024 batting stats
+        # Check batting stats
         cursor.execute("""
             SELECT * FROM batting_war
             WHERE player_id = ? AND Division = 3 AND Season = 2024
@@ -277,7 +278,6 @@ def get_player_percentiles(player_id):
         player = cursor.fetchone()
 
         if player:
-            # Get all batters with PA > 25
             cursor.execute("""
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
                        "Baserunning", "Adjustment", WAR, PA, "wRC+"
@@ -300,25 +300,24 @@ def get_player_percentiles(player_id):
                     percentiles[f"{stat}Percentile"] = percentile
                     percentiles[stat] = player_value
 
-            return jsonify({
+            response["batting"] = {
                 "type": "batting",
                 "stats": percentiles,
                 "qualified": player_stats['PA'] > 25,
                 "paThreshold": 25,
                 "playerPA": player_stats['PA']
-            })
+            }
 
-        # Check if player exists in 2024 pitching stats
+        # Check pitching stats
         cursor.execute("""
             SELECT * FROM pitching_war
-            WHERE player_id = ? AND Division = 3 AND Season == 2024
+            WHERE player_id = ? AND Division = 3 AND Season = 2024
         """, (player_id,))
         player = cursor.fetchone()
 
         if player:
-            # Get all pitchers with IP > 10
             cursor.execute("""
-                SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, "RA9"
+                SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9
                 FROM pitching_war
                 WHERE IP > 10 AND Division = 3 AND Season = 2024
                 ORDER BY IP DESC
@@ -340,19 +339,21 @@ def get_player_percentiles(player_id):
                     percentiles[f"{stat}Percentile"] = percentile
                     percentiles[stat] = player_value
 
-            return jsonify({
+            response["pitching"] = {
                 "type": "pitching",
                 "stats": percentiles,
                 "qualified": player_stats['IP'] > 10,
                 "ipThreshold": 10,
                 "playerIP": player_stats['IP']
+            }
+
+        if response["batting"] is None and response["pitching"] is None:
+            return jsonify({
+                "inactive": True,
+                "message": "Player not active in 2024 season"
             })
 
-        # If player not found in either 2024 table, return inactive status instead of 404
-        return jsonify({
-            "inactive": True,
-            "message": "Player not active in 2024 season"
-        })
+        return jsonify(response)
 
     finally:
         conn.close()
@@ -475,7 +476,7 @@ def search_players():
                 UNION
                 SELECT player_id, Player, Team, Conference
                 FROM pitching_war
-                WHERE Division = 3 AND Season == 2024
+                WHERE Division = 3 AND Season = 2024
             )
             WHERE Player LIKE ? OR Player LIKE ? OR Player LIKE ? OR Player LIKE ?
             ORDER BY

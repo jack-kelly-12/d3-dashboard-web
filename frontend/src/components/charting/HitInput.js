@@ -3,16 +3,22 @@ import { RotateCcw } from "lucide-react";
 
 const HitInput = ({ currentHit, onChange, onReset, disabled }) => {
   const hitTypes = [
-    { value: "single", label: "Single" },
-    { value: "double", label: "Double" },
-    { value: "triple", label: "Triple" },
-    { value: "home_run", label: "Home Run" },
     { value: "groundout", label: "Ground Out" },
     { value: "flyout", label: "Fly Out" },
     { value: "lineout", label: "Line Out" },
     { value: "popout", label: "Pop Out" },
-    { value: "error", label: "Error" },
     { value: "bunt", label: "Bunt" },
+  ];
+
+  const results = [
+    { value: "single", label: "Single" },
+    { value: "double", label: "Double" },
+    { value: "triple", label: "Triple" },
+    { value: "home_run", label: "Home Run" },
+    { value: "double_play", label: "Double Play" },
+    { value: "triple_play", label: "Triple Play" },
+    { value: "fielders_choice", label: "Fielder's Choice" },
+    { value: "error", label: "Error" },
   ];
 
   const exitVelocityOptions = [
@@ -47,6 +53,29 @@ const HitInput = ({ currentHit, onChange, onReset, disabled }) => {
       </div>
 
       <div className="space-y-6">
+        {/* Results */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Result
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {results.map((result) => (
+              <button
+                key={result.value}
+                onClick={() => handleChange("result", result.value)}
+                disabled={disabled}
+                className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                  currentHit.result === result.value
+                    ? "bg-blue-600 text-white font-medium"
+                    : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                }`}
+              >
+                {result.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Hit Types */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">

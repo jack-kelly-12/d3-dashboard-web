@@ -228,37 +228,55 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
       if (!isBullpen) {
         const result = currentPitch.result?.toLowerCase();
         const hitResult = currentHit.result?.toLowerCase();
-        const isOut =
-          ["strikeout_swinging", "strikeout_looking"].includes(result) ||
-          ["lineout", "groundout", "flyout", "popout"].includes(hitResult);
-        const isHit = ["single", "double", "triple", "home_run"].includes(
-          hitResult
+        const hitType = currentHit.type?.toLowerCase();
+
+        const isOutType = ["groundout", "flyout", "lineout", "popout"].includes(
+          hitType
         );
+
+        if (hitResult === "double_play") {
+          newOuts = Math.min(outs + 2, 3);
+        } else if (hitResult === "triple_play") {
+          newOuts = 3;
+        } else if (
+          isOutType ||
+          ["strikeout_swinging", "strikeout_looking"].includes(result)
+        ) {
+          newOuts = Math.min(outs + 1, 3);
+        }
 
         if (result === "ball") {
           newBalls = balls + 1;
-          setBalls(newBalls);
         } else if (
           ["swinging_strike", "called_strike", "foul"].includes(result)
         ) {
           if (result !== "foul" || strikes < 2) {
             newStrikes = strikes + 1;
-            setStrikes(newStrikes);
           }
         }
 
-        if (result === "walk" || result === "hit_by_pitch" || isOut || isHit) {
+        const isHit = [
+          "single",
+          "double",
+          "triple",
+          "home_run",
+          "fielders_choice",
+          "error",
+        ].includes(hitResult);
+        if (
+          result === "walk" ||
+          result === "hit_by_pitch" ||
+          isOutType ||
+          isHit
+        ) {
           newBalls = 0;
           newStrikes = 0;
-          setBalls(0);
-          setStrikes(0);
         }
 
         if (newOuts >= 3) {
-          setOuts(0);
           newOuts = 0;
-          setBalls(0);
-          setStrikes(0);
+          newBalls = 0;
+          newStrikes = 0;
 
           if (topBottom === "Top") {
             setTopBottom("Bottom");
@@ -269,11 +287,14 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
 
           setBatter(null);
           setPitcher(null);
-
           setNextModalType("batter");
           setEditingPlayer("pitcher");
           setIsPlayerModalOpen(true);
         }
+
+        setBalls(newBalls);
+        setStrikes(newStrikes);
+        setOuts(newOuts);
       }
 
       const newPitch = {
@@ -309,11 +330,17 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
           x: currentHit.location.x,
           y: currentHit.location.y,
           type: currentHit.type,
+          result: currentHit.result,
           exitVelocity: currentHit.exitVelocity,
         };
       }
 
-      if (isNewBatterEvent) {
+      // Reset forms and trigger new batter selection
+      const shouldChangeBatter =
+        isNewBatterEvent ||
+        (isInPlay && (currentHit.result || currentHit.type));
+
+      if (shouldChangeBatter) {
         setBatter(null);
         setShouldOpenBatterModal(true);
       }
@@ -340,11 +367,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
 
       setShouldResetPlot(true);
       setTimeout(() => setShouldResetPlot(false), 200);
-
-      if (isInPlay) {
-        setBatter(null);
-        setShouldOpenBatterModal(true);
-      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to add pitch");
@@ -429,6 +451,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     player={pitcher}
                     onEdit={() => handlePlayerEdit("pitcher")}
                     required
+                    isBullpen={isBullpen}
                   />
                 </div>
 
@@ -551,10 +574,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
               <div className="flex items-center justify-center bg-white rounded-lg shadow-sm border border-gray-200 p-6 relative">
                 <div className="absolute top-4 left-1/2 -translate-x-1/2 inline-flex rounded-lg p-1 bg-gray-100 shadow-sm">
                   <button
-                    onClick={() => {
-                      setIsStrikeZone(true);
-                      handleResetPitch();
-                    }}
+                    onClick={() => setIsStrikeZone(true)}
                     className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                       isStrikeZone
                         ? "bg-white text-blue-600 shadow"
@@ -564,10 +584,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     Strike Zone
                   </button>
                   <button
-                    onClick={() => {
-                      setIsStrikeZone(false);
-                      handleResetPitch();
-                    }}
+                    onClick={() => setIsStrikeZone(false)}
                     className={`px-4 py-1.5 rounded text-sm font-medium transition-colors ${
                       !isStrikeZone
                         ? "bg-white text-blue-600 shadow"
@@ -577,7 +594,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     Spray Chart
                   </button>
                 </div>
-
                 <div className="absolute top-4 right-4 z-10">
                   <button
                     onClick={() => setIsPitcherView(!isPitcherView)}

@@ -42,7 +42,7 @@ export const GamePitchCounter = ({ pitches = [], currentPitcher = null }) => {
 
   return (
     <div className="absolute top-2 left-2 z-50">
-      <div className="inline-flex items-center gap-3 bg-white bg-opacity-90 rounded-lg px-3 py-1.5">
+      <div className="flex flex-col bg-white bg-opacity-90 rounded-lg px-3 py-2">
         <span className="font-medium text-sm text-blue-600">
           {currentPitcherPitches.length} pitches
         </span>
