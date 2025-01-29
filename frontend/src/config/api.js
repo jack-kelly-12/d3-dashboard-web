@@ -1,3 +1,5 @@
+import { getAuth } from "firebase/auth";
+
 const getBaseUrl = () => {
   if (process.env.NODE_ENV === "development") {
     return "http://localhost:8000";
@@ -13,11 +15,15 @@ export const fetchAPI = async (endpoint, options = {}) => {
     : `/api${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
 
   const url = `${API_BASE_URL}${normalizedEndpoint}`;
+  const auth = getAuth();
 
   const defaultOptions = {
     mode: "cors",
     headers: {
       "Content-Type": "application/json",
+      Authorization: auth.currentUser
+        ? `Bearer ${await auth.currentUser.getIdToken()}`
+        : "",
     },
   };
 

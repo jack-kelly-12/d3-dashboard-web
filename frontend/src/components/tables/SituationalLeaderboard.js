@@ -5,6 +5,8 @@ import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
+import AuthManager from "../../managers/AuthManager";
+import SubscriptionManager from "../../managers/SubscriptionManager";
 
 const SituationalLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -16,8 +18,9 @@ const SituationalLeaderboard = () => {
   const [selectedConference, setSelectedConference] = useState("");
   const [minPA, setMinPA] = useState(50);
   const [conferences, setConferences] = useState([]);
+  const [division, setDivision] = useState(3);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
 
-  // Memoized fetch conferences function
   const fetchConferences = useCallback(async () => {
     try {
       const response = await fetchAPI("/conferences");
@@ -28,16 +31,35 @@ const SituationalLeaderboard = () => {
   }, []);
 
   useEffect(() => {
+    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+      if (user) {
+        SubscriptionManager.listenToSubscriptionUpdates(
+          user.uid,
+          (subscription) => {
+            setIsPremiumUser(subscription?.isActive || false);
+          }
+        );
+      } else {
+        setIsPremiumUser(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      SubscriptionManager.stopListening();
+    };
+  }, []);
+
+  useEffect(() => {
     fetchConferences();
   }, [fetchConferences]);
 
-  // Memoized fetch data function
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const rawData = await fetchAPI(
-        `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}`
+        `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}&division=${division}`
       );
 
       const transformedData = rawData.map((row, index) => ({
@@ -72,7 +94,7 @@ const SituationalLeaderboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, endYear, minPA]);
+  }, [startYear, endYear, minPA, division]);
 
   useEffect(() => {
     fetchData();
@@ -275,6 +297,18 @@ const SituationalLeaderboard = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              {isPremiumUser && (
+                <select
+                  value={division}
+                  onChange={(e) => setDivision(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value={1}>Division 1</option>
+                  <option value={2}>Division 2</option>
+                  <option value={3}>Division 3</option>
+                </select>
+              )}
+
               <select
                 value={startYear}
                 onChange={(e) => setStartYear(Number(e.target.value))}

@@ -5,6 +5,9 @@ import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
+import SubscriptionManager from "../../managers/SubscriptionManager";
+import AuthManager from "../../managers/AuthManager";
+
 const ValueLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState([]);
@@ -14,6 +17,8 @@ const ValueLeaderboard = () => {
   const [endYear, setEndYear] = useState(2024);
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
+  const [division, setDivision] = useState(3);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
 
   const fetchConferences = useCallback(async () => {
     try {
@@ -25,6 +30,26 @@ const ValueLeaderboard = () => {
   }, []);
 
   useEffect(() => {
+    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+      if (user) {
+        SubscriptionManager.listenToSubscriptionUpdates(
+          user.uid,
+          (subscription) => {
+            setIsPremiumUser(subscription?.isActive || false);
+          }
+        );
+      } else {
+        setIsPremiumUser(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      SubscriptionManager.stopListening();
+    };
+  }, []);
+
+  useEffect(() => {
     fetchConferences();
   }, [fetchConferences]);
 
@@ -33,7 +58,7 @@ const ValueLeaderboard = () => {
     setError(null);
     try {
       const rawData = await fetchAPI(
-        `/api/leaderboards/value?start_year=${startYear}&end_year=${endYear}`
+        `/api/leaderboards/value?start_year=${startYear}&end_year=${endYear}&division=${division}`
       );
 
       const sortedData = rawData.sort((a, b) => b.WAR - a.WAR);
@@ -69,7 +94,7 @@ const ValueLeaderboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, endYear]);
+  }, [startYear, endYear, division]);
 
   useEffect(() => {
     fetchData();
@@ -273,46 +298,60 @@ const ValueLeaderboard = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <select
-                value={startYear}
-                onChange={(e) => setStartYear(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-              <span className="text-gray-500">to</span>
-              <select
-                value={endYear}
-                onChange={(e) => setEndYear(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <div className="flex items-center space-x-4">
+              {isPremiumUser && (
+                <select
+                  value={division}
+                  onChange={(e) => setDivision(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value={1}>Division 1</option>
+                  <option value={2}>Division 2</option>
+                  <option value={3}>Division 3</option>
+                </select>
+              )}
 
-            {conferences.length > 0 && (
-              <select
-                value={selectedConference}
-                onChange={(e) => setSelectedConference(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Conferences</option>
-                {conferences.map((conf) => (
-                  <option key={conf} value={conf}>
-                    {conf}
-                  </option>
-                ))}
-              </select>
-            )}
+              <div className="flex items-center gap-2">
+                <select
+                  value={startYear}
+                  onChange={(e) => setStartYear(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-gray-500">to</span>
+                <select
+                  value={endYear}
+                  onChange={(e) => setEndYear(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {conferences.length > 0 && (
+                <select
+                  value={selectedConference}
+                  onChange={(e) => setSelectedConference(e.target.value)}
+                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Conferences</option>
+                  {conferences.map((conf) => (
+                    <option key={conf} value={conf}>
+                      {conf}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
         </div>
       </div>

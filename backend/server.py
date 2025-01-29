@@ -2,7 +2,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 from typing import Dict, List, Optional, Union
 from flask import jsonify
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
 from flask_cors import CORS, cross_origin
 import sqlite3
 import pandas as pd
@@ -16,11 +16,18 @@ import logging
 from llm_insights import InsightsProcessor
 from dotenv import load_dotenv
 import stripe
-from firebase_admin import firestore
+import firebase_admin
+from firebase_admin import firestore, auth, credentials
+from functools import wraps
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+
+cred = credentials.Certificate(
+    "d3-dash-13dc4-firebase-adminsdk-5y2t3-1582956c98.json")
+firebase_admin.initialize_app(cred)
+
 
 CORS(app, resources={
     r"/api/*": {
@@ -49,7 +56,48 @@ def get_db_connection():
     return conn
 
 
+def require_premium(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        division = request.args.get('division', type=int, default=3)
+
+        if division != 3:
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return jsonify({"error": "Premium subscription required"}), 403
+
+            try:
+                token = auth_header.split('Bearer ')[1]
+                decoded_token = auth.verify_id_token(token)
+                user_id = decoded_token['uid']
+
+                db = firestore.client()
+                sub_doc = db.collection(
+                    'subscriptions').document(user_id).get()
+
+                if not sub_doc.exists:
+                    return jsonify({"error": "Premium subscription required"}), 403
+
+                data = sub_doc.to_dict()
+                is_active = (
+                    data.get('status') == 'active' and
+                    data.get('expiresAt', datetime.now()
+                             ).timestamp() > datetime.now().timestamp()
+                )
+
+                if not is_active:
+                    return jsonify({"error": "Premium subscription required"}), 403
+
+            except Exception as e:
+                print(f"Auth error: {str(e)}")
+                return jsonify({"error": "Premium subscription required"}), 403
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @app.route('/api/batting_war/<int:year>', methods=['GET'])
+@require_premium
 def get_batting_war(year):
     if year < 2021 or year > 2024:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
@@ -77,6 +125,7 @@ def get_batting_war(year):
 
 
 @app.route('/api/pitching_war/<int:year>', methods=['GET'])
+@require_premium
 def get_pitching_war(year):
     if year < 2021 or year > 2024:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
@@ -104,6 +153,7 @@ def get_pitching_war(year):
 
 
 @app.route('/api/batting_team_war/<int:year>', methods=['GET'])
+@require_premium
 def get_batting_team_war(year):
     if year < 2021 or year > 2024:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
@@ -131,6 +181,7 @@ def get_batting_team_war(year):
 
 
 @app.route('/api/pitching_team_war/<int:year>', methods=['GET'])
+@require_premium
 def get_pitching_team_war(year):
     if year < 2021 or year > 2024:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
@@ -158,6 +209,7 @@ def get_pitching_team_war(year):
 
 
 @app.route('/api/guts', methods=['GET'])
+@require_premium
 def get_guts():
     division = request.args.get('division', default=3, type=int)
     if division not in [1, 2, 3]:
@@ -172,6 +224,7 @@ def get_guts():
 
 
 @app.route('/api/park-factors', methods=['GET'])
+@require_premium
 def get_pf():
     division = request.args.get('division', default=3, type=int)
     if division not in [1, 2, 3]:
@@ -187,6 +240,7 @@ def get_pf():
 
 
 @app.route('/api/teams-2024', methods=['GET'])
+@require_premium
 def get_teams():
     division = request.args.get('division', 3, type=int)
 
@@ -208,6 +262,7 @@ def get_teams():
 
 
 @app.route('/api/players-hit-2024/<team_name>', methods=['GET'])
+@require_premium
 def get_team_players(team_name):
     division = request.args.get('division', 3, type=int)
 
@@ -242,6 +297,7 @@ def get_team_players(team_name):
 
 
 @app.route('/api/players-pitch-2024/<team_name>', methods=['GET'])
+@require_premium
 def get_team_pitchers(team_name):
     division = request.args.get('division', 3, type=int)
 
@@ -275,6 +331,7 @@ def get_team_pitchers(team_name):
 
 
 @app.route('/api/expected-runs', methods=['GET'])
+@require_premium
 def get_expected_runs():
     year = request.args.get('year', '2024')
     division = request.args.get('division', default=3, type=int)
@@ -805,13 +862,19 @@ def get_conference_logo(conference_id):
 
 
 @app.route('/api/leaderboards/value', methods=['GET'])
+@require_premium
 def get_value_leaderboard():
     start_year = request.args.get('start_year', '2024')
     end_year = request.args.get('end_year', '2024')
+    division = request.args.get('division', type=int, default=3)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
 
     try:
         start_year = int(start_year)
         end_year = int(end_year)
+
         if not (2021 <= start_year <= 2025) or not (2021 <= end_year <= 2025) or start_year > end_year:
             return jsonify({"error": "Invalid year range"}), 400
     except ValueError:
@@ -832,9 +895,9 @@ def get_value_leaderboard():
                     i.prev_team_id, i.conference_id, b.player_id, b.WPA, b.[WPA/LI], b.REA, b.Clutch
                 FROM batting_war b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
-                WHERE Division = 3 AND Season = ?
+                WHERE Division = ? AND Season = ?
 
-            """, (year,))
+            """, (division, year))
             batting_data = {(row['Player'], row['Team']): dict(row)
                             for row in cursor.fetchall()}
 
@@ -846,8 +909,8 @@ def get_value_leaderboard():
                     i.prev_team_id, i.conference_id, p.player_id, p.pWPA, p.[pWPA/LI], p.pREA, p.Clutch
                 FROM pitching_war p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
-                WHERE Division = 3 AND Season = ?
-            """, (year, ))
+                WHERE Division = ? AND Season = ?
+            """, (division, year))
             pitching_data = {(row['Player'], row['Team']): dict(row)
                              for row in cursor.fetchall()}
 
@@ -912,9 +975,14 @@ def get_value_leaderboard():
 
 
 @app.route('/api/leaderboards/baserunning', methods=['GET'])
+@require_premium
 def get_baserunning_leaderboard():
     start_year = request.args.get('start_year', '2024')
     end_year = request.args.get('end_year', '2024')
+    division = request.args.get('division', type=int, default=3)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
 
     try:
         start_year = int(start_year)
@@ -956,12 +1024,12 @@ def get_baserunning_leaderboard():
                     FROM baserunning b
                     LEFT JOIN ids_for_images i 
                         ON b.Team = i.team_name
-                    WHERE b.Division = 3 AND b.Year = ?
+                    WHERE b.Division = ? AND b.Year = ?
                     ORDER BY b.Baserunning DESC
                 )
                 SELECT * FROM baserunning_query
             """
-            cursor.execute(query, (year, ))
+            cursor.execute(query, (division, year))
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -978,10 +1046,15 @@ def get_baserunning_leaderboard():
 
 
 @app.route('/api/leaderboards/situational', methods=['GET'])
+@require_premium
 def get_situational_leaderboard():
     start_year = request.args.get('start_year', '2024')
     end_year = request.args.get('end_year', '2024')
     min_pa = request.args.get('min_pa', '50')
+    division = request.args.get('division', type=int, default=3)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
 
     try:
         start_year = int(start_year)
@@ -1039,7 +1112,7 @@ def get_situational_leaderboard():
                     LEFT JOIN ids_for_images i 
                         ON p.Team = i.team_name
                     WHERE s.PA_Overall >= ? 
-                        AND p.Division = 3 
+                        AND p.Division = ? 
                         AND p.Season = ?
                         AND s.year = ?
                     ORDER BY s.wOBA_Overall DESC
@@ -1047,7 +1120,7 @@ def get_situational_leaderboard():
                 SELECT * FROM situational_query
             """
 
-            cursor.execute(query, (min_pa, year, year))
+            cursor.execute(query, (min_pa, division, year, year))
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -1064,6 +1137,7 @@ def get_situational_leaderboard():
 
 
 @app.route('/api/games/<int:year>/<game_id>', methods=['GET'])
+@require_premium
 def get_game(year, game_id):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1102,6 +1176,7 @@ def get_game(year, game_id):
 
 
 @app.route('/api/games', methods=['GET'])
+@require_premium
 def get_games_by_date():
     # Get query parameters for month, day, and year
     month = request.args.get('month')

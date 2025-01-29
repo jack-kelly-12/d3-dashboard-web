@@ -10,12 +10,6 @@ const SituationalLeaderboard = lazy(() =>
 const BaserunningLeaderboard = lazy(() =>
   import("../components/tables/BaserunningLeaderboard")
 );
-const ProjectionsHit = lazy(() =>
-  import("../components/tables/ProjectionsHit")
-);
-const ProjectionsPitch = lazy(() =>
-  import("../components/tables/ProjectionsPitch")
-);
 
 const LEADERBOARD_TYPES = {
   VALUE: {
@@ -37,18 +31,6 @@ const LEADERBOARD_TYPES = {
     label: "Baserunning Leaderboard",
     description: "Comprehensive leaderboard of total baserunning value",
     component: BaserunningLeaderboard,
-  },
-  PROJECTIONS: {
-    id: "projections",
-    label: "2025 Projections (Hitting)",
-    description: "Projected hitting statistics for the 2025 season",
-    component: ProjectionsHit,
-  },
-  PROJECTIONS_PITCH: {
-    id: "projections_pitch",
-    label: "2025 Projections (Pitching)",
-    description: "Projected pitching statistics for the 2025 season",
-    component: ProjectionsPitch,
   },
 };
 

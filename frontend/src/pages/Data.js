@@ -145,6 +145,11 @@ const Data = () => {
       const results = await Promise.all(
         state.selectedYears.map((year) =>
           fetchAPI(endpointMap[state.dataType](year)).catch((err) => {
+            if (err.status === 403) {
+              throw new Error(
+                "Premium subscription required to access D1/D2 data"
+              );
+            }
             console.error(`Error fetching ${year}:`, err);
             return [];
           })
@@ -161,6 +166,7 @@ const Data = () => {
       setError(null);
     } catch (err) {
       setError(err.message);
+      setState((prev) => ({ ...prev, division: 3 }));
     } finally {
       setIsLoading(false);
     }
