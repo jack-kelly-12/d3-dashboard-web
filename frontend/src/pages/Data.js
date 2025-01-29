@@ -7,6 +7,8 @@ import { getDataColumns } from "../config/tableColumns";
 import TeamLogo from "../components/data/TeamLogo";
 import { useSearchParams } from "react-router-dom";
 import debounce from "lodash/debounce";
+import SubscriptionManager from "../managers/SubscriptionManager";
+import AuthManager from "../managers/AuthManager";
 
 // Memoized Table Component
 const MemoizedTable = React.memo(({ data, dataType, filename }) => (
@@ -28,52 +30,84 @@ const Data = () => {
     minPA: Number(searchParams.get("minPA")) || 50,
     minIP: Number(searchParams.get("minIP")) || 10,
     selectedConference: searchParams.get("conference") || "",
+    division: Number(searchParams.get("division")) || 3,
   });
 
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [conferences, setConferences] = useState([]);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
 
-  // Memoize endpoint mapping
+  useEffect(() => {
+    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+      if (user) {
+        SubscriptionManager.listenToSubscriptionUpdates(
+          user.uid,
+          (subscription) => {
+            setIsPremiumUser(subscription?.isActive || false);
+          }
+        );
+      } else {
+        setIsPremiumUser(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      SubscriptionManager.stopListening();
+    };
+  }, []);
+
   const endpointMap = useMemo(
     () => ({
-      player_hitting: (year) => `/api/batting_war/${year}`,
-      player_pitching: (year) => `/api/pitching_war/${year}`,
-      team_hitting: (year) => `/api/batting_team_war/${year}`,
-      team_pitching: (year) => `/api/pitching_team_war/${year}`,
+      player_hitting: (year) =>
+        `/api/batting_war/${year}?division=${state.division}`,
+      player_pitching: (year) =>
+        `/api/pitching_war/${year}?division=${state.division}`,
+      team_hitting: (year) =>
+        `/api/batting_team_war/${year}?division=${state.division}`,
+      team_pitching: (year) =>
+        `/api/pitching_team_war/${year}?division=${state.division}`,
     }),
-    []
+    [state.division]
   );
 
-  // Fetch conferences once
   useEffect(() => {
     const fetchConferences = async () => {
       try {
-        const response = await fetchAPI("/conferences");
+        const response = await fetchAPI(
+          `/conferences?division=${state.division}`
+        );
         setConferences(response.sort());
       } catch (err) {
         console.error("Error fetching conferences:", err);
       }
     };
     fetchConferences();
-  }, []);
+  }, [state.division]);
 
   const updateSearchParams = useCallback(
     (newState) => {
       const debouncedUpdate = debounce((state) => {
-        setSearchParams({
+        const params = {
           dataType: state.dataType,
           years: state.selectedYears.join(","),
           search: state.searchTerm,
           minPA: state.minPA.toString(),
           minIP: state.minIP.toString(),
           conference: state.selectedConference,
-        });
+        };
+
+        if (isPremiumUser) {
+          params.division = state.division.toString();
+        }
+
+        setSearchParams(params);
       }, 300);
       debouncedUpdate(newState);
     },
-    [setSearchParams]
+    [setSearchParams, isPremiumUser]
   );
 
   const transformData = useCallback(
@@ -179,7 +213,9 @@ const Data = () => {
           setMinIP={(val) => handleStateChange("minIP", val)}
           setSearchTerm={(val) => handleStateChange("searchTerm", val)}
           setConference={(val) => handleStateChange("selectedConference", val)}
+          setDivision={(val) => handleStateChange("division", val)}
           conferences={conferences}
+          isPremiumUser={isPremiumUser}
         />
 
         {isLoading ? (

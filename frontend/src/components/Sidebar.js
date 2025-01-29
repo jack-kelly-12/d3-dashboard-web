@@ -20,6 +20,22 @@ import {
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
 
+const PremiumBadge = () => (
+  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-500 text-white">
+    Premium
+  </span>
+);
+
+// Separate Subscription Link component
+const SubscriptionLink = ({ isPremiumUser }) => (
+  <Link
+    to="/subscriptions"
+    className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+  >
+    {isPremiumUser ? "View plan" : "Upgrade to Premium"}
+  </Link>
+);
+
 const UserSection = ({
   user,
   isPremiumUser,
@@ -27,6 +43,48 @@ const UserSection = ({
   collapsed,
   mobileOpen,
 }) => {
+  const [subscriptionStatus, setSubscriptionStatus] = useState({
+    isLoading: true,
+    isPremium: false,
+  });
+
+  useEffect(() => {
+    let unsubscribe;
+
+    const initializeSubscription = async () => {
+      if (user?.uid) {
+        setSubscriptionStatus((prev) => ({ ...prev, isLoading: true }));
+
+        unsubscribe = SubscriptionManager.listenToSubscriptionUpdates(
+          user.uid,
+          (subscription) => {
+            setSubscriptionStatus({
+              isLoading: false,
+              isPremium: subscription?.isActive || false,
+            });
+          }
+        );
+      } else {
+        setSubscriptionStatus({
+          isLoading: false,
+          isPremium: false,
+        });
+      }
+    };
+
+    initializeSubscription();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [user?.uid]);
+
+  const showPremiumBadge =
+    !subscriptionStatus.isLoading &&
+    (isPremiumUser || subscriptionStatus.isPremium);
+
   return (
     <div className="w-full space-y-1">
       <div
@@ -41,17 +99,8 @@ const UserSection = ({
               {user?.email || "Anonymous"}
             </div>
             <div className="flex items-center space-x-2">
-              {isPremiumUser && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-yellow-600 to-blue-500 text-white">
-                  Premium
-                </span>
-              )}
-              <Link
-                to="/subscriptions"
-                className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
-              >
-                {isPremiumUser ? "View plan" : "Upgrade to Premium"}
-              </Link>
+              {showPremiumBadge && <PremiumBadge />}
+              <SubscriptionLink isPremiumUser={showPremiumBadge} />
             </div>
           </div>
         )}

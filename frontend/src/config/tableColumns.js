@@ -93,14 +93,17 @@ export const getDataColumns = (dataType) => {
           selector: (row) => row.Player,
           sortable: true,
           width: "150px",
-          cell: (row) => (
-            <Link
-              to={`/player/${row.player_id}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              {row.Player}
-            </Link>
-          ),
+          cell: (row) =>
+            row.Division === 3 ? (
+              <Link
+                to={`/player/${row.player_id}`}
+                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              >
+                {row.Player}
+              </Link>
+            ) : (
+              <span className="font-medium">{row.Player}</span>
+            ),
         },
         {
           name: "Team",
@@ -319,14 +322,17 @@ export const getDataColumns = (dataType) => {
           selector: (row) => row.Player,
           sortable: true,
           width: "150px",
-          cell: (row) => (
-            <Link
-              to={`/player/${row.player_id}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              {row.Player}
-            </Link>
-          ),
+          cell: (row) =>
+            row.Division === 3 ? (
+              <Link
+                to={`/player/${row.player_id}`}
+                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              >
+                {row.Player}
+              </Link>
+            ) : (
+              <span className="font-medium">{row.Player}</span>
+            ),
         },
         {
           name: "Team",

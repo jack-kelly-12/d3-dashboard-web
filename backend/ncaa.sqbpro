@@ -1,1 +1,46 @@
-<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/kellyjc/Desktop/d3_app_improved/backend/ncaa.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="125"/><column_width id="3" width="6340"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,11:mainbaserunning"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">VACUUM</sql><current_tab id="0"/></tab_sql></sqlb_project>
+<?xml version="1.0" encoding="UTF-8"?><sqlb_project><db path="C:/Users/kellyjc/Desktop/d3_app_improved/backend/ncaa.db" readonly="0" foreign_keys="1" case_sensitive_like="0" temp_store="0" wal_autocheckpoint="1000" synchronous="2"/><attached/><window><main_tabs open="structure browser pragmas query" current="3"/></window><tab_structure><column_width id="0" width="300"/><column_width id="1" width="0"/><column_width id="2" width="125"/><column_width id="3" width="6340"/><column_width id="4" width="0"/><expanded_item id="0" parent="1"/><expanded_item id="1" parent="1"/><expanded_item id="2" parent="1"/><expanded_item id="3" parent="1"/></tab_structure><tab_browse><current_table name="4,11:mainbaserunning"/><default_encoding codec=""/><browse_table_settings/></tab_browse><tab_sql><sql name="SQL 1">-- batting_war indices
+CREATE INDEX IF NOT EXISTS idx_batting_war_division_season ON batting_war (Division, Season);
+CREATE INDEX IF NOT EXISTS idx_batting_war_player_id ON batting_war (player_id);
+CREATE INDEX IF NOT EXISTS idx_batting_war_team ON batting_war (Team);
+CREATE INDEX IF NOT EXISTS idx_batting_war_war ON batting_war (WAR);
+CREATE INDEX IF NOT EXISTS idx_batting_war_pa ON batting_war (PA);
+CREATE INDEX IF NOT EXISTS idx_batting_war_division_season_war ON batting_war (Division, Season, WAR DESC);
+CREATE INDEX IF NOT EXISTS idx_batting_war_division_season_team ON batting_war (Division, Season, Team);
+CREATE INDEX IF NOT EXISTS idx_batting_war_player_season ON batting_war (player_id, Season);
+
+-- pitching_war indices
+CREATE INDEX IF NOT EXISTS idx_pitching_war_division_season ON pitching_war (Division, Season);
+CREATE INDEX IF NOT EXISTS idx_pitching_war_player_id ON pitching_war (player_id);
+CREATE INDEX IF NOT EXISTS idx_pitching_war_team ON pitching_war (Team);
+CREATE INDEX IF NOT EXISTS idx_pitching_war_war ON pitching_war (WAR);
+CREATE INDEX IF NOT EXISTS idx_pitching_war_ip ON pitching_war (IP);
+CREATE INDEX IF NOT EXISTS idx_pitching_war_division_season_war ON pitching_war (Division, Season, WAR DESC);
+CREATE INDEX IF NOT EXISTS idx_pitching_war_division_season_team ON pitching_war (Division, Season, Team);
+CREATE INDEX IF NOT EXISTS idx_pitching_war_player_season ON pitching_war (player_id, Season);
+
+-- batting_team_war indices
+CREATE INDEX IF NOT EXISTS idx_batting_team_war_division_season ON batting_team_war (Division, Season);
+CREATE INDEX IF NOT EXISTS idx_batting_team_war_team ON batting_team_war (Team);
+CREATE INDEX IF NOT EXISTS idx_batting_team_war_war ON batting_team_war (WAR);
+CREATE INDEX IF NOT EXISTS idx_batting_team_war_division_season_war ON batting_team_war (Division, Season, WAR DESC);
+CREATE INDEX IF NOT EXISTS idx_batting_team_war_conference ON batting_team_war (Conference);
+
+-- pitching_team_war indices
+CREATE INDEX IF NOT EXISTS idx_pitching_team_war_division_season ON pitching_team_war (Division, Season);
+CREATE INDEX IF NOT EXISTS idx_pitching_team_war_team ON pitching_team_war (Team);
+CREATE INDEX IF NOT EXISTS idx_pitching_team_war_war ON pitching_team_war (WAR);
+CREATE INDEX IF NOT EXISTS idx_pitching_team_war_division_season_war ON pitching_team_war (Division, Season, WAR DESC);
+CREATE INDEX IF NOT EXISTS idx_pitching_team_war_conference ON pitching_team_war (Conference);
+
+-- pbp (play-by-play) indices
+CREATE INDEX IF NOT EXISTS idx_pbp_game_id_year ON pbp (game_id, year);
+CREATE INDEX IF NOT EXISTS idx_pbp_division_date ON pbp (division, date);
+CREATE INDEX IF NOT EXISTS idx_pbp_player_id ON pbp (player_id);
+CREATE INDEX IF NOT EXISTS idx_pbp_batter_id ON pbp (batter_id);
+CREATE INDEX IF NOT EXISTS idx_pbp_pitcher_id ON pbp (pitcher_id);
+CREATE INDEX IF NOT EXISTS idx_pbp_year_division ON pbp (year, division);
+CREATE INDEX IF NOT EXISTS idx_pbp_home_team ON pbp (home_team);
+CREATE INDEX IF NOT EXISTS idx_pbp_away_team ON pbp (away_team);
+CREATE INDEX IF NOT EXISTS idx_pbp_game_date ON pbp (date);
+CREATE INDEX IF NOT EXISTS idx_pbp_wpa ON pbp (wpa);
+CREATE INDEX IF NOT EXISTS idx_pbp_li ON pbp (li);</sql><current_tab id="0"/></tab_sql></sqlb_project>

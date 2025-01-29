@@ -490,7 +490,7 @@ const StrikeZone = ({
   ]);
 
   return (
-    <div className="relative w-full pt-[100%]">
+    <div className="relative w-full pt-[100%] mt-[3%]">
       {" "}
       {/* 1:1 Aspect Ratio Container */}
       <div className="absolute inset-0 flex items-center justify-center">

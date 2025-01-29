@@ -1,4 +1,3 @@
-// SubscriptionManager.js
 import { db } from "../config/firebase";
 import {
   collection,
@@ -69,7 +68,6 @@ class SubscriptionManager {
     };
   }
 
-  // Enhanced subscription listener with feature updates
   listenToSubscriptionUpdates(userId, callback) {
     if (this.unsubscribeFromFirestore) {
       this.unsubscribeFromFirestore();
@@ -110,7 +108,6 @@ class SubscriptionManager {
     return this.unsubscribeFromFirestore;
   }
 
-  // Enhanced webhook handler with better error handling and logging
   async handleStripeWebhook(event) {
     const { type, data } = event;
     const userId = data.object.client_reference_id;
@@ -192,12 +189,10 @@ class SubscriptionManager {
       }
     } catch (error) {
       console.error("Error handling subscription webhook:", error);
-      // Add error reporting to your monitoring service here
       throw error;
     }
   }
 
-  // New method to get all active premium members
   async getActivePremiumMembers() {
     const q = query(
       this.subscriptionsRef,
@@ -225,9 +220,6 @@ class SubscriptionManager {
       cancelAtPeriodEnd: true,
       updatedAt: serverTimestamp(),
     });
-
-    // You would also need to call Stripe's API here to cancel the subscription
-    // This would typically be done through your backend
   }
 
   stopListening() {

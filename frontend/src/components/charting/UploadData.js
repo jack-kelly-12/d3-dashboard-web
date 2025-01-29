@@ -40,10 +40,9 @@ const DataUpload = ({ onUpload, chartType }) => {
         pitches: data.pitches,
         source: dataSource,
         playerInfo: data.playerInfo,
-        description: chartDescription, // Make sure this is included
+        description: chartDescription,
       };
 
-      console.log("Chart data before upload:", chartData); // Add this log
       return chartData;
     } catch (err) {
       console.error("Upload error:", err);

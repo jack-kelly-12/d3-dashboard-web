@@ -64,15 +64,15 @@ const SprayChart = ({
       .attr("stroke", "#666")
       .attr("stroke-width", 1);
 
-    const infieldRadius = outfieldRadius * 1.4;
+    const infieldRadius = outfieldRadius * 1.5;
     field
       .append("path")
       .attr(
         "d",
-        `M ${xScale(-infieldRadius * 0.305)} ${yScale(infieldRadius * 0.08)}
+        `M ${xScale(-infieldRadius * 0.375)} ${yScale(infieldRadius * 0.098)}
          A ${infieldRadius} ${infieldRadius} 0 0 1 ${xScale(
-          infieldRadius * 0.305
-        )} ${yScale(infieldRadius * 0.08)}
+          infieldRadius * 0.375
+        )} ${yScale(infieldRadius * 0.098)}
          L ${xScale(0)} ${yScale(0)}
          Z`
       )

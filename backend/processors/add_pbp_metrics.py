@@ -699,8 +699,8 @@ def process_single_year(args):
 
 
 def main():
-    years = range(2021, 2025)
-    divisions = range(1, 4)
+    years = [2023, 2024]
+    division = 1  # Only process D1
     all_pbp_data = []
 
     columns = [
@@ -708,39 +708,42 @@ def main():
         'inning', 'top_inning', 'game_id', 'description',
         'home_win_exp_before', 'wpa', 'run_expectancy_delta', 'woba', 'home_win_exp_after',
         'player_id', 'pitcher_id', 'batter_id', 'li', 'home_score_after',
-        'away_score_after', 'event_cd', 'times_through_order', 'base_cd_before', 'base_cd_after',
-        'hit_type'
+        'away_score_after', 'event_cd', 'times_through_order', 'base_cd_before', 'base_cd_after'
     ]
 
     for year in years:
-        for division in divisions:
-            filename = f"../data/play_by_play/d{division}_parsed_pbp_new_{year}.csv"
-            if os.path.exists(filename):
-                print(
-                    f"File {filename} already exists, loading existing data...")
-                # Read existing CSV and add year/division columns
-                existing_data = pd.read_csv(filename)
-                existing_data['year'] = year
-                existing_data['division'] = division
-                all_pbp_data.append(
-                    existing_data[columns + ['year', 'division']])
-                continue
+        print(f"Processing D1 {year}...")
+        processed_data = process_single_year((year, division))
+        if processed_data is not None:
+            all_pbp_data.append(processed_data)
+            print(f"Successfully processed data for D1 {year}")
 
-            processed_data = process_single_year((year, division))
-            if processed_data is not None:
-                all_pbp_data.append(processed_data)
-                print(f"Successfully processed data for D{division} {year}")
-
-    # Combine all data and save to database
     if all_pbp_data:
         combined_pbp = pd.concat(all_pbp_data, ignore_index=True)
 
-        # Save to database
+        # Connect to database
         conn = sqlite3.connect('../ncaa.db')
-        combined_pbp.to_sql('pbp', conn, if_exists='replace', index=False)
-        conn.close()
 
-        print("All data successfully combined and saved to database!")
+        try:
+            # First, delete existing D1 2023-2024 data
+            cursor = conn.cursor()
+            cursor.execute("""
+                DELETE FROM pbp 
+                WHERE division = 1 
+                AND year IN (2023, 2024)
+            """)
+
+            # Then insert new data
+            combined_pbp.to_sql('pbp', conn, if_exists='append', index=False)
+            conn.commit()
+            print("Successfully updated database with new D1 2023-2024 data!")
+
+        except Exception as e:
+            print(f"Error updating database: {e}")
+            conn.rollback()
+
+        finally:
+            conn.close()
     else:
         print("No data to process!")
 

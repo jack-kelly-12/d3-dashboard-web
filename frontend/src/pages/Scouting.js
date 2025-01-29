@@ -6,12 +6,8 @@ import CreateReportModal from "../components/modals/CreateReportModal";
 import AddPlayerModal from "../components/modals/AddPlayerModal";
 import ScoutingReportManager from "../managers/ScoutingReportsManager";
 import AuthManager from "../managers/AuthManager";
-import {
-  useAnonymousToast,
-  ErrorState,
-  LoadingState,
-} from "../components/alerts/Alerts.js";
-import { fetchAPI } from "../config/api.js";
+import SubscriptionManager from "../managers/SubscriptionManager";
+import { fetchAPI } from "../config/api";
 
 const ScoutingReport = () => {
   const [reports, setReports] = useState([]);
@@ -24,60 +20,70 @@ const ScoutingReport = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
-  useAnonymousToast();
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [selectedDivision, setSelectedDivision] = useState(3);
 
   useEffect(() => {
-    const unsubscribe = AuthManager.onAuthStateChanged(async (user) => {
-      setIsLoading(true);
-      try {
-        if (!user) {
-          const { success, user: anonUser } =
-            await AuthManager.anonymousSignIn();
-          if (success) {
-            await Promise.all([fetchReports(anonUser), fetchTeams()]);
-          }
-        } else {
-          await Promise.all([fetchReports(user), fetchTeams()]);
+    const checkAuthAndSubscription = async () => {
+      const user = AuthManager.getCurrentUser();
+      if (!user) {
+        navigate("/signin");
+        return;
+      }
+
+      SubscriptionManager.listenToSubscriptionUpdates(
+        user.uid,
+        (subscription) => {
+          setIsPremiumUser(subscription?.isActive || false);
         }
+      );
+
+      fetchReports();
+    };
+
+    checkAuthAndSubscription();
+    return () => SubscriptionManager.stopListening();
+  }, [navigate]);
+
+  useEffect(() => {
+    const fetchTeams = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await fetchAPI(`/teams-2024?division=${selectedDivision}`);
+
+        const uniqueTeams = Array.from(
+          new Map(data.map((team) => [team.team_name, team])).values()
+        );
+
+        uniqueTeams.sort((a, b) => a.team_name.localeCompare(b.team_name));
+        setAvailableTeams(uniqueTeams);
       } catch (err) {
+        console.error("Error fetching teams:", err);
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
-  }, []);
+    fetchTeams();
+  }, [selectedDivision]);
 
-  const fetchReports = async (user) => {
+  const fetchReports = async () => {
+    setIsLoading(true);
     try {
-      const userReports = await ScoutingReportManager.getUserReports(user.uid);
+      const userReports = await ScoutingReportManager.getUserReports();
       setReports(userReports);
     } catch (err) {
-      console.error("Error fetching reports:", err);
       setError(err.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const fetchTeams = async () => {
+  const fetchPlayers = async (team_name) => {
     try {
-      const data = await fetchAPI("/teams-2024");
-
-      const uniqueTeams = Array.from(
-        new Map(data.map((team) => [team.team_id, team])).values()
-      );
-
-      uniqueTeams.sort((a, b) => a.team_name.localeCompare(b.team_name));
-      setAvailableTeams(uniqueTeams);
-    } catch (err) {
-      console.error("Error fetching teams:", err);
-      setError(err.message);
-    }
-  };
-
-  const fetchPlayers = async (teamId) => {
-    try {
-      const data = await fetchAPI(`players-2024/${teamId}`);
+      const data = await fetchAPI(`/players-hit-2024/${team_name}`);
 
       const transformedData = data.map((player) => ({
         name: player.Player,
@@ -92,21 +98,21 @@ const ScoutingReport = () => {
       }));
 
       setAvailablePlayers(transformedData);
-    } catch (error) {
-      console.error("Error fetching players:", error);
+    } catch (err) {
+      console.error("Error fetching players:", err);
       setError("Failed to fetch players");
     }
   };
 
   const handleCreateReport = async (selectedTeam) => {
-    const user = AuthManager.getCurrentUser();
+    const user = await AuthManager.ensureUser("reports");
     if (!user) {
       navigate("/signin");
       return;
     }
 
     const selectedTeamData = availableTeams.find(
-      (team) => team.team_id.toString() === selectedTeam
+      (team) => team.team_name === selectedTeam
     );
 
     const newReport = {
@@ -118,6 +124,7 @@ const ScoutingReport = () => {
       positionPlayers: [],
       pitchers: [],
       userId: user.uid,
+      isAnonymous: user.isAnonymous,
     };
 
     try {
@@ -129,14 +136,7 @@ const ScoutingReport = () => {
     }
   };
 
-  // Replace handleAddPlayer with:
-  const handleAddPlayer = async (newPlayer) => {
-    const user = AuthManager.getCurrentUser();
-    if (!user) {
-      navigate("/signin");
-      return;
-    }
-
+  const handleAddPlayer = (newPlayer) => {
     if (!selectedReport) return;
 
     const updatedReport = {
@@ -145,21 +145,14 @@ const ScoutingReport = () => {
       positionPlayers: [...selectedReport.positionPlayers, newPlayer],
     };
 
-    try {
-      await handleUpdateReport(updatedReport);
-      setIsAddPlayerModalOpen(false);
-    } catch (err) {
-      setError(err.message);
-    }
+    setReports(
+      reports.map((r) => (r.id === selectedReport.id ? updatedReport : r))
+    );
+    setSelectedReport(updatedReport);
+    setIsAddPlayerModalOpen(false);
   };
 
   const handleUpdateReport = async (updatedReport) => {
-    const user = AuthManager.getCurrentUser();
-    if (!user) {
-      navigate("/signin");
-      return;
-    }
-
     try {
       await ScoutingReportManager.updateReport(updatedReport.id, updatedReport);
       setReports(
@@ -170,6 +163,29 @@ const ScoutingReport = () => {
       setError(err.message);
     }
   };
+  const LoadingState = () => (
+    <div className="flex items-center justify-center min-h-[200px]">
+      <div className="flex flex-col items-center">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        <p className="mt-4 text-gray-600 font-medium">Loading data...</p>
+      </div>
+    </div>
+  );
+
+  const ErrorState = ({ message }) => (
+    <div className="flex items-center justify-center min-h-[200px]">
+      <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+        <h3 className="text-red-800 font-semibold mb-2">Error Loading Data</h3>
+        <p className="text-red-600">{message}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+        >
+          Try Again
+        </button>
+      </div>
+    </div>
+  );
 
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -192,7 +208,7 @@ const ScoutingReport = () => {
             onBack={() => setCurrentView("list")}
             onUpdateReport={handleUpdateReport}
             onAddPlayer={() => {
-              fetchPlayers(selectedReport.teamId);
+              fetchPlayers(selectedReport.team_name);
               setIsAddPlayerModalOpen(true);
             }}
           />
@@ -203,6 +219,9 @@ const ScoutingReport = () => {
           onClose={() => setIsCreateModalOpen(false)}
           onSubmit={handleCreateReport}
           availableTeams={availableTeams}
+          isPremiumUser={isPremiumUser} // Add this
+          selectedDivision={selectedDivision} // Add this
+          onDivisionChange={setSelectedDivision} // Add this
         />
 
         <AddPlayerModal

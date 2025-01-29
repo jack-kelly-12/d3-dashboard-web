@@ -5,6 +5,8 @@ import AdvanceReportModal from "../modals/AdvanceReportModal";
 import PitchArsenalReport from "../../reports/BullpenReport";
 import { pdf } from "@react-pdf/renderer";
 import InfoBanner from "../data/InfoBanner";
+import AuthManager from "../../managers/AuthManager";
+import SubscriptionManager from "../../managers/SubscriptionManager";
 
 const ChartsList = ({
   charts,
@@ -15,6 +17,36 @@ const ChartsList = ({
 }) => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [normalizedCharts, setNormalizedCharts] = useState([]);
+  const [authState, setAuthState] = useState({
+    isAuthenticated: false,
+    user: null,
+  });
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
+
+  useEffect(() => {
+    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+      setAuthState({
+        isAuthenticated: !!user,
+        user: user,
+      });
+
+      if (user) {
+        SubscriptionManager.listenToSubscriptionUpdates(
+          user.uid,
+          (subscription) => {
+            setIsPremiumUser(subscription?.isActive || false);
+          }
+        );
+      } else {
+        setIsPremiumUser(false);
+      }
+    });
+
+    return () => {
+      unsubscribeAuth();
+      SubscriptionManager.stopListening();
+    };
+  }, []);
 
   const chartsDepValue = useMemo(
     () =>
@@ -448,13 +480,16 @@ const ChartsList = ({
               <Plus size={14} />
               New Chart
             </button>
-            <button
-              onClick={() => setIsReportModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-            >
-              <FileText size={14} />
-              Generate Report
-            </button>
+            {authState.isAuthenticated && isPremiumUser && (
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+              >
+                <FileText size={14} />
+                Generate Report
+              </button>
+            )}
+
             <button
               onClick={onUploadClick}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
