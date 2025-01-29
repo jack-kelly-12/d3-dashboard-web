@@ -33,7 +33,8 @@ export const GamePitchCounter = ({ pitches = [], currentPitcher = null }) => {
   const strikeCount = currentPitcherPitches.filter(
     (p) =>
       p.result?.toLowerCase().includes("strike") ||
-      p.result?.toLowerCase() === "foul"
+      p.result?.toLowerCase() === "foul" ||
+      p.result?.toLowerCase() === "in_play"
   ).length;
 
   const strikePercentage = currentPitcherPitches.length
