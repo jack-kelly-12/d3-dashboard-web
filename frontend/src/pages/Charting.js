@@ -20,44 +20,29 @@ const Charting = () => {
   useAnonymousToast();
 
   useEffect(() => {
-    let isMounted = true;
+    const unsubscribe = AuthManager.onAuthStateChanged(async (user) => {
+      setUser(user);
+      setIsLoading(true);
 
-    const initializeAuth = async () => {
-      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-        if (!isMounted) return;
-
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
+      try {
+        if (!user) {
+          const result = await AuthManager.anonymousSignIn();
+          if (result.success) {
+            setUser(result.user);
+            await loadCharts();
           }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
         } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
-          }
+          await loadCharts();
         }
-      });
+      } catch (err) {
+        console.error("Auth error:", err);
+        setCharts([]);
+      } finally {
+        setIsLoading(false);
+      }
+    });
 
-      return unsubscribeAuth;
-    };
-
-    const cleanup = initializeAuth();
-
-    return () => {
-      isMounted = false;
-      cleanup.then((unsubscribe) => unsubscribe());
-      SubscriptionManager.stopListening();
-    };
+    return () => unsubscribe();
   }, []);
 
   const loadCharts = async () => {
