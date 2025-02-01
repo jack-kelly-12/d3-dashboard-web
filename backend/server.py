@@ -891,7 +891,7 @@ def get_value_leaderboard():
             cursor.execute("""
                 SELECT
                     b.Player, b.Team, b.Conference, b.Pos, b.PA,
-                    b.Batting, b.Adjustment, b.Baserunning, b.WAR AS bWAR,
+                    b.Batting, b.Adjustment, b.Baserunning, b.WAR AS bWAR, b.Division,
                     i.prev_team_id, i.conference_id, b.player_id, b.WPA, b.[WPA/LI], b.REA, b.Clutch
                 FROM batting_war b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
@@ -905,7 +905,7 @@ def get_value_leaderboard():
             cursor.execute("""
                 SELECT
                     p.Player, p.Team, p.Conference, 'P' AS Pos, p.IP,
-                    p.WAR AS pWAR,
+                    p.WAR AS pWAR, p.Division,
                     i.prev_team_id, i.conference_id, p.player_id, p.pWPA, p.[pWPA/LI], p.pREA, p.Clutch
                 FROM pitching_war p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
@@ -924,6 +924,7 @@ def get_value_leaderboard():
                 combined_stats = {
                     'Player': player,
                     'Team': team,
+                    'Division': bat_stats.get('Division') or pitch_stats.get('Division'),
                     'player_id': bat_stats.get('player_id') or pitch_stats.get('player_id'),
                     'Conference': bat_stats.get('Conference') or pitch_stats.get('Conference') or '-',
                     'prev_team_id': bat_stats.get('prev_team_id') or pitch_stats.get('prev_team_id'),
@@ -1083,6 +1084,7 @@ def get_situational_leaderboard():
                         p.player_id,
                         i.prev_team_id,
                         i.conference_id,
+                        s.Division,
                         s.wOBA_Overall,
                         s.wOBA_RISP,
                         s.wOBA_High_Leverage,

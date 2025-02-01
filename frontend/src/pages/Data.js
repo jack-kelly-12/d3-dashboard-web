@@ -40,24 +40,65 @@ const Data = () => {
   const [isPremiumUser, setIsPremiumUser] = useState(false);
 
   useEffect(() => {
-    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-      if (user) {
-        SubscriptionManager.listenToSubscriptionUpdates(
-          user.uid,
-          (subscription) => {
-            setIsPremiumUser(subscription?.isActive || false);
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+        if (!isMounted) return;
+
+        if (user) {
+          const initialSubscription =
+            await SubscriptionManager.getUserSubscription(user.uid);
+          if (isMounted) {
+            setIsPremiumUser(initialSubscription?.isActive || false);
+
+            if (initialSubscription?.isActive) {
+              setState((prev) => ({
+                ...prev,
+                division: searchParams.get("division")
+                  ? Number(searchParams.get("division"))
+                  : prev.division,
+              }));
+            }
           }
-        );
-      } else {
-        setIsPremiumUser(false);
-      }
-    });
+
+          SubscriptionManager.listenToSubscriptionUpdates(
+            user.uid,
+            (subscription) => {
+              if (isMounted) {
+                setIsPremiumUser(subscription?.isActive || false);
+              }
+            }
+          );
+        } else {
+          if (isMounted) {
+            setIsPremiumUser(false);
+          }
+        }
+      });
+
+      return unsubscribeAuth;
+    };
+
+    const cleanup = initializeAuth();
 
     return () => {
-      unsubscribeAuth();
+      isMounted = false;
+      cleanup.then((unsubscribe) => unsubscribe());
       SubscriptionManager.stopListening();
     };
-  }, []);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isPremiumUser) {
+      setState((prev) => ({
+        ...prev,
+        division: searchParams.get("division")
+          ? Number(searchParams.get("division"))
+          : prev.division,
+      }));
+    }
+  }, [isPremiumUser, searchParams]);
 
   const endpointMap = useMemo(
     () => ({

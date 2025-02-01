@@ -26,7 +26,6 @@ const PremiumBadge = () => (
   </span>
 );
 
-// Separate Subscription Link component
 const SubscriptionLink = ({ isPremiumUser }) => (
   <Link
     to="/subscriptions"

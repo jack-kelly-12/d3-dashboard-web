@@ -24,23 +24,43 @@ const Guts = () => {
   const [isPremiumUser, setIsPremiumUser] = useState(false);
   const years = ["2024", "2023", "2022", "2021"];
 
-  // Add subscription listener
   useEffect(() => {
-    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-      if (user) {
-        SubscriptionManager.listenToSubscriptionUpdates(
-          user.uid,
-          (subscription) => {
-            setIsPremiumUser(subscription?.isActive || false);
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+        if (!isMounted) return;
+
+        if (user) {
+          const initialSubscription =
+            await SubscriptionManager.getUserSubscription(user.uid);
+          if (isMounted) {
+            setIsPremiumUser(initialSubscription?.isActive || false);
           }
-        );
-      } else {
-        setIsPremiumUser(false);
-      }
-    });
+
+          SubscriptionManager.listenToSubscriptionUpdates(
+            user.uid,
+            (subscription) => {
+              if (isMounted) {
+                setIsPremiumUser(subscription?.isActive || false);
+              }
+            }
+          );
+        } else {
+          if (isMounted) {
+            setIsPremiumUser(false);
+          }
+        }
+      });
+
+      return unsubscribeAuth;
+    };
+
+    const cleanup = initializeAuth();
 
     return () => {
-      unsubscribeAuth();
+      isMounted = false;
+      cleanup.then((unsubscribe) => unsubscribe());
       SubscriptionManager.stopListening();
     };
   }, []);

@@ -127,6 +127,7 @@ class SubscriptionManager {
             planType: data.object.metadata.planType,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
+            isManuallySet: false,
             expiresAt: new Date(
               data.object.subscription.current_period_end * 1000
             ),
@@ -207,7 +208,6 @@ class SubscriptionManager {
     }));
   }
 
-  // New method to handle subscription cancellation
   async cancelSubscription(userId) {
     const docRef = doc(this.subscriptionsRef, userId);
     const docSnap = await getDoc(docRef);

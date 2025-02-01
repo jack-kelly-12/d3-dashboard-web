@@ -22,33 +22,54 @@ const BaserunningLeaderboard = () => {
 
   const fetchConferences = useCallback(async () => {
     try {
-      const response = await fetchAPI("/conferences");
+      const response = await fetchAPI(`/conferences?division=${division}`);
       setConferences(response.sort());
     } catch (err) {
       console.error("Error fetching conferences:", err);
     }
-  }, []);
+  }, [division]);
 
   useEffect(() => {
     fetchConferences();
   }, [fetchConferences]);
 
   useEffect(() => {
-    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-      if (user) {
-        SubscriptionManager.listenToSubscriptionUpdates(
-          user.uid,
-          (subscription) => {
-            setIsPremiumUser(subscription?.isActive || false);
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+        if (!isMounted) return;
+
+        if (user) {
+          const initialSubscription =
+            await SubscriptionManager.getUserSubscription(user.uid);
+          if (isMounted) {
+            setIsPremiumUser(initialSubscription?.isActive || false);
           }
-        );
-      } else {
-        setIsPremiumUser(false);
-      }
-    });
+
+          SubscriptionManager.listenToSubscriptionUpdates(
+            user.uid,
+            (subscription) => {
+              if (isMounted) {
+                setIsPremiumUser(subscription?.isActive || false);
+              }
+            }
+          );
+        } else {
+          if (isMounted) {
+            setIsPremiumUser(false);
+          }
+        }
+      });
+
+      return unsubscribeAuth;
+    };
+
+    const cleanup = initializeAuth();
 
     return () => {
-      unsubscribeAuth();
+      isMounted = false;
+      cleanup.then((unsubscribe) => unsubscribe());
       SubscriptionManager.stopListening();
     };
   }, []);
@@ -132,14 +153,17 @@ const BaserunningLeaderboard = () => {
         selector: (row) => row.Player,
         sortable: true,
         width: "150px",
-        cell: (row) => (
-          <Link
-            to={`/player/${row.player_id}`}
-            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-          >
-            {row.Player}
-          </Link>
-        ),
+        cell: (row) =>
+          row.Division === 3 ? (
+            <Link
+              to={`/player/${row.player_id}`}
+              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+            >
+              {row.Player}
+            </Link>
+          ) : (
+            <span className="font-medium">{row.Player}</span>
+          ),
       },
       {
         name: "Team",
@@ -264,7 +288,7 @@ const BaserunningLeaderboard = () => {
               />
               <input
                 type="text"
-                placeholder="Search players or teams..."
+                placeholder="Search"
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

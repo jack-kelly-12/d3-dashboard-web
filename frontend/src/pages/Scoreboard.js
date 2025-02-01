@@ -8,7 +8,6 @@ import InfoBanner from "../components/data/InfoBanner";
 import SubscriptionManager from "../managers/SubscriptionManager";
 import AuthManager from "../managers/AuthManager";
 
-// Constants
 const DIVISIONS = [
   { label: "Division 1", value: 1 },
   { label: "Division 2", value: 2 },
@@ -20,7 +19,6 @@ const DATE_RANGE = {
   max: 2024,
 };
 
-// TeamLogo Component
 const TeamLogo = ({ teamId, teamName }) => {
   const [error, setError] = useState(false);
 
@@ -50,7 +48,6 @@ const TeamLogo = ({ teamId, teamName }) => {
   );
 };
 
-// DateControl Component
 const DateControl = ({
   currentDate,
   onDateChange,
@@ -106,7 +103,6 @@ const DivisionSelector = ({ division, onDivisionChange }) => (
   </div>
 );
 
-// GameCard Component
 const GameCard = ({ game }) => {
   const navigate = useNavigate();
 
@@ -164,7 +160,6 @@ const GameCard = ({ game }) => {
   );
 };
 
-// NoGames Component
 const NoGames = () => (
   <div className="text-center py-12">
     <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
@@ -176,19 +171,17 @@ const NoGames = () => (
   </div>
 );
 
-// Main Scoreboard Component
 const Scoreboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [state, setState] = useState({
     games: [],
     isLoading: true,
     error: null,
     currentDate: new Date(searchParams.get("date") || Date.now()),
     division: Number(searchParams.get("division")) || 3,
-    isPremiumUser: false,
   });
 
-  // Format display date
   const formatDisplayDate = useCallback((date) => {
     return new Intl.DateTimeFormat("en-US", {
       weekday: "short",
@@ -198,37 +191,52 @@ const Scoreboard = () => {
     }).format(date);
   }, []);
 
-  // Filter dates for date picker
   const filterDate = useCallback((date) => {
     const year = date.getFullYear();
     return year >= DATE_RANGE.min && year <= DATE_RANGE.max;
   }, []);
 
-  // Premium user subscription
   useEffect(() => {
-    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-      if (user) {
-        SubscriptionManager.listenToSubscriptionUpdates(
-          user.uid,
-          (subscription) => {
-            setState((prev) => ({
-              ...prev,
-              isPremiumUser: subscription?.isActive || false,
-            }));
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+        if (!isMounted) return;
+
+        if (user) {
+          const initialSubscription =
+            await SubscriptionManager.getUserSubscription(user.uid);
+          if (isMounted) {
+            setIsPremiumUser(initialSubscription?.isActive || false);
           }
-        );
-      } else {
-        setState((prev) => ({ ...prev, isPremiumUser: false }));
-      }
-    });
+
+          SubscriptionManager.listenToSubscriptionUpdates(
+            user.uid,
+            (subscription) => {
+              if (isMounted) {
+                setIsPremiumUser(subscription?.isActive || false);
+              }
+            }
+          );
+        } else {
+          if (isMounted) {
+            setIsPremiumUser(false);
+          }
+        }
+      });
+
+      return unsubscribeAuth;
+    };
+
+    const cleanup = initializeAuth();
 
     return () => {
-      unsubscribeAuth();
+      isMounted = false;
+      cleanup.then((unsubscribe) => unsubscribe());
       SubscriptionManager.stopListening();
     };
   }, []);
 
-  // URL sync
   useEffect(() => {
     const localDate = new Date(
       state.currentDate.getTime() -
@@ -238,14 +246,13 @@ const Scoreboard = () => {
       .split("T")[0];
 
     const params = { date: localDate };
-    if (state.isPremiumUser) {
+    if (isPremiumUser) {
       params.division = state.division.toString();
     }
 
     setSearchParams(params);
-  }, [state.currentDate, state.division, state.isPremiumUser, setSearchParams]);
+  }, [state.currentDate, state.division, isPremiumUser, setSearchParams]);
 
-  // Data fetching
   const fetchGames = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -319,7 +326,7 @@ const Scoreboard = () => {
             filterDate={filterDate}
           />
 
-          {state.isPremiumUser && (
+          {isPremiumUser && (
             <DivisionSelector
               division={state.division}
               onDivisionChange={handleDivisionChange}
