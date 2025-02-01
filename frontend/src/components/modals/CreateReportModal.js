@@ -11,6 +11,31 @@ const CreateReportModal = ({
   onDivisionChange,
 }) => {
   const [selectedTeam, setSelectedTeam] = useState("");
+  const [formError, setFormError] = useState("");
+  const [isLoadingTeams, setIsLoadingTeams] = useState(false);
+
+  const handleSubmit = () => {
+    if (!selectedTeam) {
+      setFormError("Please select a team");
+      return;
+    }
+
+    // Create an object with both team and division info
+    const reportData = {
+      teamName: selectedTeam,
+      division: selectedDivision,
+    };
+
+    onSubmit(reportData);
+    setFormError("");
+  };
+
+  const handleDivisionChange = async (newDivision) => {
+    setIsLoadingTeams(true);
+    setSelectedTeam(""); // Reset team selection when division changes
+    await onDivisionChange(Number(newDivision));
+    setIsLoadingTeams(false);
+  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create Scouting Report">
@@ -22,8 +47,9 @@ const CreateReportModal = ({
             </label>
             <select
               value={selectedDivision}
-              onChange={(e) => onDivisionChange(Number(e.target.value))}
+              onChange={(e) => handleDivisionChange(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              disabled={isLoadingTeams}
             >
               <option value={1}>Division 1</option>
               <option value={2}>Division 2</option>
@@ -38,8 +64,12 @@ const CreateReportModal = ({
           </label>
           <select
             value={selectedTeam}
-            onChange={(e) => setSelectedTeam(e.target.value)}
+            onChange={(e) => {
+              setSelectedTeam(e.target.value);
+              setFormError("");
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={isLoadingTeams}
           >
             <option value="">Choose a team...</option>
             {availableTeams.map((team) => (
@@ -48,6 +78,12 @@ const CreateReportModal = ({
               </option>
             ))}
           </select>
+          {isLoadingTeams && (
+            <p className="mt-1 text-sm text-blue-600">Loading teams...</p>
+          )}
+          {formError && (
+            <p className="mt-1 text-sm text-red-600">{formError}</p>
+          )}
         </div>
 
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
@@ -58,8 +94,8 @@ const CreateReportModal = ({
             Cancel
           </button>
           <button
-            onClick={() => onSubmit(selectedTeam, selectedDivision)}
-            disabled={!selectedTeam}
+            onClick={handleSubmit}
+            disabled={!selectedTeam || isLoadingTeams}
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Create Report

@@ -56,10 +56,12 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
     }
   };
 
-  const fetchPlayers = async (teamName) => {
+  const fetchPlayers = async () => {
     try {
       const data = await fetchAPI(
-        `/players-hit-2024/${encodeURIComponent(teamName)}`
+        `/players-hit-2024/${encodeURIComponent(report.teamName)}?division=${
+          report.division
+        }`
       );
 
       const uniqueData = data.reduce((acc, current) => {
@@ -91,10 +93,12 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
     }
   };
 
-  const fetchPitchers = async (teamName) => {
+  const fetchPitchers = async () => {
     try {
       const data = await fetchAPI(
-        `/players-pitch-2024/${encodeURIComponent(teamName)}`
+        `/players-pitch-2024/${encodeURIComponent(report.teamName)}?division=${
+          report.division
+        }`
       );
 
       const uniqueData = data.reduce((acc, current) => {
@@ -317,7 +321,7 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
                   </div>
                   <button
                     onClick={() => {
-                      fetchPlayers(report.teamId);
+                      fetchPlayers();
                       setIsAddPlayerModalOpen(true);
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
@@ -356,7 +360,7 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
                   </div>
                   <button
                     onClick={() => {
-                      fetchPitchers(report.teamId);
+                      fetchPitchers();
                       setIsAddPitcherModalOpen(true);
                     }}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"

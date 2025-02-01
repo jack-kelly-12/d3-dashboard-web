@@ -264,7 +264,10 @@ def get_teams():
 @app.route('/api/players-hit-2024/<team_name>', methods=['GET'])
 @require_premium
 def get_team_players(team_name):
-    division = request.args.get('division', 3, type=int)
+    division = request.args.get('division', type=int)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -299,7 +302,10 @@ def get_team_players(team_name):
 @app.route('/api/players-pitch-2024/<team_name>', methods=['GET'])
 @require_premium
 def get_team_pitchers(team_name):
-    division = request.args.get('division', 3, type=int)
+    division = request.args.get('division', type=int)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1155,7 +1161,7 @@ def get_game(year, game_id):
         FROM pbp p
         LEFT JOIN batting_war bw ON p.batter_id = bw.player_id AND bw.Season = p.year 
         LEFT JOIN pitching_war pw ON p.pitcher_id = pw.player_id AND pw.Season = p.year
-        AND p.game_id = ? 
+        WHERE p.game_id = ? 
         AND p.description IS NOT NULL 
         AND p.year = ?
     """, (game_id, year))
@@ -1180,13 +1186,11 @@ def get_game(year, game_id):
 @app.route('/api/games', methods=['GET'])
 @require_premium
 def get_games_by_date():
-    # Get query parameters for month, day, and year
     month = request.args.get('month')
     day = request.args.get('day')
     year = request.args.get('year')
     division = request.args.get('division', 3)
 
-    # Validate that all required parameters are provided
     if not month or not day or not year:
         return jsonify({"error": "Missing required query parameters: month, day, year"}), 400
 

@@ -18,6 +18,7 @@ const Charting = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
   useAnonymousToast();
+
   useEffect(() => {
     const unsubscribe = AuthManager.onAuthStateChanged(async (user) => {
       setUser(user);
@@ -56,7 +57,6 @@ const Charting = () => {
     }
   };
 
-  // In Charting.js, update the handleCreateChart function:
   const handleCreateChart = async (chartData) => {
     const user = await AuthManager.ensureUser("charts");
     if (!user) {

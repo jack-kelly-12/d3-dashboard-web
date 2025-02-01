@@ -241,7 +241,7 @@ const PitcherScoutingReport = ({ charts = [] }) => {
           <View style={[styles.sequenceTable, { marginRight: 5 }]}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableCell, { width: "100%" }]}>
-                Top 5 Two-Pitch Sequences vs RHH
+                Top 3 Two-Pitch Sequences vs RHH
               </Text>
             </View>
             <View style={styles.tableRow}>
@@ -279,7 +279,7 @@ const PitcherScoutingReport = ({ charts = [] }) => {
           <View style={styles.sequenceTable}>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableCell, { width: "100%" }]}>
-                Top 5 Two-Pitch Sequences vs LHH
+                Top 3 Two-Pitch Sequences vs LHH
               </Text>
             </View>
             <View style={styles.tableRow}>
@@ -335,6 +335,25 @@ const getPitchers = (charts) => {
 };
 
 const processPitchData = (pitches) => {
+  // First calculate totals across all pitch types
+  const totals = pitches.reduce(
+    (acc, pitch) => {
+      const isLHH = pitch.batter?.batHand?.toLowerCase() === "left";
+      const isFirstPitch = pitch.pitchNumber === 1;
+
+      if (isLHH) {
+        acc.totalLHH++;
+        if (isFirstPitch) acc.totalFirstPitchLHH++;
+      } else {
+        acc.totalRHH++;
+        if (isFirstPitch) acc.totalFirstPitchRHH++;
+      }
+      return acc;
+    },
+    { totalLHH: 0, totalRHH: 0, totalFirstPitchLHH: 0, totalFirstPitchRHH: 0 }
+  );
+
+  // Then process individual pitch types using the pre-calculated totals
   return pitches.reduce((acc, pitch) => {
     const type = pitch.type?.toUpperCase() || "UNKNOWN";
     const isLHH = pitch.batter?.batHand?.toLowerCase() === "left";
@@ -342,7 +361,6 @@ const processPitchData = (pitches) => {
 
     if (!acc[type]) {
       acc[type] = {
-        count: 0,
         velocities: [],
         spinRates: [],
         pitches: [],
@@ -354,10 +372,6 @@ const processPitchData = (pitches) => {
         zonePitchesRHH: 0,
         chasePitchesLHH: 0,
         chasePitchesRHH: 0,
-        totalLHH: 0,
-        totalRHH: 0,
-        totalFirstPitchLHH: 0,
-        totalFirstPitchRHH: 0,
       };
     }
 
@@ -366,35 +380,22 @@ const processPitchData = (pitches) => {
 
     if (isLHH) {
       data.countLHH++;
-      data.totalLHH++;
-      if (isFirstPitch) {
-        data.firstPitchLHH++;
-        data.totalFirstPitchLHH++;
-      }
+      if (isFirstPitch) data.firstPitchLHH++;
     } else {
       data.countRHH++;
-      data.totalRHH++;
-      if (isFirstPitch) {
-        data.firstPitchRHH++;
-        data.totalFirstPitchRHH++;
-      }
+      if (isFirstPitch) data.firstPitchRHH++;
     }
 
     if (pitch.velocity) {
       const velocity = Number(pitch.velocity);
-      if (!isNaN(velocity)) {
-        data.velocities.push(velocity);
-      }
+      if (!isNaN(velocity)) data.velocities.push(velocity);
     }
 
     if (pitch.spinRate) {
       const spin = Number(pitch.spinRate);
-      if (!isNaN(spin)) {
-        data.spinRates.push(spin);
-      }
+      if (!isNaN(spin)) data.spinRates.push(spin);
     }
 
-    // Calculate zone and chase rates
     const isInZone = isInStrikeZone(pitch.x, pitch.y);
     const isChase =
       !isInZone &&
@@ -408,26 +409,26 @@ const processPitchData = (pitches) => {
       if (isChase) data.chasePitchesRHH++;
     }
 
+    // Calculate percentages using the overall totals
     data.avgVelo = data.velocities.length
       ? (
           data.velocities.reduce((a, b) => a + b) / data.velocities.length
         ).toFixed(1)
       : "-";
-
     data.spinRate = data.spinRates.length
       ? Math.round(
           data.spinRates.reduce((a, b) => a + b) / data.spinRates.length
         )
       : "-";
 
-    data.usageLHH = ((data.countLHH / data.totalLHH) * 100 || 0).toFixed(1);
-    data.usageRHH = ((data.countRHH / data.totalRHH) * 100 || 0).toFixed(1);
+    data.usageLHH = ((data.countLHH / totals.totalLHH) * 100 || 0).toFixed(1);
+    data.usageRHH = ((data.countRHH / totals.totalRHH) * 100 || 0).toFixed(1);
 
     data.firstPitchLHH = (
-      (data.firstPitchLHH / data.totalFirstPitchLHH) * 100 || 0
+      (data.firstPitchLHH / totals.totalFirstPitchLHH) * 100 || 0
     ).toFixed(1);
     data.firstPitchRHH = (
-      (data.firstPitchRHH / data.totalFirstPitchRHH) * 100 || 0
+      (data.firstPitchRHH / totals.totalFirstPitchRHH) * 100 || 0
     ).toFixed(1);
 
     data.zoneRateLHH = (
@@ -483,7 +484,7 @@ const findTopSequences = (pitches) => {
   }, {});
 
   return Object.values(groupedSequences)
-    .filter((group) => group.count >= 2) // Only keep sequences used multiple times
+    .filter((group) => group.count >= 2)
     .sort((a, b) => b.count - a.count)
     .slice(0, 3)
     .map((group) => {

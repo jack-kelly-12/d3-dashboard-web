@@ -2,13 +2,17 @@ import React from "react";
 import { BaseballTable } from "../tables/BaseballTable";
 import { Plus, Trash2, FileDown } from "lucide-react";
 import toast from "react-hot-toast";
-import ScoutingReportManager from "../../managers/ScoutingReportsManager";
 import ReportPDF from "./ReportPDF";
 import { pdf } from "@react-pdf/renderer";
 import InfoBanner from "../data/InfoBanner";
 
-const ReportsList = ({ reports, onCreateClick, onReportSelect }) => {
-  const handleDeleteReport = (report) => {
+const ReportsList = ({
+  reports,
+  onCreateClick,
+  onReportSelect,
+  onDeleteReport,
+}) => {
+  const handleDeleteConfirmation = (report) => {
     toast(
       (t) => (
         <div className="flex flex-col gap-4">
@@ -16,17 +20,8 @@ const ReportsList = ({ reports, onCreateClick, onReportSelect }) => {
           <div className="flex gap-2">
             <button
               className="px-3 py-2 text-sm text-white bg-red-500 rounded hover:bg-red-600"
-              onClick={async () => {
-                const loadingToast = toast.loading("Deleting report...");
-                try {
-                  await ScoutingReportManager.deleteReport(report.id);
-                  toast.success("Report deleted successfully", {
-                    id: loadingToast,
-                  });
-                  window.location.reload();
-                } catch (error) {
-                  toast.error("Failed to delete report", { id: loadingToast });
-                }
+              onClick={() => {
+                onDeleteReport(report.id);
                 toast.dismiss(t.id);
               }}
             >
@@ -121,7 +116,7 @@ const ReportsList = ({ reports, onCreateClick, onReportSelect }) => {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              handleDeleteReport(row);
+              handleDeleteConfirmation(row);
             }}
             className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
           >
@@ -135,7 +130,7 @@ const ReportsList = ({ reports, onCreateClick, onReportSelect }) => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <InfoBanner dataType={"scouting"}></InfoBanner>
+      <InfoBanner dataType="scouting" />
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
           <button
