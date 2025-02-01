@@ -40,13 +40,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#000000",
-    minHeight: 28,
+    minHeight: 40,
   },
   tableCell: {
     padding: 4,
     borderRightWidth: 1,
     borderRightColor: "#000000",
-    fontSize: 7,
+    fontSize: 9,
     textAlign: "center",
   },
   sequencesContainer: {
@@ -67,21 +67,19 @@ const styles = StyleSheet.create({
     borderBottomColor: "#000000",
   },
   sequenceCell: {
-    width: "16.67%",
-    padding: 4,
-    borderRightWidth: 1,
-    borderRightColor: "#000000",
-    fontSize: 7,
+    padding: 10,
+    borderRightWidth: 1.5,
+    fontSize: 11,
     textAlign: "center",
   },
   valueText: {
-    fontSize: 7,
+    fontSize: 8,
   },
   pitchTypeCell: {
     padding: 4,
     borderRightWidth: 1,
     borderRightColor: "#000000",
-    fontSize: 9,
+    fontSize: 12,
     textAlign: "center",
     justifyContent: "center",
     alignItems: "center",
@@ -91,7 +89,7 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRightWidth: 1,
     borderRightColor: "#000000",
-    fontSize: 9,
+    fontSize: 11,
     textAlign: "center",
     justifyContent: "center",
     alignItems: "center",
@@ -409,7 +407,6 @@ const processPitchData = (pitches) => {
       if (isChase) data.chasePitchesRHH++;
     }
 
-    // Calculate percentages using the overall totals
     data.avgVelo = data.velocities.length
       ? (
           data.velocities.reduce((a, b) => a + b) / data.velocities.length
@@ -523,8 +520,20 @@ const findTopSequences = (pitches) => {
     });
 };
 
+const STRIKE_ZONE = {
+  plateHalfWidth: 8.5,
+  bottom: 18,
+  top: 42,
+  baseballRadius: 1.45,
+};
+
 const isInStrikeZone = (x, y) => {
-  return x >= -8.5 && x <= 8.5 && y >= 18 && y <= 42;
+  const { plateHalfWidth, bottom, top, baseballRadius } = STRIKE_ZONE;
+  return (
+    Math.abs(x) <= plateHalfWidth + baseballRadius &&
+    y + baseballRadius >= bottom &&
+    y - baseballRadius <= top
+  );
 };
 
 export default PitcherScoutingReport;
