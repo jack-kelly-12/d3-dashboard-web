@@ -40,7 +40,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 1,
     borderBottomColor: "#000000",
-    minHeight: 40,
+    minHeight: 25,
   },
   tableCell: {
     padding: 4,
@@ -48,6 +48,7 @@ const styles = StyleSheet.create({
     borderRightColor: "#000000",
     fontSize: 9,
     textAlign: "center",
+    alignItems: "center",
   },
   sequencesContainer: {
     flexDirection: "row",
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
   sequenceCell: {
     padding: 10,
     borderRightWidth: 1.5,
-    fontSize: 11,
+    fontSize: 9,
     textAlign: "center",
   },
   valueText: {
@@ -79,7 +80,7 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRightWidth: 1,
     borderRightColor: "#000000",
-    fontSize: 12,
+    fontSize: 9,
     textAlign: "center",
     justifyContent: "center",
     alignItems: "center",
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
     padding: 4,
     borderRightWidth: 1,
     borderRightColor: "#000000",
-    fontSize: 11,
+    fontSize: 9,
     textAlign: "center",
     justifyContent: "center",
     alignItems: "center",
@@ -100,10 +101,10 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 10, // Reduced margin
   },
   strikeZoneContainer: {
-    width: "32%",
+    width: "30%", // Adjusted width
     marginBottom: 10,
     border: 1,
     borderColor: "#000000",
@@ -230,7 +231,8 @@ const PitcherScoutingReport = ({ charts = [] }) => {
                   )
                   .join(" ")}
               </Text>
-              <StrikeZonePDF pitches={data.pitches} width={150} height={150} />
+              <StrikeZonePDF pitches={data.pitches} width={150} height={150} />{" "}
+              {/* Adjusted size */}
             </View>
           ))}
         </View>
@@ -481,7 +483,6 @@ const findTopSequences = (pitches) => {
   }, {});
 
   return Object.values(groupedSequences)
-    .filter((group) => group.count >= 2)
     .sort((a, b) => b.count - a.count)
     .slice(0, 3)
     .map((group) => {

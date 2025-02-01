@@ -7,6 +7,22 @@ export const StrikeZonePDF = ({
   width = 150,
   height = 150,
   colors = {
+    FB: "#ff6b6b", // Fastball
+    fastball: "#ff6b6b", // Fastball
+    CB: "#6c5ce7", // Curveball
+    curveball: "#6c5ce7", // Curveball
+    SL: "#74b9ff", // Slider
+    slider: "#74b9ff", // Slider
+    CH: "#a8e6cf", // Changeup
+    changeup: "#a8e6cf", // Changeup
+    SPL: "#ff9ff3", // Splitter
+    splitter: "#ff9ff3", // Splitter
+    SI: "#feca57", // Sinker
+    sinker: "#feca57", // Sinker
+    CT: "#ff6f61", // Cutter
+    cutter: "#ff6f61", // Cutter
+    KN: "#00d2d3", // Knuckleball
+    knuckleball: "#00d2d3", // Knuckleball
     called_strike: "#ef4444",
     ball: "#3b82f6",
   },
