@@ -23,11 +23,6 @@ def get_data(year, division):
     pbp_df['pitch_team'] = np.where(
         pbp_df['top_inning'] == 'Top', pbp_df['home_team'], pbp_df['away_team'])
 
-    if 'X' in pbp_df.columns:
-        pbp_df.sort_values('play_id')
-    elif 'play_id' in pbp_df.columns:
-        pbp_df.sort_values('X')
-
     le = pd.read_csv('../data/miscellaneous/leverage_index.csv')
     we = pd.read_csv(
         '../data/miscellaneous/win_expectancy.csv').rename(columns={'Tie': '0'})

@@ -10,7 +10,6 @@ import debounce from "lodash/debounce";
 import SubscriptionManager from "../managers/SubscriptionManager";
 import AuthManager from "../managers/AuthManager";
 
-// Memoized Table Component
 const MemoizedTable = React.memo(({ data, dataType, filename }) => (
   <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
     <BaseballTable

@@ -5,6 +5,7 @@ import BullpenReport from "../../reports/BullpenReport";
 import PitcherAdvanceReport from "../../reports/PitcherAdvanceReport";
 import TTOReport from "../../reports/TTOReport";
 import PitcherScoutingReport from "../../reports/PitcherScoutingReport";
+import CatcherReport from "../../reports/CatcherReport";
 
 export const ReportTypes = {
   BULLPEN: {
@@ -50,6 +51,17 @@ export const ReportTypes = {
     description:
       "Analysis of pitcher effectiveness across multiple times through the batting order",
     icon: "📈",
+  },
+  CATCHER: {
+    id: "catcher",
+    name: "Catcher Framing Report",
+    sourceRestriction: ["d3"],
+    typeRestriction: ["game", "scrimmage"],
+    filterType: "team",
+    component: CatcherReport,
+    description:
+      "Analysis of catcher framing and pitch framing metrics, including pitch framing rates",
+    icon: "🖼️",
   },
 };
 
