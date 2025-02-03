@@ -24,6 +24,7 @@ const useScoutingState = () => {
     isCreateModalOpen: false,
     isAddPlayerModalOpen: false,
     isPremiumUser: false,
+    isAuthReady: false,
   });
 
   const updateState = (updates) => {
@@ -93,7 +94,7 @@ const useAuthEffect = (fetchTeams, updateState) => {
         console.error("Auth error:", err);
         toast.error("Authentication failed. Please try again.");
       } finally {
-        updateState({ isLoading: false });
+        updateState({ isLoading: false, isAuthReady: true });
       }
     });
 
@@ -112,12 +113,14 @@ const ScoutingReport = () => {
   useAuthEffect(fetchTeams, updateState);
 
   useEffect(() => {
-    if (state.user) {
+    if (state.user && state.isAuthReady) {
       fetchTeams().then((teams) => updateState({ availableTeams: teams }));
     }
-  }, [state.user, fetchTeams, updateState]);
+  }, [state.user, state.isAuthReady, fetchTeams, updateState]);
 
   const fetchPlayers = async (teamName, division) => {
+    if (!state.isAuthReady) return;
+
     const loadingToast = toast.loading("Loading players...");
     try {
       const data = await fetchAPI(
@@ -144,7 +147,7 @@ const ScoutingReport = () => {
   };
 
   const handleCreateReport = async (reportData) => {
-    if (!state.user) {
+    if (!state.user || !state.isAuthReady) {
       navigate("/signin");
       return;
     }
@@ -181,7 +184,7 @@ const ScoutingReport = () => {
   };
 
   const handleAddPlayer = async (newPlayer) => {
-    if (!state.selectedReport || !state.user) return;
+    if (!state.selectedReport || !state.user || !state.isAuthReady) return;
 
     const loadingToast = toast.loading("Adding player...");
     try {
@@ -207,7 +210,7 @@ const ScoutingReport = () => {
   };
 
   const handleDeleteReport = async (reportId) => {
-    if (!state.user) {
+    if (!state.user || !state.isAuthReady) {
       navigate("/signin");
       return;
     }
@@ -234,7 +237,7 @@ const ScoutingReport = () => {
   };
 
   const handleUpdateReport = async (updatedReport) => {
-    if (!state.user) {
+    if (!state.user || !state.isAuthReady) {
       navigate("/signin");
       return;
     }
@@ -255,7 +258,7 @@ const ScoutingReport = () => {
     }
   };
 
-  if (state.isLoading) return <LoadingState />;
+  if (!state.isAuthReady || state.isLoading) return <LoadingState />;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">

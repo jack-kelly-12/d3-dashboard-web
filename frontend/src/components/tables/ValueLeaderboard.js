@@ -10,6 +10,7 @@ import AuthManager from "../../managers/AuthManager";
 
 const ValueLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -21,13 +22,15 @@ const ValueLeaderboard = () => {
   const [isPremiumUser, setIsPremiumUser] = useState(false);
 
   const fetchConferences = useCallback(async () => {
+    if (!isAuthReady) return;
+
     try {
       const response = await fetchAPI(`/conferences?division=${division}`);
       setConferences(response.sort());
     } catch (err) {
       console.error("Error fetching conferences:", err);
     }
-  }, [division]);
+  }, [division, isAuthReady]);
 
   useEffect(() => {
     let isMounted = true;
@@ -41,6 +44,14 @@ const ValueLeaderboard = () => {
             await SubscriptionManager.getUserSubscription(user.uid);
           if (isMounted) {
             setIsPremiumUser(initialSubscription?.isActive || false);
+
+            if (initialSubscription?.isActive) {
+              const urlParams = new URLSearchParams(window.location.search);
+              const divisionParam = urlParams.get("division");
+              if (divisionParam) {
+                setDivision(Number(divisionParam));
+              }
+            }
           }
 
           SubscriptionManager.listenToSubscriptionUpdates(
@@ -56,6 +67,10 @@ const ValueLeaderboard = () => {
             setIsPremiumUser(false);
           }
         }
+
+        if (isMounted) {
+          setIsAuthReady(true);
+        }
       });
 
       return unsubscribeAuth;
@@ -70,11 +85,24 @@ const ValueLeaderboard = () => {
     };
   }, []);
 
+  // Update URL when division changes
   useEffect(() => {
-    fetchConferences();
-  }, [fetchConferences]);
+    if (isPremiumUser) {
+      const url = new URL(window.location);
+      url.searchParams.set("division", division.toString());
+      window.history.replaceState({}, "", url);
+    }
+  }, [division, isPremiumUser]);
+
+  useEffect(() => {
+    if (isAuthReady) {
+      fetchConferences();
+    }
+  }, [fetchConferences, isAuthReady]);
 
   const fetchData = useCallback(async () => {
+    if (!isAuthReady) return;
+
     setIsLoading(true);
     setError(null);
     try {
@@ -112,10 +140,13 @@ const ValueLeaderboard = () => {
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err.message);
+      if (err.status === 403) {
+        setDivision(3);
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, endYear, division]);
+  }, [startYear, endYear, division, isAuthReady]);
 
   useEffect(() => {
     fetchData();
@@ -281,6 +312,14 @@ const ValueLeaderboard = () => {
     []
   );
 
+  if (!isAuthReady || isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
       {/* Explanation Banner */}
@@ -381,11 +420,7 @@ const ValueLeaderboard = () => {
       </div>
 
       {/* Leaderboard Table */}
-      {isLoading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : error ? (
+      {error ? (
         <div className="text-center py-12">
           <p className="text-red-600">{error}</p>
         </div>

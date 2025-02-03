@@ -37,6 +37,7 @@ const Data = () => {
   const [error, setError] = useState(null);
   const [conferences, setConferences] = useState([]);
   const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -74,6 +75,8 @@ const Data = () => {
             setIsPremiumUser(false);
           }
         }
+
+        setIsAuthReady(true);
       });
 
       return unsubscribeAuth;
@@ -178,7 +181,7 @@ const Data = () => {
   );
 
   const fetchData = useCallback(async () => {
-    if (!state.selectedYears.length) return;
+    if (!state.selectedYears.length || !isAuthReady) return;
     setIsLoading(true);
 
     try {
@@ -210,7 +213,13 @@ const Data = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [state.dataType, state.selectedYears, endpointMap, transformData]);
+  }, [
+    state.dataType,
+    state.selectedYears,
+    endpointMap,
+    transformData,
+    isAuthReady,
+  ]);
 
   useEffect(() => {
     fetchData();

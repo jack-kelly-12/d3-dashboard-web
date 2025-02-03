@@ -83,7 +83,6 @@ const DateControl = ({
   </div>
 );
 
-// DivisionSelector Component
 const DivisionSelector = ({ division, onDivisionChange }) => (
   <div className="flex items-center gap-2">
     <label className="text-sm font-medium text-gray-700">Division:</label>
@@ -174,6 +173,7 @@ const NoGames = () => (
 const Scoreboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [state, setState] = useState({
     games: [],
     isLoading: true,
@@ -208,6 +208,15 @@ const Scoreboard = () => {
             await SubscriptionManager.getUserSubscription(user.uid);
           if (isMounted) {
             setIsPremiumUser(initialSubscription?.isActive || false);
+
+            if (initialSubscription?.isActive) {
+              setState((prev) => ({
+                ...prev,
+                division: searchParams.get("division")
+                  ? Number(searchParams.get("division"))
+                  : prev.division,
+              }));
+            }
           }
 
           SubscriptionManager.listenToSubscriptionUpdates(
@@ -223,6 +232,8 @@ const Scoreboard = () => {
             setIsPremiumUser(false);
           }
         }
+
+        setIsAuthReady(true);
       });
 
       return unsubscribeAuth;
@@ -235,7 +246,18 @@ const Scoreboard = () => {
       cleanup.then((unsubscribe) => unsubscribe());
       SubscriptionManager.stopListening();
     };
-  }, []);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isPremiumUser) {
+      setState((prev) => ({
+        ...prev,
+        division: searchParams.get("division")
+          ? Number(searchParams.get("division"))
+          : prev.division,
+      }));
+    }
+  }, [isPremiumUser, searchParams]);
 
   useEffect(() => {
     const localDate = new Date(
@@ -254,6 +276,8 @@ const Scoreboard = () => {
   }, [state.currentDate, state.division, isPremiumUser, setSearchParams]);
 
   const fetchGames = useCallback(async () => {
+    if (!isAuthReady) return;
+
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
@@ -281,7 +305,7 @@ const Scoreboard = () => {
         isLoading: false,
       }));
     }
-  }, [state.currentDate, state.division]);
+  }, [state.currentDate, state.division, isAuthReady]);
 
   useEffect(() => {
     fetchGames();
@@ -304,7 +328,7 @@ const Scoreboard = () => {
     setState((prev) => ({ ...prev, division }));
   }, []);
 
-  if (state.isLoading) {
+  if (!isAuthReady || state.isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />

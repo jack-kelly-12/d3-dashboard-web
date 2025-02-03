@@ -18,6 +18,7 @@ const Guts = () => {
   const [pfData, setPFData] = useState([]);
   const [erData, setERData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedYear, setSelectedYear] = useState("2024");
   const [selectedDivision, setSelectedDivision] = useState(3);
@@ -36,6 +37,14 @@ const Guts = () => {
             await SubscriptionManager.getUserSubscription(user.uid);
           if (isMounted) {
             setIsPremiumUser(initialSubscription?.isActive || false);
+
+            if (initialSubscription?.isActive) {
+              const urlParams = new URLSearchParams(window.location.search);
+              const divisionParam = urlParams.get("division");
+              if (divisionParam) {
+                setSelectedDivision(Number(divisionParam));
+              }
+            }
           }
 
           SubscriptionManager.listenToSubscriptionUpdates(
@@ -50,6 +59,10 @@ const Guts = () => {
           if (isMounted) {
             setIsPremiumUser(false);
           }
+        }
+
+        if (isMounted) {
+          setIsAuthReady(true);
         }
       });
 
@@ -67,6 +80,8 @@ const Guts = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!isAuthReady) return;
+
       setIsLoading(true);
       try {
         const [gutsResults, pfResults, erResults] = await Promise.all([
@@ -91,7 +106,16 @@ const Guts = () => {
     };
 
     fetchData();
-  }, [selectedYear, selectedDivision]);
+  }, [selectedYear, selectedDivision, isAuthReady]);
+
+  // Update URL when division changes
+  useEffect(() => {
+    if (isPremiumUser) {
+      const url = new URL(window.location);
+      url.searchParams.set("division", selectedDivision.toString());
+      window.history.replaceState({}, "", url);
+    }
+  }, [selectedDivision, isPremiumUser]);
 
   const DivisionSelector = () => {
     if (!isPremiumUser) return null;
@@ -116,37 +140,39 @@ const Guts = () => {
     );
   };
 
+  if (!isAuthReady || isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <InfoBanner dataType="guts" />
-            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-              <DivisionSelector />
-              <div className="space-y-6">
-                <GutsTable data={gutsData} />
+        <div className="space-y-6">
+          <InfoBanner dataType="guts" />
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <DivisionSelector />
+            <div className="space-y-6">
+              <GutsTable data={gutsData} />
 
-                <ExpectedRunsTable
-                  data={erData}
-                  years={years}
-                  selectedYear={selectedYear}
-                  onYearChange={setSelectedYear}
-                />
+              <ExpectedRunsTable
+                data={erData}
+                years={years}
+                selectedYear={selectedYear}
+                onYearChange={setSelectedYear}
+              />
 
-                <ParkFactorsTable
-                  data={pfData}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                />
-              </div>
+              <ParkFactorsTable
+                data={pfData}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+              />
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
