@@ -459,9 +459,9 @@ class BaseballStats:
         denominator = df['AB'] + df['BB'] - df['IBB'] + df['SF'] + df['HBP']
         df['wOBA'] = numerator / denominator
 
-        return self._compute_batting_war(df, weights_df)
+        return self._compute_batting_war(df, weights_df, division=pbp_df.division.iloc[0])
 
-    def _compute_batting_war(self, df, weights):
+    def _compute_batting_war(self, df, weights, division=3):
         df['PF'].fillna(100, inplace=True)
         pf = df['PF'] / 100
 
@@ -507,8 +507,11 @@ class BaseballStats:
         df['replacement_level_runs'] = replacement_constant * \
             (rpw / pa.sum()) * rpw
         df['baserunning'] = df['wSB'] + df['wGDP'] + df['wTEB']
-        df['Adjustment'] = (df['Pos'].map(self.position_adjustments).fillna(0) *
-                            (df['GP'] / games_played))
+
+        base_adjustments = df['Pos'].map(self.position_adjustments).fillna(0)
+        division_scaling = division.map(lambda x: 45/35 if x in [2, 3] else 1)
+        scaled_adjustments = base_adjustments * division_scaling
+        df['Adjustment'] = scaled_adjustments * (df['GP'] / games_played)
 
         conf_adjustments = {}
         for conf in df['conference'].unique():
