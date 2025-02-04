@@ -23,6 +23,8 @@ from functools import wraps
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
+stripe.webhook_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+
 
 cred = credentials.Certificate(
     "d3-dash-13dc4-firebase-adminsdk-5y2t3-1582956c98.json")
@@ -1482,6 +1484,57 @@ def cancel_subscription():
             'error': 'Server error',
             'details': str(e)
         }), 500
+
+
+@app.route('/stripe-webhook', methods=['POST'])
+def stripe_webhook():
+    payload = request.get_data()
+    sig_header = request.headers.get('Stripe-Signature')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, stripe.webhook_secret
+        )
+    except ValueError:
+        return jsonify({'error': 'Invalid payload'}), 400
+    except stripe.error.SignatureVerificationError:
+        return jsonify({'error': 'Invalid signature'}), 400
+
+    if event['type'] == 'checkout.session.completed':
+        session = event['data']['object']
+        # Get customer and subscription info
+        customer_id = session['customer']
+        subscription_id = session['subscription']
+        client_reference_id = session.get(
+            'client_reference_id')  # This should be your user_id
+
+        # Get subscription details from Stripe
+        subscription = stripe.Subscription.retrieve(subscription_id)
+
+        # Determine plan type based on the price ID or product ID
+        price_id = session.get('price')
+        plan_type = 'monthly'  # default
+        if price_id:
+            price = stripe.Price.retrieve(price_id)
+            if price.id == 'price_1QQjEeIb7aERwB58FkccirOh':
+                plan_type = 'yearly'
+
+        # Update Firestore
+        if client_reference_id:
+            db = firestore.client()
+            subscription_ref = db.collection(
+                'subscriptions').document(client_reference_id)
+            subscription_ref.set({
+                'status': 'active',
+                'stripeCustomerId': customer_id,
+                'stripeSubscriptionId': subscription_id,
+                'planType': plan_type,
+                'createdAt': datetime.now(),
+                'updatedAt': datetime.now(),
+                'expiresAt': datetime.fromtimestamp(subscription.current_period_end)
+            })
+
+    return jsonify({'success': True})
 
 
 @app.route('/api/subscriptions/reactivate', methods=['POST'])

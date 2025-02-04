@@ -108,6 +108,17 @@ class SubscriptionManager {
     return this.unsubscribeFromFirestore;
   }
 
+  checkSubscriptionStatus = async (userId) => {
+    try {
+      const response = await fetch(`/api/subscriptions/status/${userId}`);
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Error checking subscription:", error);
+      return null;
+    }
+  };
+
   async handleStripeWebhook(event) {
     const { type, data } = event;
     const userId = data.object.client_reference_id;

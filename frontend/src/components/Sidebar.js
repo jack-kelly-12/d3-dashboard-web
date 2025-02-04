@@ -154,10 +154,7 @@ const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [isPremiumUser, setIsPremiumUser] = useState(() => {
-    const cached = localStorage.getItem("userPremiumStatus");
-    return cached ? JSON.parse(cached) : false;
-  });
+  const [isPremiumUser, setIsPremiumUser] = useState(false); // Remove localStorage initialization
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const [authState, setAuthState] = useState({
     isAuthenticated: false,
@@ -168,9 +165,23 @@ const Sidebar = () => {
   const location = useLocation();
 
   useEffect(() => {
-    setMobileOpen(false);
-  }, [location]);
+    if (user?.uid && !user.isAnonymous) {
+      setIsLoadingSubscription(true);
+      SubscriptionManager.checkSubscriptionStatus(user.uid)
+        .then((subscription) => {
+          if (subscription) {
+            setIsPremiumUser(subscription.isPremium || false);
+          }
+          setIsLoadingSubscription(false);
+        })
+        .catch((error) => {
+          console.error("Error checking subscription:", error);
+          setIsLoadingSubscription(false);
+        });
+    }
+  }, [user, location.pathname]); // Re-run on location change
 
+  // Modify your existing auth effect
   useEffect(() => {
     let subscriptionUnsubscribe = null;
     let mounted = true;
@@ -192,15 +203,8 @@ const Sidebar = () => {
 
         if (!currentUser || currentUser.isAnonymous) {
           setIsPremiumUser(false);
-          localStorage.removeItem("userPremiumStatus");
           setIsLoadingSubscription(false);
           return;
-        }
-
-        const cachedStatus = localStorage.getItem("userPremiumStatus");
-        if (cachedStatus) {
-          setIsPremiumUser(JSON.parse(cachedStatus));
-          setIsLoadingSubscription(false);
         }
 
         try {
@@ -209,21 +213,21 @@ const Sidebar = () => {
               currentUser.uid,
               (subscription) => {
                 if (!mounted) return;
-
-                const newPremiumStatus = subscription?.isActive || false;
-                setIsPremiumUser(newPremiumStatus);
-                localStorage.setItem(
-                  "userPremiumStatus",
-                  JSON.stringify(newPremiumStatus)
-                );
+                setIsPremiumUser(subscription?.isActive || false);
                 setIsLoadingSubscription(false);
               }
             );
+
+          const status = await SubscriptionManager.checkSubscriptionStatus(
+            currentUser.uid
+          );
+          if (status && mounted) {
+            setIsPremiumUser(status.isPremium || false);
+          }
         } catch (error) {
           console.error("Subscription error:", error);
           if (mounted) {
             setIsPremiumUser(false);
-            localStorage.removeItem("userPremiumStatus");
             setIsLoadingSubscription(false);
           }
         }
