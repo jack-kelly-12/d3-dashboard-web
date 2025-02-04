@@ -27,9 +27,9 @@ const useScoutingState = () => {
     isAuthReady: false,
   });
 
-  const updateState = (updates) => {
+  const updateState = useCallback((updates) => {
     setState((prev) => ({ ...prev, ...updates }));
-  };
+  }, []);
 
   return [state, updateState];
 };
@@ -50,73 +50,99 @@ const useTeamsFetch = (selectedDivision) => {
   }, [selectedDivision]);
 };
 
-const useAuthEffect = (fetchTeams, updateState) => {
-  useEffect(() => {
-    const loadUserData = async (currentUser) => {
-      if (!currentUser) return;
-
-      try {
-        SubscriptionManager.listenToSubscriptionUpdates(
-          currentUser.uid,
-          (subscription) =>
-            updateState({ isPremiumUser: subscription?.isActive || false })
-        );
-
-        const [userReports, teams] = await Promise.all([
-          ScoutingReportManager.getUserReports(),
-          fetchTeams(),
-        ]);
-
-        updateState({
-          reports: userReports,
-          availableTeams: teams,
-        });
-      } catch (err) {
-        console.error("Error loading user data:", err);
-        toast.error("Failed to load data");
-      }
-    };
-
-    const unsubscribe = AuthManager.onAuthStateChanged(async (currentUser) => {
-      updateState({ user: currentUser, isLoading: true });
-
-      try {
-        if (!currentUser) {
-          const result = await AuthManager.anonymousSignIn();
-          if (result.success) {
-            updateState({ user: result.user });
-            await loadUserData(result.user);
-          }
-        } else {
-          await loadUserData(currentUser);
-        }
-      } catch (err) {
-        console.error("Auth error:", err);
-        toast.error("Authentication failed. Please try again.");
-      } finally {
-        updateState({ isLoading: false, isAuthReady: true });
-      }
-    });
-
-    return () => {
-      unsubscribe();
-      SubscriptionManager.stopListening();
-    };
-  }, [fetchTeams, updateState]);
-};
-
 const ScoutingReport = () => {
   const navigate = useNavigate();
   const [state, updateState] = useScoutingState();
   const fetchTeams = useTeamsFetch(state.selectedDivision);
 
-  useAuthEffect(fetchTeams, updateState);
+  // Initialize auth and subscription
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+        if (!isMounted) return;
+
+        updateState({ user, isLoading: true });
+
+        try {
+          if (!user) {
+            const result = await AuthManager.anonymousSignIn();
+            if (result.success && isMounted) {
+              updateState({ user: result.user });
+              user = result.user; // Update user for subsequent operations
+            }
+          }
+
+          if (user) {
+            // Get initial subscription state
+            const initialSubscription =
+              await SubscriptionManager.getUserSubscription(user.uid);
+            if (isMounted) {
+              updateState({
+                isPremiumUser: initialSubscription?.isActive || false,
+              });
+            }
+
+            // Set up subscription listener
+            SubscriptionManager.listenToSubscriptionUpdates(
+              user.uid,
+              (subscription) => {
+                if (isMounted) {
+                  updateState({
+                    isPremiumUser: subscription?.isActive || false,
+                  });
+                }
+              }
+            );
+
+            // Load user data
+            const [userReports, teams] = await Promise.all([
+              ScoutingReportManager.getUserReports(),
+              fetchTeams(),
+            ]);
+
+            if (isMounted) {
+              updateState({
+                reports: userReports,
+                availableTeams: teams,
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Error in auth initialization:", err);
+          toast.error("Failed to initialize. Please try again.");
+        } finally {
+          if (isMounted) {
+            updateState({ isLoading: false, isAuthReady: true });
+          }
+        }
+      });
+
+      return unsubscribeAuth;
+    };
+
+    const cleanup = initializeAuth();
+
+    return () => {
+      isMounted = false;
+      cleanup.then((unsubscribe) => unsubscribe());
+      SubscriptionManager.stopListening();
+    };
+  }, [updateState, fetchTeams]);
 
   useEffect(() => {
-    if (state.user && state.isAuthReady) {
+    if (state.user && state.isAuthReady && !state.isLoading) {
       fetchTeams().then((teams) => updateState({ availableTeams: teams }));
     }
-  }, [state.user, state.isAuthReady, fetchTeams, updateState]);
+  }, [
+    state.user,
+    state.isAuthReady,
+    state.selectedDivision,
+    state.isLoading,
+    fetchTeams,
+    updateState,
+  ]);
 
   const fetchPlayers = async (teamName, division) => {
     if (!state.isAuthReady) return;

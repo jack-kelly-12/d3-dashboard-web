@@ -22,6 +22,26 @@ class BaseballAnalytics:
         self.situations = None
         self.weights = None
         self.division = division
+        self.right_pattern = r'to right|to 1b|to 2b|rf line|2b to ss|to rf|right side|by 1b|by 2b|by second base|to second base|by first base|to first base|1b line|by rf|by right field'
+        self.left_pattern = r'to left|to ss|to 3b|ss to 2b|lf line|left side|to lf|by 3b|by ss|by shortstop|to shortstop|by third base|to third base|down the 3b line|by lf|by left field'
+
+        self.fly_pattern = r'fly|flied|homered|tripled to (?:left|right|cf|center)|doubled to (?:right|rf)'
+        self.lined_pattern = r'tripled (?:to second base|,)|singled to (?:center|cf)|doubled down the (?:lf|rf) line|lined|doubled|singled to (?:left|right|rf|lf)'
+        self.popped_pattern = r'fouled (?:into|out)|popped'
+        self.ground_pattern = (
+            r'tripled to (?:catcher|first base)|'
+            r'tripled(?:,\s*(?:scored|out))|'
+            r'singled to catcher|'
+            r'singled(?:\s*(?:\([^)]+\))?\s*(?:,\s*|\s*;\s*|\s*3a\s*|\s*:\s*|\s+up\s+the\s+middle))|'
+            r'hit into (?:double|triple) play|'
+            r'reached (?:first )?on (?:an?)|'
+            r'fielder\'s choice|fielding error|'
+            r'(?:singled|tripled) through the (?:left|right) side|'
+            r'error by (?:1b|2b|ss|3b|first|second|short|third)|'
+            r'ground|'
+            r'down the (?:1b|rf|3b|lf) line|'
+            r'singled to (?:p|3b|1b|2b|ss|third|first|second|short)'
+        )
 
     def load_weights(self):
         try:
@@ -46,6 +66,29 @@ class BaseballAnalytics:
         self.situations['LI_HI_fl'] = (self.situations['li'] >= 2).astype(int)
         self.situations['LI_LO_fl'] = (
             self.situations['li'] <= 0.85).astype(int)
+
+    def prepare_batted_ball(self):
+        self.df = self.original_df.copy()
+        is_to_right = self.df['description'].str.contains(
+            self.right_pattern, na=False, regex=True)
+        is_to_left = self.df['description'].str.contains(
+            self.left_pattern, na=False, regex=True)
+        self.df['is_pull'] = ((self.df['batter_hand'] == 'L') & is_to_right) | (
+            (self.df['batter_hand'] == 'R') & is_to_left)
+        self.df['is_oppo'] = ((self.df['batter_hand'] == 'L') & is_to_left) | (
+            (self.df['batter_hand'] == 'R') & is_to_right)
+        self.df['is_middle'] = self.df['description'].str.contains(
+            r'to ss|to 2b|to cf|ss to 2b|2b to ss|left center|right center|to p|to c|up the middle|by p|by c',
+            na=False
+        )
+        self.df['is_ground'] = self.df['description'].str.contains(
+            self.ground_pattern, na=False)
+        self.df['is_fly'] = self.df['description'].str.contains(
+            self.fly_pattern, na=False) & ~self.df['is_ground']
+        self.df['is_lined'] = self.df['description'].str.contains(
+            self.lined_pattern, na=False) & ~self.df['is_ground'] & ~self.df['is_fly']
+        self.df['is_popped'] = self.df['description'].str.contains(
+            self.popped_pattern, na=False) & ~self.df['is_ground'] & ~self.df['is_fly'] & ~self.df['is_lined']
 
     def calculate_metrics(self, group):
         if self.weights is None:
@@ -138,11 +181,50 @@ class BaseballAnalytics:
         pivot.columns = [f"{stat}_{sit}" for stat, sit in pivot.columns]
         return pivot.reset_index()
 
+    def calc_batted_ball_stats(self):
+        self.prepare_batted_ball()
+        stats = self.df.groupby('batter_standardized').agg({
+            'batter_id': 'first',
+            'bat_team': 'first',
+            'batter_hand': 'first',
+            'description': 'count',
+            'is_pull': 'sum',
+            'is_oppo': 'sum',
+            'is_middle': 'sum',
+            'is_ground': 'sum',
+            'is_fly': 'sum',
+            'is_lined': 'sum',
+            'is_popped': 'sum',
+        })
+
+        total = stats['description']
+
+        # Calculate metrics
+        stats['pull_pct'] = (stats['is_pull'] / total) * 100
+        stats['oppo_pct'] = (stats['is_oppo'] / total) * 100
+        stats['middle_pct'] = (stats['is_middle'] / total) * 100
+        stats['gb_pct'] = (stats['is_ground'] / total) * 100
+        stats['fb_pct'] = (stats['is_fly'] / total) * 100
+        stats['ld_pct'] = (stats['is_lined'] / total) * 100
+        stats['pop_pct'] = (stats['is_popped'] / total) * 100
+
+        pull_air = self.df[(self.df['is_fly']) & self.df['is_pull']].groupby(
+            'batter_standardized').size()
+        stats['pull_air_pct'] = (pull_air / total * 100).fillna(0)
+        stats = stats.reset_index()
+
+        return stats[[
+            'batter_standardized', 'bat_team', 'batter_id', 'batter_hand', 'description',
+            'pull_pct', 'middle_pct', 'oppo_pct',
+            'gb_pct', 'fb_pct', 'ld_pct', 'pop_pct',
+            'pull_air_pct',
+        ]].rename(columns={'description': 'count'}).sort_values('count', ascending=False).fillna(0)
+
 
 def run_analysis(pbp_df, year, division):
     try:
         analytics = BaseballAnalytics(pbp_df, year, division)
-        return analytics.get_pivot_results()
+        return analytics.get_pivot_results(), analytics.calc_batted_ball_stats()
     except Exception as e:
         print(f"Error running analysis: {str(e)}")
         return None
@@ -153,13 +235,48 @@ def get_data(year, division):
         f'../data/play_by_play/d{division}_parsed_pbp_new_{year}.csv')
     bat_war = pd.read_csv(
         f'../data/war/d{division}_batting_war_{year}.csv').rename(columns={'WAR': 'bWAR'})
+    rosters = pd.read_csv(
+        f'../data/rosters/d{division}_rosters_{year}.csv')
     pitch_war = pd.read_csv(
-        f'../data/war/d{division}_pitching_war_{year}.csv').rename(columns={'WAR': 'pWAR'})
-    pitch_war['Pos'] = 'P'
-    weights = pd.read_csv(
-        f'../data/guts/guts_constants.csv').query(f'Year == {year}').query(f'Division == {division}')
+        f'../data/war/d{division}_pitching_war_{year}.csv')
 
-    return pbp_df, bat_war, pitch_war, weights
+    bat_war['B/T'] = bat_war['B/T'].replace('0', np.nan).astype(str)
+    pitch_war['B/T'] = pitch_war['B/T'].replace('0', np.nan).astype(str)
+
+    roster_b_map = rosters.set_index('player_id')['bats'].to_dict()
+    roster_p_map = rosters.set_index('player_id')['throws'].to_dict()
+    batting_map = bat_war.set_index(
+        'player_id')['B/T'].str.split('/').str[0].to_dict()
+    pitching_map = pitch_war.set_index(
+        'player_id')['B/T'].str.split('/').str[1].to_dict()
+
+    combined_b_map = {id: batting_map.get(id) or roster_b_map.get(id)
+                      for id in set(roster_b_map) | set(batting_map)}
+    combined_p_map = {id: pitching_map.get(id) or roster_p_map.get(id)
+                      for id in set(roster_p_map) | set(pitching_map)}
+
+    combined_b_map = {k: standardize_hand(v)
+                      for k, v in combined_b_map.items()}
+    combined_p_map = {k: standardize_hand(v)
+                      for k, v in combined_p_map.items()}
+
+    pbp_df['batter_hand'] = pbp_df['batter_id'].map(combined_b_map)
+    pbp_df['pitcher_hand'] = pbp_df['pitcher_id'].map(combined_p_map)
+
+    return pbp_df, bat_war
+
+
+def standardize_hand(x):
+    if pd.isna(x) or x == '0':
+        return np.nan
+    x = str(x).upper()
+    if x in ['L', 'LEFT']:
+        return 'L'
+    elif x in ['R', 'RIGHT']:
+        return 'R'
+    elif x in ['S', 'SWITCH', 'B']:
+        return 'S'
+    return np.nan
 
 
 def main():
@@ -168,18 +285,23 @@ def main():
 
     all_situational = []
     all_baserunning = []
+    all_batted_ball = []
 
     for year in range(2021, 2025):
         for division in range(1, 4):
             print(f'Processing data for {year} D{division}')
             try:
-                pbp_df, bat_war, pitch_war, weights = get_data(year, division)
+                pbp_df, bat_war = get_data(year, division)
 
-                # Get situational data
-                situational = run_analysis(pbp_df, year, division).fillna(0)
+                situational, batted_ball = run_analysis(
+                    pbp_df, year, division)
                 situational['Year'] = year
                 situational['Division'] = division
                 all_situational.append(situational)
+
+                batted_ball['Year'] = year
+                batted_ball['Division'] = division
+                all_batted_ball.append(batted_ball)
 
                 # Get baserunning data
                 baserun = bat_war[['Player', 'player_id', 'Team', 'Conference', 'SB%', 'wSB',
@@ -196,6 +318,7 @@ def main():
     # Combine all data
     combined_situational = pd.concat(all_situational, ignore_index=True)
     combined_baserunning = pd.concat(all_baserunning, ignore_index=True)
+    combined_batted_ball = pd.concat(all_batted_ball, ignore_index=True)
 
     combined_situational = combined_situational.drop_duplicates(subset=[
         'batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division'
@@ -203,6 +326,10 @@ def main():
 
     combined_baserunning = combined_baserunning.drop_duplicates(subset=[
         'player_id', 'Team', 'Year', 'Division'
+    ])
+
+    combined_batted_ball = combined_batted_ball.drop_duplicates(subset=[
+        'batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division'
     ])
 
     combined_situational.to_sql(
@@ -214,6 +341,11 @@ def main():
         'baserunning', conn, if_exists='replace', index=False)
     combined_baserunning.to_csv(
         '../data/leaderboards/baserunning.csv', index=False)
+
+    combined_batted_ball.to_sql(
+        'batted_ball', conn, if_exists='replace', index=False)
+    combined_batted_ball.to_csv(
+        '../data/leaderboards/batted_ball.csv', index=False)
 
     conn.close()
 
