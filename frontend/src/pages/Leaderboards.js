@@ -10,6 +10,12 @@ const SituationalLeaderboard = lazy(() =>
 const BaserunningLeaderboard = lazy(() =>
   import("../components/tables/BaserunningLeaderboard")
 );
+const BattedBallLeaderboard = lazy(() =>
+  import("../components/tables/BattedBallLeaderboard")
+);
+const SplitsLeaderboard = lazy(() =>
+  import("../components/tables/SplitsLeaderboard")
+);
 
 const LEADERBOARD_TYPES = {
   VALUE: {
@@ -32,6 +38,18 @@ const LEADERBOARD_TYPES = {
     description: "Comprehensive leaderboard of total baserunning value",
     component: BaserunningLeaderboard,
   },
+  BATTEDBALL: {
+    id: "battedball",
+    label: "Batted Ball Leaderboard",
+    description: "Distribution of batted ball types for each hitter",
+    component: BattedBallLeaderboard,
+  },
+  SPLITS: {
+    id: "splits",
+    label: "Splits Leaderboard",
+    description: "How hitters do vs. LHP compared to vs. RHP",
+    component: SplitsLeaderboard,
+  },
 };
 
 const LoadingFallback = () => (
@@ -41,7 +59,13 @@ const LoadingFallback = () => (
 );
 
 const Leaderboards = () => {
-  const [selectedType, setSelectedType] = useState(LEADERBOARD_TYPES.VALUE.id);
+  const [selectedType, setSelectedType] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlType = params.get("type");
+    return Object.values(LEADERBOARD_TYPES).some((t) => t.id === urlType)
+      ? urlType
+      : LEADERBOARD_TYPES.VALUE.id;
+  });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -58,7 +82,6 @@ const Leaderboards = () => {
     };
   }, []);
 
-  // Memory optimization: Clear unused data when switching leaderboards
   useEffect(() => {
     const gcTimeout = setTimeout(() => {
       if (window.gc) {
@@ -68,6 +91,25 @@ const Leaderboards = () => {
 
     return () => clearTimeout(gcTimeout);
   }, [selectedType]);
+
+  useEffect(() => {
+    const url = new URL(window.location);
+    url.searchParams.set("type", selectedType);
+    window.history.pushState({}, "", url);
+  }, [selectedType]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const urlType = params.get("type");
+      if (Object.values(LEADERBOARD_TYPES).some((t) => t.id === urlType)) {
+        setSelectedType(urlType);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const getCurrentLeaderboard = () => {
     const leaderboard = Object.values(LEADERBOARD_TYPES).find(

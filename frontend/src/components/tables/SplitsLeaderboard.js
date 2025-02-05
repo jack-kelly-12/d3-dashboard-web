@@ -8,7 +8,7 @@ import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 
-const SituationalLeaderboard = () => {
+const SplitsLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [data, setData] = useState([]);
@@ -107,7 +107,7 @@ const SituationalLeaderboard = () => {
     setError(null);
     try {
       const rawData = await fetchAPI(
-        `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}&division=${division}`
+        `/api/leaderboards/splits?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}&division=${division}`
       );
 
       const transformedData = rawData.map((row, index) => ({
@@ -211,97 +211,72 @@ const SituationalLeaderboard = () => {
         width: "110px",
       },
       {
-        name: "Year",
-        selector: (row) => row.Season,
+        name: "PA vs RHP",
+        selector: (row) => row["PA_vs RHP"],
         sortable: true,
-        width: "80px",
+        width: "90px",
       },
       {
-        name: "PA",
-        selector: (row) => row.PA_Overall,
+        name: "PA vs LHP",
+        selector: (row) => row["PA_vs LHP"],
         sortable: true,
-        width: "80px",
+        width: "90px",
       },
       {
-        name: "BA",
-        selector: (row) => row.BA_Overall,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Overall?.toFixed(3) || "—",
-      },
-      {
-        name: "wOBA",
-        selector: (row) => row.wOBA_Overall,
+        name: "BA vs RHP",
+        selector: (row) => row["BA_vs RHP"],
         sortable: true,
         width: "120px",
-        cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
+        cell: (row) => row["BA_vs RHP"]?.toFixed(3) || "—",
       },
       {
-        name: "PA w/ RISP",
-        selector: (row) => row.PA_RISP,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "BA w/ RISP",
-        selector: (row) => row.BA_RISP,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_RISP?.toFixed(3) || "—",
-      },
-      {
-        name: "wOBA w/ RISP",
-        selector: (row) => row.wOBA_RISP,
+        name: "BA vs LHP",
+        selector: (row) => row["BA_vs LHP"],
         sortable: true,
         width: "120px",
-        cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
+        cell: (row) => row["BA_vs LHP"]?.toFixed(3) || "—",
       },
       {
-        name: "LI+ PA",
-        selector: (row) => row.PA_High_Leverage,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "LI+ BA",
-        selector: (row) => row.BA_High_Leverage,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "LI+ wOBA",
-        selector: (row) => row.wOBA_High_Leverage,
+        name: "OBP vs RHP",
+        selector: (row) => row["OBP_vs RHP"],
         sortable: true,
         width: "120px",
-        cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
+        cell: (row) => row["OBP_vs RHP"]?.toFixed(3) || "—",
       },
       {
-        name: "LI- PA",
-        selector: (row) => row.PA_Low_Leverage,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "LI- BA",
-        selector: (row) => row.BA_Low_Leverage,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "LI- wOBA",
-        selector: (row) => row.wOBA_Low_Leverage,
+        name: "OBP vs LHP",
+        selector: (row) => row["OBP_vs LHP"],
         sortable: true,
         width: "120px",
-        cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
+        cell: (row) => row["OBP_vs LHP"]?.toFixed(3) || "—",
       },
       {
-        name: "Clutch",
-        selector: (row) => row.Clutch,
+        name: "SLG vs RHP",
+        selector: (row) => row["SLG_vs RHP"],
         sortable: true,
         width: "120px",
-        cell: (row) => row.Clutch?.toFixed(3) || "—",
+        cell: (row) => row["SLG_vs RHP"]?.toFixed(3) || "—",
+      },
+      {
+        name: "SLG vs LHP",
+        selector: (row) => row["SLG_vs LHP"],
+        sortable: true,
+        width: "120px",
+        cell: (row) => row["SLG_vs LHP"]?.toFixed(3) || "—",
+      },
+      {
+        name: "wOBA vs RHP",
+        selector: (row) => row["wOBA_vs RHP"],
+        sortable: true,
+        width: "120px",
+        cell: (row) => row["wOBA_vs RHP"]?.toFixed(3) || "—",
+      },
+      {
+        name: "wOBA vs LHP",
+        selector: (row) => row["wOBA_vs LHP"],
+        sortable: true,
+        width: "120px",
+        cell: (row) => row["wOBA_vs LHP"]?.toFixed(3) || "—",
       },
     ],
     []
@@ -330,15 +305,24 @@ const SituationalLeaderboard = () => {
   return (
     <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
       {/* Explanation Banner */}
-      <div className="bg-white border-l-4 border-blue-500 rounded-lg p-6 mb-6">
+      <div className="bg-white border border-blue-200 rounded-lg p-4 mb-6">
         <h3 className="text-base font-semibold text-blue-800 mb-2">
-          What is the Situational Leaderboard?
+          What is the Splits Leaderboard?
         </h3>
         <p className="text-sm text-gray-700 leading-relaxed">
-          This leaderboard helps evaluate how players perform in different game
-          situations, with emphasis on moments that can significantly impact the
-          outcome of games.
+          The Splits Leaderboard shows how batters perform against left-handed
+          and right-handed pitchers. Key metrics include batting average (BA),
+          on-base percentage (OBP), slugging (SLG), and weighted on-base average
+          (wOBA). These statistics are broken down by pitcher handedness to
+          reveal platoon advantages and help inform matchup decisions. The
+          minimum plate appearance filter ensures statistical significance.
         </p>
+
+        <blockquote className="text-sm border-l-4 border-blue-400 pl-4 italic text-gray-600 mt-2">
+          "Player X has a .320 wOBA overall, but shows a significant platoon
+          split with a .350 wOBA vs RHP and .280 wOBA vs LHP across 200+ plate
+          appearances, suggesting he sees the ball better against righties."
+        </blockquote>
       </div>
 
       {/* Controls */}
@@ -445,4 +429,4 @@ const SituationalLeaderboard = () => {
   );
 };
 
-export default SituationalLeaderboard;
+export default SplitsLeaderboard;

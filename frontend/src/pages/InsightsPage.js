@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Send,
   Loader2,
@@ -13,6 +14,8 @@ import {
 import { ResultCard } from "../components/insights/ResultCard";
 import { fetchAPI } from "../config/api";
 import InfoBanner from "../components/data/InfoBanner";
+import AuthManager from "../managers/AuthManager";
+import SubscriptionManager from "../managers/SubscriptionManager";
 
 const EXAMPLE_QUESTIONS = [
   {
@@ -42,24 +45,65 @@ const EXAMPLE_QUESTIONS = [
 ];
 
 const InsightsPage = () => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [currentResult, setCurrentResult] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isPremiumUser, setIsPremiumUser] = useState(false);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    const handleKeyPress = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+        if (!isMounted) return;
+
+        if (user) {
+          const initialSubscription =
+            await SubscriptionManager.getUserSubscription(user.uid);
+          if (isMounted) {
+            setIsPremiumUser(initialSubscription?.isActive || false);
+          }
+
+          SubscriptionManager.listenToSubscriptionUpdates(
+            user.uid,
+            (subscription) => {
+              if (isMounted) {
+                setIsPremiumUser(subscription?.isActive || false);
+              }
+            }
+          );
+        } else {
+          if (isMounted) {
+            setIsPremiumUser(false);
+          }
+        }
+
+        if (isMounted) {
+          setIsAuthReady(true);
+          setIsLoading(false);
+        }
+      });
+
+      return unsubscribeAuth;
     };
 
-    window.addEventListener("keydown", handleKeyPress);
-    return () => window.removeEventListener("keydown", handleKeyPress);
-  }, []);
+    const cleanup = initializeAuth();
+
+    return () => {
+      isMounted = false;
+      cleanup.then((unsubscribe) => unsubscribe());
+      SubscriptionManager.stopListening();
+    };
+  }, [navigate]);
 
   const handleExampleClick = (question) => {
+    if (!isPremiumUser) {
+      navigate("/subscriptions");
+      return;
+    }
     setQuery(question);
     inputRef.current?.focus();
   };
@@ -68,6 +112,11 @@ const InsightsPage = () => {
     e.preventDefault();
     if (!query.trim()) return;
 
+    if (!isPremiumUser) {
+      navigate("/subscriptions");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -75,8 +124,6 @@ const InsightsPage = () => {
         method: "POST",
         body: JSON.stringify({ question: query }),
       });
-
-      console.log(data);
 
       if (data.status === "error" || data.type === "error") {
         throw new Error(
@@ -104,6 +151,37 @@ const InsightsPage = () => {
       setIsLoading(false);
     }
   };
+
+  if (!isAuthReady || isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isPremiumUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 via-indigo-50 to-white">
+        <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-12">
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              Premium Feature
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Access to AI Insights requires a premium subscription.
+            </p>
+            <button
+              onClick={() => navigate("/subscriptions")}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg shadow-blue-200"
+            >
+              Upgrade to Premium
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 via-indigo-50 to-white">

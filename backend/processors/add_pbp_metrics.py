@@ -694,8 +694,8 @@ def process_single_year(args):
 
 
 def main():
-    years = [2023, 2024]
-    division = 1  # Only process D1
+    years = [2021, 2022, 2023, 2024]
+    division = 2  # Only process D1
     all_pbp_data = []
 
     columns = [
@@ -724,14 +724,14 @@ def main():
             cursor = conn.cursor()
             cursor.execute("""
                 DELETE FROM pbp 
-                WHERE division = 1 
-                AND year IN (2023, 2024)
+                WHERE division = 2 
+                AND year IN (2021, 2022, 2023, 2024)
             """)
 
             # Then insert new data
             combined_pbp.to_sql('pbp', conn, if_exists='append', index=False)
             conn.commit()
-            print("Successfully updated database with new D1 2023-2024 data!")
+            print("Successfully updated database!")
 
         except Exception as e:
             print(f"Error updating database: {e}")

@@ -138,7 +138,7 @@ function App() {
               <Route
                 path="/insights"
                 element={
-                  <ProtectedRoute requiresPremium>
+                  <ProtectedRoute>
                     <InsightsPage />
                   </ProtectedRoute>
                 }

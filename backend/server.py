@@ -19,7 +19,7 @@ import stripe
 import firebase_admin
 from firebase_admin import firestore, auth, credentials
 from functools import wraps
-from stripe_service import StripeService
+from stripe_service import setup_stripe_routes, StripeService
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
@@ -1106,10 +1106,10 @@ def get_situational_leaderboard():
                         s.BA_High_Leverage,
                         s.BA_Low_Leverage,
                         s.BA_RISP,
-                        s.REA_Overall,
-                        s.REA_High_Leverage,
-                        s.REA_Low_Leverage,
-                        s.REA_RISP, 
+                        s.RE24_Overall,
+                        s.RE24_High_Leverage,
+                        s.RE24_Low_Leverage,
+                        s.RE24_RISP, 
                         p.Clutch,
                         p.WPA,
                         p.[WPA/LI],
@@ -1147,6 +1147,178 @@ def get_situational_leaderboard():
         conn.close()
 
 
+@app.route('/api/leaderboards/splits', methods=['GET'])
+@require_premium
+def get_splits_leaderboard():
+    start_year = request.args.get('start_year', '2024')
+    end_year = request.args.get('end_year', '2024')
+    min_pa = request.args.get('min_pa', '50')
+    division = request.args.get('division', type=int, default=3)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+        min_pa = int(min_pa)
+    except ValueError:
+        return jsonify({"error": "Invalid parameters"}), 400
+
+    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+        return jsonify({"error": "Invalid year range"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    results = []
+
+    try:
+        for year in range(start_year, end_year + 1):
+            query = """
+                WITH splits_query AS (
+                    SELECT DISTINCT
+                        p.Player,
+                        p.Team,
+                        p.Season,
+                        p.Conference,
+                        p.player_id,
+                        i.prev_team_id,
+                        i.conference_id,
+                        s.Division,
+                        -- Overall Stats
+                        s.[PA_Overall] as 'PA_Overall',
+                        s.[BA_Overall] as 'BA_Overall',
+                        s.[OBP_Overall] as 'OBP_Overall',
+                        s.[SLG_Overall] as 'SLG_Overall',
+                        s.[wOBA_Overall] as 'wOBA_Overall',
+                        -- vs RHP Stats
+                        s.[PA_vs RHP] as 'PA_vs RHP',
+                        s.[BA_vs RHP] as 'BA_vs RHP',
+                        s.[OBP_vs RHP] as 'OBP_vs RHP',
+                        s.[SLG_vs RHP] as 'SLG_vs RHP',
+                        s.[wOBA_vs RHP] as 'wOBA_vs RHP',
+                        -- vs LHP Stats
+                        s.[PA_vs LHP] as 'PA_vs LHP',
+                        s.[BA_vs LHP] as 'BA_vs LHP',
+                        s.[OBP_vs LHP] as 'OBP_vs LHP',
+                        s.[SLG_vs LHP] as 'SLG_vs LHP',
+                        s.[wOBA_vs LHP] as 'wOBA_vs LHP'
+                    FROM splits s
+                    JOIN batting_war p 
+                        ON s.batter_standardized = p.Player 
+                        AND s.bat_team = p.Team
+                        AND s.Year = p.Season
+                        AND s.Division = p.Division
+                    LEFT JOIN ids_for_images i 
+                        ON p.Team = i.team_name
+                    WHERE s.[PA_Overall] >= ? 
+                        AND p.Division = ? 
+                        AND p.Season = ?
+                        AND s.Year = ?
+                    ORDER BY s.[wOBA_Overall] DESC
+                )
+                SELECT * FROM splits_query
+            """
+
+            cursor.execute(query, (min_pa, division, year, year))
+            columns = [col[0] for col in cursor.description]
+            year_results = [dict(zip(columns, row))
+                            for row in cursor.fetchall()]
+            results.extend(year_results)
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
+
+
+@app.route('/api/leaderboards/batted_ball', methods=['GET'])
+@require_premium
+def get_batted_ball_leaders():
+    start_year = request.args.get('start_year', '2024')
+    end_year = request.args.get('end_year', '2024')
+    division = request.args.get('division', type=int, default=3)
+    bb_count = request.args.get('min_bb', '50')
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+    except ValueError:
+        return jsonify({"error": "Invalid parameters"}), 400
+
+    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+        return jsonify({"error": "Invalid year range"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    results = []
+
+    try:
+        for year in range(start_year, end_year + 1):
+            query = """
+                WITH battedball_query AS (
+                    SELECT DISTINCT
+                        p.Player,
+                        p.Team,
+                        p.Season,
+                        p.Conference,
+                        p.player_id,
+                        i.prev_team_id,
+                        i.conference_id,
+                        bb.Division,
+                        bb.count,
+                        bb.batter_hand,
+                        bb.pull_pct,
+                        bb.oppo_pct,
+                        bb.middle_pct,
+                        bb.gb_pct,
+                        bb.fb_pct,
+                        bb.ld_pct,
+                        bb.pop_pct,
+                        bb.pull_air_pct,
+                        bb.oppo_gb_pct,
+                    FROM batted_ball bb
+                    JOIN batting_war p 
+                        ON bb.batter_standardized = p.Player 
+                        AND bb.bat_team = p.Team
+                        AND bb.year = p.Season
+                        AND bb.Division = p.Division
+                    LEFT JOIN ids_for_images i 
+                        ON p.Team = i.team_name
+                    WHERE p.Division = ? 
+                        AND bb.count >= ?
+                        AND p.Season = ?
+                        AND bb.year = ?
+                    ORDER BY bb.count DESC
+                )
+                SELECT * FROM battedball_query
+            """
+
+            cursor.execute(query, (division, bb_count, year, year))
+            columns = [col[0] for col in cursor.description]
+            year_results = [dict(zip(columns, row))
+                            for row in cursor.fetchall()]
+            results.extend(year_results)
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
+
+
 @app.route('/api/games/<int:year>/<game_id>', methods=['GET'])
 @require_premium
 def get_game(year, game_id):
@@ -1154,20 +1326,58 @@ def get_game(year, game_id):
     cursor = conn.cursor()
 
     cursor.execute("""
+        WITH division_info AS (
+            SELECT division FROM pbp 
+            WHERE game_id = ? AND year = ? 
+            LIMIT 1
+        ),
+        converted_pbp AS (
+            SELECT p.*,
+            CASE 
+                WHEN p.division IN (1, 2) THEN CAST(CAST(batter_id AS FLOAT) AS INTEGER)
+                ELSE batter_id 
+            END as converted_batter_id,
+            CASE 
+                WHEN p.division IN (1, 2) THEN CAST(CAST(pitcher_id AS FLOAT) AS INTEGER)
+                ELSE pitcher_id 
+            END as converted_pitcher_id
+            FROM pbp p
+            WHERE game_id = ? 
+            AND description IS NOT NULL 
+            AND year = ?
+        ),
+        converted_batting_war AS (
+            SELECT b.*,
+            CASE 
+                WHEN d.division IN (1, 2) THEN CAST(CAST(b.player_id AS FLOAT) AS INTEGER)
+                ELSE b.player_id 
+            END as converted_player_id
+            FROM batting_war b
+            CROSS JOIN division_info d
+            WHERE b.Season = ?
+        ),
+        converted_pitching_war AS (
+            SELECT p.*,
+            CASE 
+                WHEN d.division IN (1, 2) THEN CAST(CAST(p.player_id AS FLOAT) AS INTEGER)
+                ELSE p.player_id 
+            END as converted_player_id
+            FROM pitching_war p
+            CROSS JOIN division_info d
+            WHERE p.Season = ?
+        )
         SELECT DISTINCT
             p.home_team, p.away_team, p.home_score, p.away_score, p.date as game_date,
             p.inning, p.top_inning, p.game_id, p.description,
             p.home_win_exp_before, p.home_win_exp_after, p.wpa, p.run_expectancy_delta,
-            p.batter_id, p.player_id, p.pitcher_id, p.li, p.home_score_after, p.away_score_after,
+            p.converted_batter_id as batter_id, p.converted_pitcher_id as pitcher_id,
+            p.li, p.home_score_after, p.away_score_after,
             bw.Player as batter_name,
             pw.Player as pitcher_name, p.woba
-        FROM pbp p
-        LEFT JOIN batting_war bw ON p.batter_id = bw.player_id AND bw.Season = p.year 
-        LEFT JOIN pitching_war pw ON p.pitcher_id = pw.player_id AND pw.Season = p.year
-        WHERE p.game_id = ? 
-        AND p.description IS NOT NULL 
-        AND p.year = ?
-    """, (game_id, year))
+        FROM converted_pbp p
+        LEFT JOIN converted_batting_war bw ON p.converted_batter_id = bw.converted_player_id
+        LEFT JOIN converted_pitching_war pw ON p.converted_pitcher_id = pw.converted_player_id
+    """, (game_id, year, game_id, year, year, year))
 
     plays = [dict(row) for row in cursor.fetchall()]
 

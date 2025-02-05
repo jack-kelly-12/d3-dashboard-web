@@ -7,8 +7,20 @@ import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
+import { roundTo } from "../../utils/mathUtils";
 
-const SituationalLeaderboard = () => {
+const PERCENTAGE_COLUMNS = [
+  "oppo_pct",
+  "middle_pct",
+  "pull_pct",
+  "gb_pct",
+  "ld_pct",
+  "pop_pct",
+  "fb_pct",
+  "pull_air_pct",
+];
+
+const BattedBallLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [data, setData] = useState([]);
@@ -17,10 +29,22 @@ const SituationalLeaderboard = () => {
   const [startYear, setStartYear] = useState(2024);
   const [endYear, setEndYear] = useState(2024);
   const [selectedConference, setSelectedConference] = useState("");
-  const [minPA, setMinPA] = useState(50);
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
   const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [minBBCount, setMinBBCount] = useState(50);
+
+  const yearOptions = useMemo(() => [2024, 2023, 2022, 2021], []);
+  const bbCountOptions = useMemo(
+    () => [
+      { value: 1, label: "Min 1 BB" },
+      { value: 25, label: "Min 25 BB" },
+      { value: 50, label: "Min 50 BB" },
+      { value: 100, label: "Min 100 BB" },
+      { value: 150, label: "Min 150 BB" },
+    ],
+    []
+  );
 
   const fetchConferences = useCallback(async () => {
     if (!isAuthReady) return;
@@ -107,12 +131,15 @@ const SituationalLeaderboard = () => {
     setError(null);
     try {
       const rawData = await fetchAPI(
-        `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}&division=${division}`
+        `/api/leaderboards/batted_ball?start_year=${startYear}&end_year=${endYear}&division=${division}&min_bb=${minBBCount}`
       );
 
       const transformedData = rawData.map((row, index) => ({
         ...row,
         rank: index + 1,
+        ...Object.fromEntries(
+          PERCENTAGE_COLUMNS.map((key) => [key, roundTo(row[key], 1)])
+        ),
         renderedTeam: (
           <div className="flex items-center gap-2">
             <TeamLogo
@@ -145,7 +172,7 @@ const SituationalLeaderboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, endYear, minPA, division, isAuthReady]);
+  }, [startYear, endYear, division, minBBCount, isAuthReady]);
 
   useEffect(() => {
     fetchData();
@@ -217,104 +244,67 @@ const SituationalLeaderboard = () => {
         width: "80px",
       },
       {
-        name: "PA",
-        selector: (row) => row.PA_Overall,
+        name: "Count",
+        selector: (row) => row.count,
         sortable: true,
         width: "80px",
       },
       {
-        name: "BA",
-        selector: (row) => row.BA_Overall,
+        name: "Oppo%",
+        selector: (row) => row.oppo_pct,
         sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Overall?.toFixed(3) || "—",
+        width: "80px",
+        cell: (row) => `${row.oppo_pct}%`,
       },
       {
-        name: "wOBA",
-        selector: (row) => row.wOBA_Overall,
+        name: "Middle%",
+        selector: (row) => row.middle_pct,
         sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
+        width: "80px",
+        cell: (row) => `${row.middle_pct}%`,
       },
       {
-        name: "PA w/ RISP",
-        selector: (row) => row.PA_RISP,
+        name: "Pull%",
+        selector: (row) => row.pull_pct,
         sortable: true,
-        width: "110px",
+        width: "80px",
+        cell: (row) => `${row.pull_pct}%`,
       },
       {
-        name: "BA w/ RISP",
-        selector: (row) => row.BA_RISP,
+        name: "GB%",
+        selector: (row) => row.gb_pct,
         sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_RISP?.toFixed(3) || "—",
+        width: "80px",
+        cell: (row) => `${row.gb_pct}%`,
       },
       {
-        name: "wOBA w/ RISP",
-        selector: (row) => row.wOBA_RISP,
+        name: "LD%",
+        selector: (row) => row.ld_pct,
         sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
+        width: "80px",
+        cell: (row) => `${row.ld_pct}%`,
       },
       {
-        name: "LI+ PA",
-        selector: (row) => row.PA_High_Leverage,
+        name: "Pop%",
+        selector: (row) => row.pop_pct,
         sortable: true,
-        width: "110px",
+        width: "80px",
+        cell: (row) => `${row.pop_pct}%`,
       },
       {
-        name: "LI+ BA",
-        selector: (row) => row.BA_High_Leverage,
+        name: "FB%",
+        selector: (row) => row.fb_pct,
         sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
+        width: "80px",
+        cell: (row) => `${row.fb_pct}%`,
       },
       {
-        name: "LI+ wOBA",
-        selector: (row) => row.wOBA_High_Leverage,
+        name: "PullAir%",
+        selector: (row) => row.pull_air_pct,
         sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
+        width: "80px",
+        cell: (row) => `${row.pull_air_pct}%`,
       },
-      {
-        name: "LI- PA",
-        selector: (row) => row.PA_Low_Leverage,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "LI- BA",
-        selector: (row) => row.BA_Low_Leverage,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "LI- wOBA",
-        selector: (row) => row.wOBA_Low_Leverage,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "Clutch",
-        selector: (row) => row.Clutch,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.Clutch?.toFixed(3) || "—",
-      },
-    ],
-    []
-  );
-
-  const yearOptions = useMemo(() => [2024, 2023, 2022, 2021], []);
-  const paOptions = useMemo(
-    () => [
-      { value: 1, label: "Min 1 PA" },
-      { value: 25, label: "Min 25 PA" },
-      { value: 50, label: "Min 50 PA" },
-      { value: 100, label: "Min 100 PA" },
-      { value: 150, label: "Min 150 PA" },
     ],
     []
   );
@@ -332,12 +322,14 @@ const SituationalLeaderboard = () => {
       {/* Explanation Banner */}
       <div className="bg-white border-l-4 border-blue-500 rounded-lg p-6 mb-6">
         <h3 className="text-base font-semibold text-blue-800 mb-2">
-          What is the Situational Leaderboard?
+          What is the Batted Ball Leaderboard?
         </h3>
-        <p className="text-sm text-gray-700 leading-relaxed">
-          This leaderboard helps evaluate how players perform in different game
-          situations, with emphasis on moments that can significantly impact the
-          outcome of games.
+        <p className="text-sm text-gray-700 mt-1 leading-relaxed">
+          This leaderboard shows the distribution of batted balls for each
+          hitter. Some BIP were dropped from dataset due to ambiguity. Using
+          play-by-play level descriptions, we can get a good idea of the type of
+          hitter each player is. This can be useful for scouting, player
+          development, and game planning.
         </p>
       </div>
 
@@ -397,11 +389,11 @@ const SituationalLeaderboard = () => {
             </div>
 
             <select
-              value={minPA}
-              onChange={(e) => setMinPA(Number(e.target.value))}
+              value={minBBCount}
+              onChange={(e) => setMinBBCount(Number(e.target.value))}
               className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {paOptions.map((option) => (
+              {bbCountOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -436,8 +428,8 @@ const SituationalLeaderboard = () => {
           <BaseballTable
             data={filteredData}
             columns={columns}
-            defaultSortField="wOBA_Overall"
-            defaultSortAsc={false}
+            defaultSortField="count"
+            defaultSortAsc={true}
           />
         </div>
       )}
@@ -445,4 +437,4 @@ const SituationalLeaderboard = () => {
   );
 };
 
-export default SituationalLeaderboard;
+export default BattedBallLeaderboard;

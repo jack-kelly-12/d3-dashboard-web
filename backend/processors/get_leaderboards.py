@@ -113,7 +113,9 @@ class BaseballAnalytics:
                 'wOBA': np.nan,
                 'BA': np.nan,
                 'PA': 0,
-                'rea': 0
+                'RE24': 0,
+                'SLG': np.nan,
+                'OBP': np.nan
             })
 
         # Calculate batting average
@@ -134,13 +136,20 @@ class BaseballAnalytics:
             self.weights.get('home_run', 0) * events['HOME_RUN']
         )
 
-        woba = woba_numerator / pa if pa > 0 else np.nan
+        woba = woba_numerator / \
+            (ab + events['WALK'] + sf + events['HBP'])
+        slg = (events['SINGLE'] + 2 * events['DOUBLE'] + 3 *
+               events['TRIPLE'] + 4 * events['HOME_RUN']) / ab if ab > 0 else np.nan
+        obp = (hits + events['WALK'] + sf + events['HBP']) / \
+            (ab + events['WALK'] + sf + events['HBP'])
 
         return pd.Series({
             'wOBA': woba,
             'BA': ba,
             'PA': pa,
-            'rea': rea
+            'RE24': rea,
+            'SLG': slg,
+            'OBP': obp
         })
 
     def analyze_situations(self):
@@ -174,7 +183,7 @@ class BaseballAnalytics:
         pivot = final_df.pivot(
             index=['batter_id', 'batter_standardized', 'bat_team'],
             columns='Situation',
-            values=['wOBA', 'BA', 'PA', 'rea']
+            values=['wOBA', 'BA', 'PA', 'RE24', 'OBP', 'SLG']
         )
 
         # Clean up column names
@@ -210,24 +219,76 @@ class BaseballAnalytics:
 
         pull_air = self.df[(self.df['is_fly']) & self.df['is_pull']].groupby(
             'batter_standardized').size()
+        oppo_gb = self.df[(self.df['is_ground']) & self.df['is_oppo']].groupby(
+            'batter_standardized').size()
         stats['pull_air_pct'] = (pull_air / total * 100).fillna(0)
+        stats['oppo_gb_pct'] = (oppo_gb / total * 100).fillna(0)
         stats = stats.reset_index()
 
         return stats[[
             'batter_standardized', 'bat_team', 'batter_id', 'batter_hand', 'description',
             'pull_pct', 'middle_pct', 'oppo_pct',
             'gb_pct', 'fb_pct', 'ld_pct', 'pop_pct',
-            'pull_air_pct',
+            'pull_air_pct', 'oppo_gb_pct'
         ]].rename(columns={'description': 'count'}).sort_values('count', ascending=False).fillna(0)
+
+    def analyze_splits(self):
+        """Analyze performance splits vs LHP and RHP"""
+        splits_list = [
+            ('vs LHP',
+             self.original_df[self.original_df['pitcher_hand'] == 'L']),
+            ('vs RHP',
+             self.original_df[self.original_df['pitcher_hand'] == 'R']),
+            ('Overall',
+             self.original_df),
+        ]
+
+        results = []
+        for name, data in splits_list:
+            if not data.empty:
+                grouped = (data.groupby(['batter_id', 'batter_standardized', 'bat_team'])
+                           .apply(self.calculate_metrics)
+                           .reset_index())
+                grouped['Split'] = name
+                results.append(grouped)
+
+        if not results:
+            return pd.DataFrame()
+
+        return pd.concat(results, axis=0).reset_index(drop=True)
+
+    def get_splits_results(self):
+        """Generate pivoted results for platoon splits"""
+        final_df = self.analyze_splits()
+
+        if final_df.empty:
+            # Return empty DataFrame with expected columns
+            cols = ['batter_id', 'batter_standardized', 'bat_team']
+            cols.extend([f"{stat}_vs {hand}" for stat in ['wOBA', 'BA', 'PA', 'RE24', 'OBP', 'SLG']
+                        for hand in ['LHP', 'RHP']])
+            return pd.DataFrame(columns=cols)
+
+        pivot = final_df.pivot(
+            index=['batter_id', 'batter_standardized', 'bat_team'],
+            columns='Split',
+            values=['wOBA', 'BA', 'PA', 'RE24', 'OBP', 'SLG']
+        )
+
+        # Clean up column names
+        pivot.columns = [f"{stat}_{sit}" for stat, sit in pivot.columns]
+        return pivot.reset_index()
 
 
 def run_analysis(pbp_df, year, division):
     try:
         analytics = BaseballAnalytics(pbp_df, year, division)
-        return analytics.get_pivot_results(), analytics.calc_batted_ball_stats()
+        situational = analytics.get_pivot_results()
+        batted_ball = analytics.calc_batted_ball_stats()
+        splits = analytics.get_splits_results()
+        return situational, batted_ball, splits
     except Exception as e:
         print(f"Error running analysis: {str(e)}")
-        return None
+        return None, None, None
 
 
 def get_data(year, division):
@@ -286,69 +347,55 @@ def main():
     all_situational = []
     all_baserunning = []
     all_batted_ball = []
+    all_splits = []
 
     for year in range(2021, 2025):
         for division in range(1, 4):
             print(f'Processing data for {year} D{division}')
             try:
                 pbp_df, bat_war = get_data(year, division)
-
-                situational, batted_ball = run_analysis(
+                situational, batted_ball, splits = run_analysis(
                     pbp_df, year, division)
-                situational['Year'] = year
-                situational['Division'] = division
-                all_situational.append(situational)
 
-                batted_ball['Year'] = year
-                batted_ball['Division'] = division
-                all_batted_ball.append(batted_ball)
+                if all(result is not None for result in [situational, batted_ball, splits]):
+                    # Add year and division to each dataset
+                    for df, lst in [(situational, all_situational),
+                                    (batted_ball, all_batted_ball),
+                                    (splits, all_splits)]:
+                        df['Year'] = year
+                        df['Division'] = division
+                        lst.append(df)
 
-                # Get baserunning data
-                baserun = bat_war[['Player', 'player_id', 'Team', 'Conference', 'SB%', 'wSB',
-                                   'wGDP', 'wTEB', 'Baserunning', 'EBT', 'OutsOB', 'Opportunities',
-                                   'CS', 'SB', 'Picked']].sort_values('Baserunning')
-                baserun['Year'] = year
-                baserun['Division'] = division
-                all_baserunning.append(baserun)
+                    # Get baserunning data
+                    baserun = bat_war[['Player', 'player_id', 'Team', 'Conference', 'SB%', 'wSB',
+                                       'wGDP', 'wTEB', 'Baserunning', 'EBT', 'OutsOB', 'Opportunities',
+                                      'CS', 'SB', 'Picked']].sort_values('Baserunning')
+                    baserun['Year'] = year
+                    baserun['Division'] = division
+                    all_baserunning.append(baserun)
 
             except Exception as e:
                 print(f"Error processing {year} D{division}: {e}")
                 continue
 
     # Combine all data
-    combined_situational = pd.concat(all_situational, ignore_index=True)
-    combined_baserunning = pd.concat(all_baserunning, ignore_index=True)
-    combined_batted_ball = pd.concat(all_batted_ball, ignore_index=True)
+    data_sets = {
+        'situational': (all_situational, ['batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division']),
+        'baserunning': (all_baserunning, ['player_id', 'Team', 'Year', 'Division']),
+        'batted_ball': (all_batted_ball, ['batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division']),
+        'splits': (all_splits, ['batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division'])
+    }
 
-    combined_situational = combined_situational.drop_duplicates(subset=[
-        'batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division'
-    ])
+    for name, (data_list, dedup_cols) in data_sets.items():
+        if data_list:
+            combined_df = pd.concat(data_list, ignore_index=True)
+            combined_df = combined_df.drop_duplicates(subset=dedup_cols)
 
-    combined_baserunning = combined_baserunning.drop_duplicates(subset=[
-        'player_id', 'Team', 'Year', 'Division'
-    ])
-
-    combined_batted_ball = combined_batted_ball.drop_duplicates(subset=[
-        'batter_id', 'batter_standardized', 'bat_team', 'Year', 'Division'
-    ])
-
-    combined_situational.to_sql(
-        'situational', conn, if_exists='replace', index=False)
-    combined_situational.to_csv(
-        '../data/leaderboards/situational.csv', index=False)
-
-    combined_baserunning.to_sql(
-        'baserunning', conn, if_exists='replace', index=False)
-    combined_baserunning.to_csv(
-        '../data/leaderboards/baserunning.csv', index=False)
-
-    combined_batted_ball.to_sql(
-        'batted_ball', conn, if_exists='replace', index=False)
-    combined_batted_ball.to_csv(
-        '../data/leaderboards/batted_ball.csv', index=False)
+            # Save to both SQL and CSV
+            combined_df.to_sql(name, conn, if_exists='replace', index=False)
+            combined_df.to_csv(f'../data/leaderboards/{name}.csv', index=False)
 
     conn.close()
-
     print("Processing complete!")
 
 
