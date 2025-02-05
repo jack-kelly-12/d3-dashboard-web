@@ -18,6 +18,7 @@ const PERCENTAGE_COLUMNS = [
   "pop_pct",
   "fb_pct",
   "pull_air_pct",
+  "oppo_gb_pct",
 ];
 
 const BattedBallLeaderboard = () => {
@@ -299,11 +300,18 @@ const BattedBallLeaderboard = () => {
         cell: (row) => `${row.fb_pct}%`,
       },
       {
-        name: "PullAir%",
+        name: "Pull Air%",
         selector: (row) => row.pull_air_pct,
         sortable: true,
-        width: "80px",
+        width: "120px",
         cell: (row) => `${row.pull_air_pct}%`,
+      },
+      {
+        name: "Backside GB%",
+        selector: (row) => row.oppo_gb_pct,
+        sortable: true,
+        width: "120px",
+        cell: (row) => `${row.oppo_gb_pct}%`,
       },
     ],
     []

@@ -22,8 +22,8 @@ class BaseballAnalytics:
         self.situations = None
         self.weights = None
         self.division = division
-        self.right_pattern = r'to right|to 1b|to 2b|rf line|2b to ss|to rf|right side|by 1b|by 2b|by second base|to second base|by first base|to first base|1b line|by rf|by right field'
-        self.left_pattern = r'to left|to ss|to 3b|ss to 2b|lf line|left side|to lf|by 3b|by ss|by shortstop|to shortstop|by third base|to third base|down the 3b line|by lf|by left field'
+        self.right_pattern = r'to right|to 1b|rf line|to rf|right side|by 1b|by first base|to first base|1b line|by rf|by right field'
+        self.left_pattern = r'to left|to 3b|lf line|left side|to lf|by 3b|by third base|to third base|down the 3b line|by lf|by left field'
 
         self.fly_pattern = r'fly|flied|homered|tripled to (?:left|right|cf|center)|doubled to (?:right|rf)'
         self.lined_pattern = r'tripled (?:to second base|,)|singled to (?:center|cf)|doubled down the (?:lf|rf) line|lined|doubled|singled to (?:left|right|rf|lf)'
@@ -69,26 +69,103 @@ class BaseballAnalytics:
 
     def prepare_batted_ball(self):
         self.df = self.original_df.copy()
-        is_to_right = self.df['description'].str.contains(
-            self.right_pattern, na=False, regex=True)
-        is_to_left = self.df['description'].str.contains(
-            self.left_pattern, na=False, regex=True)
-        self.df['is_pull'] = ((self.df['batter_hand'] == 'L') & is_to_right) | (
-            (self.df['batter_hand'] == 'R') & is_to_left)
-        self.df['is_oppo'] = ((self.df['batter_hand'] == 'L') & is_to_left) | (
-            (self.df['batter_hand'] == 'R') & is_to_right)
-        self.df['is_middle'] = self.df['description'].str.contains(
-            r'to ss|to 2b|to cf|ss to 2b|2b to ss|left center|right center|to p|to c|up the middle|by p|by c',
-            na=False
-        )
-        self.df['is_ground'] = self.df['description'].str.contains(
-            self.ground_pattern, na=False)
-        self.df['is_fly'] = self.df['description'].str.contains(
-            self.fly_pattern, na=False) & ~self.df['is_ground']
-        self.df['is_lined'] = self.df['description'].str.contains(
-            self.lined_pattern, na=False) & ~self.df['is_ground'] & ~self.df['is_fly']
-        self.df['is_popped'] = self.df['description'].str.contains(
-            self.popped_pattern, na=False) & ~self.df['is_ground'] & ~self.df['is_fly'] & ~self.df['is_lined']
+        self.df = self.df[~self.df['hit_type'].isin(['K', 'B'])]
+        self.df = self.df[~self.df['event_cd'].isin(
+            [14, 16, 9, 17, 4, 6, 10, 8, 11])]
+        self.df = self.df.dropna(subset=['batter_hand', 'bat_order'])
+
+        direction_patterns = {
+            'right': ['by right field', 'by rf', 'by 1b', 'by first base', 'to right field', 'through the right side', 'to rf', 'down the rf line', 'down the 1b line', 'to first base', 'to 1b'],
+            'left': ['by left field', 'by lf', 'by third base', 'by 3b', 'to left field', 'through the left side', 'down the lf line', 'to lf', 'down the 3b line', 'to third base', 'to 3b', 'by third base', 'by 3b'],
+            'middle': ['to ss', 'to 2b', 'by 2b', 'by p', 'by pitcher', 'by c', 'by catcher', 'by shortstop', 'by ss', 'by 2b', 'by second base', 'to shortstop', 'to second base', 'to c', 'to cf', 'ss to 2b', '2b to ss', 'to center', 'up the middle', 'to right center', 'to left center', 'to p']
+        }
+
+        hit_type_patterns = {
+            'ground': [
+                'ground',
+                'hit into double play',
+                'hit into triple play',
+                'reached on error',
+                "fielder's choice",
+                'singled to catcher',
+                'singled to p',
+                'singled to 3b',
+                'singled to 1b',
+                'singled to 2b',
+                'singled to ss',
+                'down the 1b line',
+                'down the 3b line',
+                'down the rf line',
+                'down the lf line',
+                'through the left side',
+                'through the right side'
+            ],
+            'fly': [
+                'fly',
+                'flied',
+                'homered',
+                'to rf',
+                'to lf',
+                'to cf'
+            ],
+            'lined': [
+                'lined',
+                'doubled down',
+                'doubled to'
+            ],
+            'popped': [
+                'popped',
+                'fouled out',
+                'fouled into'
+            ]
+        }
+
+        descriptions = self.df['description'].str.lower()
+        batter_hands = self.df['batter_hand']
+
+        # Direction classification
+        self.df['is_pull'] = False
+        self.df['is_oppo'] = False
+        self.df['is_middle'] = False
+
+        for pattern_list, field in [(direction_patterns['right'], 'right'),
+                                    (direction_patterns['left'], 'left'),
+                                    (direction_patterns['middle'], 'middle')]:
+            mask = descriptions.str.contains(
+                '|'.join(pattern_list), regex=True, na=False)
+            if field == 'right':
+                self.df.loc[mask & (batter_hands == 'L'), 'is_pull'] = True
+                self.df.loc[mask & (batter_hands == 'R'), 'is_oppo'] = True
+            elif field == 'left':
+                self.df.loc[mask & (batter_hands == 'R'), 'is_pull'] = True
+                self.df.loc[mask & (batter_hands == 'L'), 'is_oppo'] = True
+            else:
+                self.df.loc[mask, 'is_middle'] = True
+
+        self.df['direction_sum'] = self.df['is_pull'].astype(
+            int) + self.df['is_middle'].astype(int) + self.df['is_oppo'].astype(int)
+        self.df = self.df[self.df['direction_sum'] == 1]
+
+        # Hit type classification
+        self.df['is_ground'] = False
+        self.df['is_fly'] = False
+        self.df['is_lined'] = False
+        self.df['is_popped'] = False
+
+        for hit_type, patterns in hit_type_patterns.items():
+            mask = descriptions.str.contains(
+                '|'.join(patterns), regex=True, na=False)
+            # Only set True for rows that haven't been classified yet
+            unclassified = ~(self.df['is_ground'] | self.df['is_fly']
+                             | self.df['is_lined'] | self.df['is_popped'])
+            if hit_type == 'ground':
+                self.df.loc[mask & unclassified, 'is_ground'] = True
+            elif hit_type == 'fly':
+                self.df.loc[mask & unclassified, 'is_fly'] = True
+            elif hit_type == 'lined':
+                self.df.loc[mask & unclassified, 'is_lined'] = True
+            elif hit_type == 'popped':
+                self.df.loc[mask & unclassified, 'is_popped'] = True
 
     def calculate_metrics(self, group):
         if self.weights is None:
@@ -169,7 +246,7 @@ class BaseballAnalytics:
         results = []
         for name, data in situations_list:
             grouped = (data.groupby(['batter_id', 'batter_standardized', 'bat_team'])
-                       .apply(self.calculate_metrics)
+                       .apply(self.calculate_metrics, include_groups=False)
                        .reset_index())
             grouped['Situation'] = name
             results.append(grouped)
@@ -197,13 +274,13 @@ class BaseballAnalytics:
             'bat_team': 'first',
             'batter_hand': 'first',
             'description': 'count',
-            'is_pull': 'sum',
-            'is_oppo': 'sum',
-            'is_middle': 'sum',
-            'is_ground': 'sum',
-            'is_fly': 'sum',
-            'is_lined': 'sum',
-            'is_popped': 'sum',
+            'is_pull': lambda x: (x == True).sum(),
+            'is_oppo': lambda x: (x == True).sum(),
+            'is_middle': lambda x: (x == True).sum(),
+            'is_ground': lambda x: (x == True).sum(),
+            'is_fly': lambda x: (x == True).sum(),
+            'is_lined': lambda x: (x == True).sum(),
+            'is_popped': lambda x: (x == True).sum(),
         })
 
         total = stats['description']
@@ -247,7 +324,7 @@ class BaseballAnalytics:
         for name, data in splits_list:
             if not data.empty:
                 grouped = (data.groupby(['batter_id', 'batter_standardized', 'bat_team'])
-                           .apply(self.calculate_metrics)
+                           .apply(self.calculate_metrics, include_groups=False)
                            .reset_index())
                 grouped['Split'] = name
                 results.append(grouped)
