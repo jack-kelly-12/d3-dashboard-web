@@ -1285,7 +1285,7 @@ def get_batted_ball_leaders():
                         bb.ld_pct,
                         bb.pop_pct,
                         bb.pull_air_pct,
-                        bb.oppo_gb_pct,
+                        bb.oppo_gb_pct
                     FROM batted_ball bb
                     JOIN batting_war p 
                         ON bb.batter_standardized = p.Player 
