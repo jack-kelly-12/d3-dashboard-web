@@ -1,22 +1,43 @@
 import React, { useState, useEffect, useMemo, memo } from "react";
-import {
-  Brain,
-  Database,
-  Lightbulb,
-  CheckCircle2,
-  Zap,
-  TableProperties,
-} from "lucide-react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { Brain, Database, Lightbulb, CheckCircle2, Zap } from "lucide-react";
 
-// Memoized ThoughtBubble component to prevent unnecessary re-renders
+const DataTable = ({ data }) => {
+  if (!data || !data.headers || !data.rows) return null;
+
+  return (
+    <div className="mt-6 overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            {data.headers.map((header, index) => (
+              <th
+                key={index}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.rows.map((row, rowIndex) => (
+            <tr key={rowIndex}>
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={cellIndex}
+                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-500"
+                >
+                  {cell?.toString() ?? ""}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 const ThoughtBubble = memo(({ type, content, isActive }) => {
   const types = useMemo(
     () => ({
@@ -85,94 +106,6 @@ const ThoughtBubble = memo(({ type, content, isActive }) => {
 
 ThoughtBubble.displayName = "ThoughtBubble";
 
-// Memoized DataVisualizer component
-const DataVisualizer = memo(({ data }) => {
-  const [visualizationType, setVisualizationType] = useState("table");
-
-  const chartData = useMemo(() => {
-    if (!data?.headers || !data?.rows?.length) return [];
-    return data.rows.map((row) => ({
-      name: row[0],
-      value: typeof row[1] === "number" ? row[1] : parseFloat(row[1]) || 0,
-    }));
-  }, [data]);
-
-  if (!data?.headers || !data?.rows?.length) return null;
-
-  return (
-    <div className="space-y-4 bg-white rounded-xl border border-gray-200 p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-medium text-gray-900 flex items-center gap-2">
-          <TableProperties className="h-4 w-4 text-blue-500" />
-          Data Visualization
-        </h3>
-        <div className="flex items-center gap-2">
-          {["table", "chart"].map((type) => (
-            <button
-              key={type}
-              onClick={() => setVisualizationType(type)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all
-                ${
-                  visualizationType === type
-                    ? "bg-blue-100 text-blue-700"
-                    : "text-gray-600 hover:bg-gray-100"
-                }`}
-            >
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {visualizationType === "table" ? (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                {data.headers.map((header, i) => (
-                  <th
-                    key={i}
-                    className="px-4 py-2 text-left text-sm font-semibold text-gray-600 border-b border-gray-200"
-                  >
-                    {header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.rows.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-gray-50">
-                  {row.map((cell, cellIndex) => (
-                    <td
-                      key={cellIndex}
-                      className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100"
-                    >
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="value" fill="#3B82F6" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </div>
-  );
-});
-
-DataVisualizer.displayName = "DataVisualizer";
-
 export const ResultCard = ({ result }) => {
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
@@ -188,46 +121,33 @@ export const ResultCard = ({ result }) => {
         }
 
         const stepLower = step.toLowerCase();
-
-        // Helper function to safely extract content
         const extractContent = (prefix) => {
           const parts = step.split(prefix);
           return parts.length > 1 ? parts[1].trim() : step.trim();
         };
 
-        // Handle SQL queries specially
         if (stepLower.includes("query:")) {
-          return {
-            type: "query",
-            content: extractContent("Query:"),
-          };
+          return { type: "query", content: extractContent("Query:") };
         }
-
-        // Process other step types
         if (stepLower.includes("thought:")) {
-          return {
-            type: "thought",
-            content: extractContent("Thought:"),
-          };
+          return { type: "thought", content: extractContent("Thought:") };
         }
         if (stepLower.includes("action:")) {
           const content = extractContent("Action:");
-          // If it's a SQL action, wait for the actual query
           if (content.toLowerCase().includes("execute_sql")) {
             return null;
           }
           return { type: "query", content };
         }
-        if (stepLower.includes("results:")) {
+        if (
+          stepLower.includes("results:") ||
+          stepLower.includes("observation:")
+        ) {
           return {
             type: "result",
-            content: extractContent("Results:"),
-          };
-        }
-        if (stepLower.includes("observation:")) {
-          return {
-            type: "result",
-            content: extractContent("Observation:"),
+            content: extractContent(
+              stepLower.includes("results:") ? "Results:" : "Observation:"
+            ),
           };
         }
         if (stepLower.includes("final answer:")) {
@@ -237,10 +157,9 @@ export const ResultCard = ({ result }) => {
           };
         }
 
-        // Default case - treat as thought
         return { type: "thought", content: step };
       })
-      .filter(Boolean); // Remove null/undefined entries
+      .filter(Boolean);
   }, [result?.analysis]);
 
   useEffect(() => {
@@ -258,9 +177,7 @@ export const ResultCard = ({ result }) => {
     return () => clearInterval(timer);
   }, [result, processedSteps.length]);
 
-  if (!result) {
-    return null;
-  }
+  if (!result) return null;
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
@@ -295,8 +212,7 @@ export const ResultCard = ({ result }) => {
             ))}
           </div>
         </div>
-
-        {result.data && <DataVisualizer data={result.data} />}
+        {result.data && <DataTable data={result.data} />}
       </div>
     </div>
   );

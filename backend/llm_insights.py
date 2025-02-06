@@ -222,7 +222,7 @@ class InsightsProcessor:
 
         # Create LLMs with different configurations
         self.json_llm = ChatOpenAI(
-            model_name="gpt-4o-mini",
+            model_name="o3-mini-2025-01-31",
             temperature=0.1,
             model_kwargs={"response_format": {"type": "json_object"}}
         )
@@ -623,9 +623,10 @@ class InsightsProcessor:
         2. Use rosters as the source of truth for team affiliations
         3. Include team context in all player-specific queries
         4. Validate matchups against proper team contexts
+        5. IMPORTANT: Use SQL syntax without any markdown formatting
             
             QUERY RULES:
-            1. Use brackets for special columns: [K%], [BB%], [wOBA], [HR%]
+            1. Use brackets for special columns: [K%], [BB%], [wOBA], [HR%], [OPS+]
             2. Column names are case-sensitive
             3. Use SQLite syntax (double quotes)
             4. Always filter Division = 3

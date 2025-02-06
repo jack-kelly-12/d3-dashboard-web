@@ -16,11 +16,11 @@ import {
   CalendarCheck,
   Trophy,
   User2,
+  Bot,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
 
-// Subcomponents
 const PremiumBadge = () => (
   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-500 text-white">
     Premium
@@ -261,6 +261,7 @@ const Sidebar = () => {
     { icon: Activity, path: "/guts", label: "Guts" },
     { icon: Trophy, path: "/leaderboards", label: "Leaderboards" },
     { icon: CalendarCheck, path: "/scoreboard", label: "Scoreboard" },
+    { icon: Bot, path: "/insights", label: "AI Insights" },
   ];
 
   const sidebarClasses = `
