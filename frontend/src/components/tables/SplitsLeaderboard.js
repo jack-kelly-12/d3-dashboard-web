@@ -303,13 +303,13 @@ const SplitsLeaderboard = () => {
   }
 
   return (
-    <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
+    <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
       {/* Explanation Banner */}
-      <div className="bg-white border border-blue-200 rounded-lg p-4 mb-6">
-        <h3 className="text-base font-semibold text-blue-800 mb-2">
+      <div className="bg-white border border-blue-200 rounded-lg p-4 lg:p-6 mb-6">
+        <h3 className="text-xs lg:text-base font-semibold text-blue-800 mb-2">
           What is the Splits Leaderboard?
         </h3>
-        <p className="text-sm text-gray-700 leading-relaxed">
+        <p className="text-xs lg:text-sm text-gray-700 leading-relaxed">
           The Splits Leaderboard shows how batters perform against left-handed
           and right-handed pitchers. Key metrics include batting average (BA),
           on-base percentage (OBP), slugging (SLG), and weighted on-base average
@@ -318,7 +318,7 @@ const SplitsLeaderboard = () => {
           minimum plate appearance filter ensures statistical significance.
         </p>
 
-        <blockquote className="text-sm border-l-4 border-blue-400 pl-4 italic text-gray-600 mt-2">
+        <blockquote className="text-xs lg:text-sm border-l-4 border-blue-400 pl-4 italic text-gray-600 mt-2">
           "Player X has a .320 wOBA overall, but shows a significant platoon
           split with a .350 wOBA vs RHP and .280 wOBA vs LHP across 200+ plate
           appearances, suggesting he sees the ball better against righties."
@@ -327,27 +327,29 @@ const SplitsLeaderboard = () => {
 
       {/* Controls */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
-        <div className="px-6 py-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 relative">
+        <div className="p-4 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+            <div className="w-full lg:w-64 relative">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                size={18}
+                size={16}
               />
               <input
                 type="text"
                 placeholder="Search"
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
               {isPremiumUser && (
                 <select
                   value={division}
                   onChange={(e) => setDivision(Number(e.target.value))}
-                  className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                      focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                 >
                   <option value={1}>Division 1</option>
                   <option value={2}>Division 2</option>
@@ -355,57 +357,63 @@ const SplitsLeaderboard = () => {
                 </select>
               )}
 
+              <div className="flex items-center gap-2 w-full lg:w-auto">
+                <select
+                  value={startYear}
+                  onChange={(e) => setStartYear(Number(e.target.value))}
+                  className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                      focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+                <span className="text-xs lg:text-sm text-gray-500">to</span>
+                <select
+                  value={endYear}
+                  onChange={(e) => setEndYear(Number(e.target.value))}
+                  className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                      focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <select
-                value={startYear}
-                onChange={(e) => setStartYear(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={minPA}
+                onChange={(e) => setMinPA(Number(e.target.value))}
+                className="w-full lg:w-36 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
+                {paOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>
-              <span className="text-gray-500">to</span>
-              <select
-                value={endYear}
-                onChange={(e) => setEndYear(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {yearOptions.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+
+              {conferences.length > 0 && (
+                <select
+                  value={selectedConference}
+                  onChange={(e) => setSelectedConference(e.target.value)}
+                  className="w-full lg:w-44 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                      focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">All Conferences</option>
+                  {conferences.map((conf) => (
+                    <option key={conf} value={conf}>
+                      {conf}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
-
-            <select
-              value={minPA}
-              onChange={(e) => setMinPA(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {paOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-
-            {conferences.length > 0 && (
-              <select
-                value={selectedConference}
-                onChange={(e) => setSelectedConference(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">All Conferences</option>
-                {conferences.map((conf) => (
-                  <option key={conf} value={conf}>
-                    {conf}
-                  </option>
-                ))}
-              </select>
-            )}
           </div>
         </div>
       </div>
@@ -413,7 +421,7 @@ const SplitsLeaderboard = () => {
       {/* Leaderboard Table */}
       {error ? (
         <div className="text-center py-12">
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-600 text-xs lg:text-sm">{error}</p>
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">

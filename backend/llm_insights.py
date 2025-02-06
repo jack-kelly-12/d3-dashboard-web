@@ -220,15 +220,14 @@ class InsightsProcessor:
         self.db = DatabaseConnection('./ncaa.db')
         self.reference_data = ReferenceData(self.db)
 
-        # Create LLMs with different configurations
         self.json_llm = ChatOpenAI(
-            model_name="o3-mini-2025-01-31",
+            model_name="gpt-4-turbo-preview",
             temperature=0.1,
             model_kwargs={"response_format": {"type": "json_object"}}
         )
 
         self.agent_llm = ChatOpenAI(
-            model_name="gpt-4o-mini",
+            model_name="gpt-4-turbo-preview",
             temperature=0.1
         )
 

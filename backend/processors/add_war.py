@@ -89,7 +89,7 @@ class BaseballStats:
         df.loc[~valid_ip_mask, ['FIP', 'xFIP']] = np.nan
 
         df['iPF'] = df['team_name'].map(runs_df.set_index('team_name')['iPF'])
-        df['PF'] = ((1 - (1 - df.iPF) * .4) * 100).fillna(100)
+        df['PF'] = ((1 - (1 - df.iPF) * .6) * 100).fillna(100)
 
         lg_era = (df.loc[valid_ip_mask, 'ER'].sum() /
                   df.loc[valid_ip_mask, 'IP'].sum()) * 9
@@ -394,7 +394,7 @@ class BaseballStats:
 
         return results.sort_values('EBT', ascending=False)
 
-    def process_batting_stats(self, df, weights_df, runs_df, pbp_df, roster):
+    def process_batting_stats(self, df, weights_df, runs_df, pbp_df, roster, division):
         if df.empty:
             return df
 
@@ -433,7 +433,7 @@ class BaseballStats:
         df = df[df['AB'] > 0]
 
         df['iPF'] = df['team_name'].map(runs_df.set_index('team_name')['iPF'])
-        df['PF'] = ((1 - (1 - df.iPF) * .4) * 100).fillna(100)
+        df['PF'] = ((1 - (1 - df.iPF) * .6) * 100).fillna(100)
         df['1B'] = df['H'] - df['HR'] - df['3B'] - df['2B']
         df['PA'] = df['AB'] + df['BB'] + df['IBB'] + df['HBP'] + df['SF']
 
@@ -459,7 +459,7 @@ class BaseballStats:
         denominator = df['AB'] + df['BB'] - df['IBB'] + df['SF'] + df['HBP']
         df['wOBA'] = numerator / denominator
 
-        return self._compute_batting_war(df, weights_df, division=pbp_df.division.iloc[0])
+        return self._compute_batting_war(df, weights_df, division=division)
 
     def _compute_batting_war(self, df, weights, division=3):
         df['PF'].fillna(100, inplace=True)
@@ -509,7 +509,7 @@ class BaseballStats:
         df['baserunning'] = df['wSB'] + df['wGDP'] + df['wTEB']
 
         base_adjustments = df['Pos'].map(self.position_adjustments).fillna(0)
-        division_scaling = division.map(lambda x: 45/35 if x in [2, 3] else 1)
+        division_scaling = np.where(division == 1, 1, 1.3)
         scaled_adjustments = base_adjustments * division_scaling
         df['Adjustment'] = scaled_adjustments * (df['GP'] / games_played)
 
@@ -596,7 +596,7 @@ class BaseballStats:
     def add_batting_cols_team(self, df, park_factors, guts, year):
         df['iPF'] = df['Team'].map(
             park_factors.set_index('team_name')['iPF'])
-        df['PF'] = ((1 - (1 - df.iPF) * .4) * 100).fillna(100)
+        df['PF'] = ((1 - (1 - df.iPF) * .6) * 100).fillna(100)
         df['1B'] = df['H'] - df['HR'] - df['3B'] - df['2B']
         df['PA'] = df['AB'] + df['BB'] + df['IBB'] + df['HBP'] + df['SF']
 
@@ -653,7 +653,7 @@ class BaseballStats:
 
         df['iPF'] = df['Team'].map(
             self.park_factors.set_index('team_name')['iPF'])
-        df['PF'] = ((1 - (1 - df.iPF) * .4) * 100).fillna(100)
+        df['PF'] = ((1 - (1 - df.iPF) * .6) * 100).fillna(100)
 
         df['ERA+'] = 100 * \
             (2 - (df.ERA / ((df.ER.sum() / df.IP.sum()) * 9)) * (1 / (df.PF / 100)))
@@ -771,7 +771,8 @@ class BaseballStats:
                         year_guts,
                         self.park_factors,
                         pbp[current_index],
-                        rosters[current_index]
+                        rosters[current_index],
+                        division
                     )
                     batting_war_total = bat_war.WAR.sum()
 
