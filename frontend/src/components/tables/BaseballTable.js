@@ -19,7 +19,10 @@ const customStyles = {
   headCells: {
     style: {
       color: "#64748b",
-      fontSize: "12px",
+      fontSize: "10px",
+      "@media (min-width: 1024px)": {
+        fontSize: "12px",
+      },
       fontWeight: "600",
       letterSpacing: "0.05em",
       padding: "8px 5px",
@@ -34,7 +37,10 @@ const customStyles = {
   },
   cells: {
     style: {
-      fontSize: "14px",
+      fontSize: "12px",
+      "@media (min-width: 1024px)": {
+        fontSize: "14px",
+      },
       color: "#334155",
       padding: "10px 12px",
     },
@@ -90,7 +96,7 @@ export const BaseballTable = ({
         <div className="px-6 sm:px-2 py-4 border-b border-gray-200">
           <div className="flex flex-wrap justify-between items-center gap-4">
             {title && (
-              <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <h2 className="text-xs lg:text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 {title}
               </h2>
             )}
@@ -114,7 +120,9 @@ export const BaseballTable = ({
           paginationRowsPerPageOptions={[25, 50, 100]}
           noDataComponent={
             <div className="py-12 text-center">
-              <p className="text-gray-500 text-sm">No records found</p>
+              <p className="text-gray-500 text-xs lg:text-sm">
+                No records found
+              </p>
             </div>
           }
           fixedHeader
