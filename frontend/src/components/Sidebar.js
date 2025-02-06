@@ -261,7 +261,7 @@ const Sidebar = () => {
     { icon: Activity, path: "/guts", label: "Guts" },
     { icon: Trophy, path: "/leaderboards", label: "Leaderboards" },
     { icon: CalendarCheck, path: "/scoreboard", label: "Scoreboard" },
-    { icon: Bot, path: "/insights", label: "AI Insights" },
+    // { icon: Bot, path: "/insights", label: "AI Insights" },
   ];
 
   const sidebarClasses = `
