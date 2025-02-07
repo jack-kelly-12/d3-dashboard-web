@@ -446,6 +446,7 @@ const SituationalLeaderboard = () => {
             columns={columns}
             defaultSortField="wOBA_Overall"
             defaultSortAsc={false}
+            stickyColumns={[0, 1]}
           />
         </div>
       )}

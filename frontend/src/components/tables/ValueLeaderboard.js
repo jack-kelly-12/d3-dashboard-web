@@ -436,6 +436,7 @@ const ValueLeaderboard = () => {
             columns={columns}
             defaultSortField="WAR"
             defaultSortAsc={false}
+            stickyColumns={[0, 1]}
           />
         </div>
       )}

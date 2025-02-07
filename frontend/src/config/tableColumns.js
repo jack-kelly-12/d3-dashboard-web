@@ -107,6 +107,7 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "Team",
+          width: "80px",
           selector: (row) => row.Team,
           cell: (row) => row.renderedTeam,
           sortable: true,
@@ -336,6 +337,7 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "Team",
+          width: "80px",
           selector: (row) => row.Team,
           cell: (row) => row.renderedTeam,
           sortable: true,

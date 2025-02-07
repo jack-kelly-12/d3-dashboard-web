@@ -446,6 +446,7 @@ const BattedBallLeaderboard = () => {
             columns={columns}
             defaultSortField="count"
             defaultSortAsc={true}
+            stickyColumns={[0, 1]}
           />
         </div>
       )}

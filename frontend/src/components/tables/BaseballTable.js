@@ -14,6 +14,9 @@ const customStyles = {
       backgroundColor: "#f8fafc",
       borderBottom: "2px solid #e2e8f0",
       minHeight: "48px",
+      position: "sticky",
+      top: 0,
+      zIndex: 2,
     },
   },
   headCells: {
@@ -68,26 +71,53 @@ export const BaseballTable = ({
   columns,
   filename,
   searchComponent,
+  stickyColumns = [],
 }) => {
-  const stickyColumnKey = columns.some((col) => col.selector === "Player")
-    ? "Player"
-    : columns.some((col) => col.selector === "Team")
-    ? "Team"
-    : null;
+  const getStickyStyles = () => {
+    const styles = {};
+    let currentLeft = 0;
 
-  const formattedColumns = columns.map((column) => ({
-    ...column,
-    grow: column.selector === stickyColumnKey ? 0 : column.grow || 1,
-    width:
-      column.selector === stickyColumnKey ? "150px" : column.width || "auto",
-    style: {
-      ...column.style,
-      position: column.selector === stickyColumnKey ? "sticky" : "unset",
-      left: column.selector === stickyColumnKey ? 0 : "unset",
-      zIndex: column.selector === stickyColumnKey ? 1 : "unset",
-      backgroundColor:
-        column.selector === stickyColumnKey ? "#ffffff" : "inherit",
+    stickyColumns.forEach((columnIndex) => {
+      const columnWidth = columns[columnIndex].width || "150px";
+      styles[`.rdt_TableCol:nth-child(${columnIndex + 1})`] = {
+        position: "sticky",
+        left: `${currentLeft}px`,
+        zIndex: 3,
+        backgroundColor: "#f8fafc",
+      };
+
+      styles[`.rdt_TableCell:nth-child(${columnIndex + 1})`] = {
+        position: "sticky",
+        left: `${currentLeft}px`,
+        zIndex: 1,
+        backgroundColor: "inherit",
+      };
+
+      currentLeft += parseInt(columnWidth);
+    });
+
+    styles[".rdt_TableHead"] = {
+      position: "sticky",
+      top: 0,
+      zIndex: 2,
+    };
+
+    return styles;
+  };
+
+  const mergedStyles = {
+    ...customStyles,
+    tableWrapper: {
+      style: getStickyStyles(),
     },
+  };
+
+  const formattedColumns = columns.map((column, index) => ({
+    ...column,
+    grow: stickyColumns.includes(index) ? 0 : column.grow || 1,
+    width: stickyColumns.includes(index)
+      ? column.width || "150px"
+      : column.width || "auto",
   }));
 
   return (
@@ -109,12 +139,11 @@ export const BaseballTable = ({
         </div>
       )}
 
-      {/* Apply custom scrollbar styles to the DataTable container */}
-      <div className="custom-scrollbar">
+      <div className="overflow-auto">
         <DataTable
           columns={formattedColumns}
           data={data}
-          customStyles={customStyles}
+          customStyles={mergedStyles}
           pagination
           paginationPerPage={25}
           paginationRowsPerPageOptions={[25, 50, 100]}

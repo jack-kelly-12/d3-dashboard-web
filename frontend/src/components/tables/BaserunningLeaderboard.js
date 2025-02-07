@@ -408,6 +408,7 @@ const BaserunningLeaderboard = () => {
             columns={columns}
             defaultSortField="Baserunning"
             defaultSortAsc={false}
+            stickyColumns={[0, 1]}
           />
         </div>
       )}

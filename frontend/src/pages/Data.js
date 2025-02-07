@@ -16,6 +16,7 @@ const MemoizedTable = React.memo(({ data, dataType, filename }) => (
       data={data}
       columns={getDataColumns(dataType)}
       filename={filename}
+      stickyColumns={[0, 1]}
     />
   </div>
 ));
