@@ -79,36 +79,6 @@ class ChartManager {
     }
   }
 
-  async createChart(chartData) {
-    await this.waitForAuth();
-    const userId = this.currentUser?.uid;
-    if (!userId) throw new Error("User must be authenticated");
-
-    const chart = {
-      ...chartData,
-      userId,
-      pitches: chartData.pitches || [],
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      totalPitches: chartData.pitches?.length || 0,
-      zoneType: chartData.zoneType,
-    };
-
-    const docRef = await addDoc(this.chartsRef, chart);
-
-    const returnData = {
-      id: docRef.id,
-      ...chart,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      pitches: chartData.pitches || [],
-      totalPitches: chartData.pitches?.length || 0,
-      zoneType: chartData.zoneType,
-    };
-
-    return returnData;
-  }
-
   processChartDocuments(snapshot) {
     return snapshot.docs.map((doc) => {
       const data = doc.data();
@@ -130,10 +100,43 @@ class ChartManager {
         homeTeam: data.homeTeam || "",
         awayTeam: data.awayTeam || "",
         zoneType: data.zoneType,
+        recentPitchers: data.recentPitchers || [],
       };
 
       return processedData;
     });
+  }
+
+  async createChart(chartData) {
+    await this.waitForAuth();
+    const userId = this.currentUser?.uid;
+    if (!userId) throw new Error("User must be authenticated");
+
+    const chart = {
+      ...chartData,
+      userId,
+      pitches: chartData.pitches || [],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      totalPitches: chartData.pitches?.length || 0,
+      zoneType: chartData.zoneType,
+      recentPitchers: [],
+    };
+
+    const docRef = await addDoc(this.chartsRef, chart);
+
+    const returnData = {
+      id: docRef.id,
+      ...chart,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      pitches: chartData.pitches || [],
+      totalPitches: chartData.pitches?.length || 0,
+      zoneType: chartData.zoneType,
+      recentPitchers: [],
+    };
+
+    return returnData;
   }
 
   async updateChart(chartId, updateData) {
@@ -150,6 +153,24 @@ class ChartManager {
     }
 
     const { id, userId: _, createdAt, ...safeUpdateData } = updateData;
+
+    // If we're updating a pitcher, update the recent pitchers list
+    if (safeUpdateData.pitcher) {
+      const currentData = chartDoc.data();
+      const recentPitchers = currentData.recentPitchers || [];
+      const newPitcher = safeUpdateData.pitcher;
+
+      // Remove the pitcher if it already exists
+      const filteredPitchers = recentPitchers.filter(
+        (p) => p.name !== newPitcher.name
+      );
+
+      // Add the new pitcher to the front
+      safeUpdateData.recentPitchers = [newPitcher, ...filteredPitchers].slice(
+        0,
+        10
+      );
+    }
 
     const updatePayload = {
       ...safeUpdateData,

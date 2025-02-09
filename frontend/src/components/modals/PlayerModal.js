@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Search } from "lucide-react";
 
 const RadioGroup = ({ options, value, onChange, title }) => (
   <div>
@@ -39,10 +40,12 @@ const RadioGroup = ({ options, value, onChange, title }) => (
   </div>
 );
 
-const PlayerModal = ({ isOpen, onClose, onSubmit, type }) => {
+const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
   const [name, setName] = useState("");
   const [pitchHand, setPitchHand] = useState("right");
   const [batHand, setBatHand] = useState("right");
+  const [showRecent, setShowRecent] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSubmit = () => {
     onSubmit({
@@ -53,6 +56,11 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type }) => {
     setName("");
     setPitchHand("right");
     setBatHand("right");
+    onClose();
+  };
+
+  const selectRecentPitcher = (pitcher) => {
+    onSubmit(pitcher);
     onClose();
   };
 
@@ -113,6 +121,11 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type }) => {
     },
   ];
 
+  const recentPitchers = chart?.recentPitchers || [];
+  const filteredPitchers = recentPitchers.filter((pitcher) =>
+    pitcher.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -123,55 +136,113 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type }) => {
             Select {type.charAt(0).toUpperCase() + type.slice(1)}
           </h2>
         </div>
+
+        {type === "pitcher" && recentPitchers.length > 0 && (
+          <div className="flex items-center gap-2 px-6 pt-6">
+            <button
+              onClick={() => setShowRecent(true)}
+              className={`px-4 py-2 text-sm font-medium rounded-md ${
+                showRecent
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              Recent Pitchers
+            </button>
+            <button
+              onClick={() => setShowRecent(false)}
+              className={`px-4 py-2 text-sm font-medium rounded-md ${
+                !showRecent
+                  ? "bg-blue-50 text-blue-600"
+                  : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              New Pitcher
+            </button>
+          </div>
+        )}
+
         <div className="p-6">
-          <div className="space-y-6">
-            <div>
-              <label className="text-sm font-medium text-gray-700 mb-1 block">
-                Name
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder={`Enter ${type} name...`}
-              />
+          {type === "pitcher" && showRecent && recentPitchers.length > 0 ? (
+            <div className="space-y-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search recent pitchers..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <Search
+                  className="absolute left-3 top-2.5 text-gray-400"
+                  size={20}
+                />
+              </div>
+              <div className="max-h-[300px] overflow-y-auto space-y-2">
+                {filteredPitchers.map((pitcher) => (
+                  <button
+                    key={pitcher.name}
+                    onClick={() => selectRecentPitcher(pitcher)}
+                    className="w-full px-4 py-3 text-left border rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <div className="font-medium">{pitcher.name}</div>
+                    <div className="text-sm text-gray-500">
+                      {pitcher.pitchHand === "right" ? "RHP" : "LHP"}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
+          ) : (
+            <div className="space-y-6">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-1 block">
+                  Name
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder={`Enter ${type} name...`}
+                />
+              </div>
 
-            {type === "pitcher" && (
-              <RadioGroup
-                options={handOptions}
-                value={pitchHand}
-                onChange={setPitchHand}
-                title="Throws"
-              />
-            )}
+              {type === "pitcher" && (
+                <RadioGroup
+                  options={handOptions}
+                  value={pitchHand}
+                  onChange={setPitchHand}
+                  title="Throws"
+                />
+              )}
 
-            {type === "batter" && (
-              <RadioGroup
-                options={[...handOptions]}
-                value={batHand}
-                onChange={setBatHand}
-                title="Bats"
-              />
-            )}
-          </div>
+              {type === "batter" && (
+                <RadioGroup
+                  options={handOptions}
+                  value={batHand}
+                  onChange={setBatHand}
+                  title="Bats"
+                />
+              )}
 
-          <div className="flex justify-end space-x-3 mt-6">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={!name.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            >
-              Save
-            </button>
-          </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={!name.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

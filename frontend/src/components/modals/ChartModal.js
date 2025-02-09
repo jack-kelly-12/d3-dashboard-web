@@ -9,6 +9,7 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
     awayTeam: "",
     source: "d3",
     zoneType: "",
+    disableAutoOuts: false,
     lastUpdated: new Date().toLocaleDateString(),
     pitches: [],
   });
@@ -16,7 +17,6 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
   const chartTypes = [
     { value: "game", label: "Game" },
     { value: "bullpen", label: "Bullpen" },
-    // { value: "scripted_bullpen", label: "Scripted Bullpen" },
   ];
 
   const zoneTypes = [
@@ -126,6 +126,33 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter away team..."
               />
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="disableAutoOuts"
+                  checked={formData.disableAutoOuts}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      disableAutoOuts: e.target.checked,
+                    })
+                  }
+                  className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="disableAutoOuts"
+                  className="ml-2 block text-sm text-gray-700"
+                >
+                  Is this a scrimmage/live abs session?
+                </label>
+              </div>
+              <p className="text-sm text-gray-500 italic">
+                When enabled, the chart won't automatically update pitcher after
+                3 outs, inning change, etc.
+              </p>
             </div>
           </>
         )}

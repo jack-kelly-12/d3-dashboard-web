@@ -21,6 +21,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   const [pitches, setPitches] = useState(chart.pitches || []);
   const [isLoading, setIsLoading] = useState(true);
   const [isStrikeZone, setIsStrikeZone] = useState(true);
+  const disableAutoOuts = chart.disableAutoOuts || false;
   const [currentPitch, setCurrentPitch] = useState({
     velocity: null,
     type: "",
@@ -274,22 +275,24 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         }
 
         if (newOuts >= 3) {
-          newOuts = 0;
-          newBalls = 0;
-          newStrikes = 0;
+          if (!disableAutoOuts) {
+            newOuts = 0;
+            newBalls = 0;
+            newStrikes = 0;
 
-          if (topBottom === "Top") {
-            setTopBottom("Bottom");
-          } else {
-            setTopBottom("Top");
-            setInning((prev) => prev + 1);
+            if (topBottom === "Top") {
+              setTopBottom("Bottom");
+            } else {
+              setTopBottom("Top");
+              setInning((prev) => prev + 1);
+            }
+
+            setBatter(null);
+            setPitcher(null);
+            setNextModalType("batter");
+            setEditingPlayer("pitcher");
+            setIsPlayerModalOpen(true);
           }
-
-          setBatter(null);
-          setPitcher(null);
-          setNextModalType("batter");
-          setEditingPlayer("pitcher");
-          setIsPlayerModalOpen(true);
         }
 
         setBalls(newBalls);
@@ -335,10 +338,10 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         };
       }
 
-      // Reset forms and trigger new batter selection
       const shouldChangeBatter =
-        isNewBatterEvent ||
-        (isInPlay && (currentHit.result || currentHit.type));
+        (!disableAutoOuts || newOuts < 3) &&
+        (isNewBatterEvent ||
+          (isInPlay && (currentHit.result || currentHit.type)));
 
       if (shouldChangeBatter) {
         setBatter(null);
@@ -661,6 +664,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         onClose={() => setIsPlayerModalOpen(false)}
         onSubmit={handlePlayerSubmit}
         type={editingPlayer}
+        chart={chart}
       />
     </div>
   );
