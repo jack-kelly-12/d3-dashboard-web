@@ -30,9 +30,7 @@ const PlayerSelector = ({
           </div>
         ) : (
           <div className="text-gray-500 flex items-center justify-between">
-            <span>
-              {required ? `Select ${type}` : `Add ${type} (Optional)`}
-            </span>
+            <span>{required ? `Select ${type}` : `Add ${type}`}</span>
             <span className="text-xs bg-gray-100 px-2 py-1 rounded group-hover:bg-gray-200 transition-colors">
               {required ? "Required" : "Optional"}
             </span>
