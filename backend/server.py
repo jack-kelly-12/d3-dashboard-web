@@ -1,8 +1,7 @@
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from datetime import datetime
-from typing import Dict, List, Optional, Union
 from flask import jsonify
-from flask import Flask, jsonify, request, g
+from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
 import sqlite3
 import pandas as pd
@@ -19,12 +18,11 @@ import stripe
 import firebase_admin
 from firebase_admin import firestore, auth, credentials
 from functools import wraps
-from stripe_service import setup_stripe_routes, StripeService
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
-stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
-stripe.webhook_secret = os.getenv('STRIPE_WEBHOOK_SECRET')
+STRIPE_API_KEY = os.getenv('STRIPE_SECRET_KEY')
+STRIPE_WEBHOOK = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 
 cred = credentials.Certificate(
@@ -1613,12 +1611,209 @@ def query_insights():
         }), 500
 
 
-def init_stripe(app):
+class StripeService:
+    def __init__(self, db: firestore.Client):
+        self.db = db
+        self.webhook_secret = STRIPE_WEBHOOK
+
+    def _get_plan_type(self, price_id: Optional[str]) -> str:
+        """Determine the plan type based on price ID"""
+        if not price_id:
+            return 'monthly'
+        try:
+            price = stripe.Price.retrieve(price_id)
+            return 'yearly' if price.id == 'price_1QQjEeIb7aERwB58FkccirOh' else 'monthly'
+        except stripe.error.StripeError:
+            return 'monthly'
+
+    def _update_subscription_data(self, user_id: str, data: Dict) -> None:
+        """Update subscription data in Firestore with merge"""
+        try:
+            subscription_ref = self.db.collection(
+                'subscriptions').document(user_id)
+            subscription_ref.set({
+                'updatedAt': datetime.now(),
+                **data
+            }, merge=True)
+        except Exception as e:
+            logger.error(f"Error updating subscription data: {str(e)}")
+            raise
+
+    def handle_checkout_completed(self, session: Dict) -> None:
+        """Handle successful checkout completion"""
+        try:
+            customer_id = session.get('customer')
+            subscription_id = session.get('subscription')
+            user_id = session.get('client_reference_id')
+
+            if not user_id:
+                logger.error(
+                    "No client_reference_id found in checkout session")
+                return
+
+            if not subscription_id:
+                logger.error("No subscription ID found in checkout session")
+                return
+
+            subscription = stripe.Subscription.retrieve(subscription_id)
+            price_id = session.get('line_items', {}).get(
+                'data', [{}])[0].get('price', {}).get('id')
+            plan_type = self._get_plan_type(price_id)
+
+            self._update_subscription_data(user_id, {
+                'status': 'active',
+                'stripeCustomerId': customer_id,
+                'stripeSubscriptionId': subscription_id,
+                'planType': plan_type,
+                'createdAt': datetime.now(),
+                'expiresAt': datetime.fromtimestamp(subscription.current_period_end),
+                'cancelAtPeriodEnd': subscription.cancel_at_period_end
+            })
+
+        except Exception as e:
+            logger.error(f"Error handling checkout completion: {str(e)}")
+            raise
+
+    def _handle_subscription_status_change(self, subscription: Dict, status: str) -> None:
+        """Handle subscription status changes"""
+        try:
+            customer_id = subscription.get('customer')
+            subscription_id = subscription.get('id')
+            current_period_end = subscription.get('current_period_end')
+
+            if not customer_id:
+                logger.error("No customer ID found in subscription")
+                return
+
+            users_ref = self.db.collection('subscriptions')
+            query = users_ref.where(
+                'stripeCustomerId', '==', customer_id).limit(1)
+            docs = query.get()
+
+            if not docs:
+                logger.error(f"No user found for customer ID: {customer_id}")
+                return
+
+            user_doc = docs[0]
+            user_id = user_doc.id
+
+            update_data = {
+                'status': status,
+                'expiresAt': datetime.fromtimestamp(current_period_end) if current_period_end else None,
+                'stripeSubscriptionId': subscription_id,
+                'cancelAtPeriodEnd': subscription.get('cancel_at_period_end', False)
+            }
+
+            if status == 'cancelled':
+                update_data['canceledAt'] = datetime.now()
+
+            self._update_subscription_data(user_id, update_data)
+
+        except Exception as e:
+            logger.error(
+                f"Error handling subscription status change: {str(e)}")
+            raise
+
+    def handle_subscription_updated(self, subscription: Dict) -> None:
+        """Handle subscription update events"""
+        status = subscription.get('status', 'active')
+        self._handle_subscription_status_change(subscription, status)
+
+    def handle_subscription_deleted(self, subscription: Dict) -> None:
+        """Handle subscription deletion events"""
+        self._handle_subscription_status_change(subscription, 'cancelled')
+
+    def handle_payment_status_change(self, invoice: Dict, status: str) -> None:
+        """Handle payment status changes"""
+        try:
+            customer_id = invoice.get('customer')
+            subscription_id = invoice.get('subscription')
+
+            if not subscription_id:
+                return
+
+            if not customer_id:
+                logger.error("No customer ID found in invoice")
+                return
+
+            users_ref = self.db.collection('subscriptions')
+            query = users_ref.where(
+                'stripeCustomerId', '==', customer_id).limit(1)
+            docs = query.get()
+
+            if not docs:
+                logger.error(f"No user found for customer ID: {customer_id}")
+                return
+
+            user_doc = docs[0]
+            user_id = user_doc.id
+
+            update_data = {
+                'lastPaymentStatus': status,
+                'lastPaymentDate': datetime.now()
+            }
+
+            if status == 'failed':
+                update_data['lastPaymentFailure'] = datetime.now()
+
+            self._update_subscription_data(user_id, update_data)
+
+        except Exception as e:
+            logger.error(f"Error handling payment status change: {str(e)}")
+            raise
+
+    def handle_payment_succeeded(self, invoice: Dict) -> None:
+        """Handle successful payment events"""
+        self.handle_payment_status_change(invoice, 'succeeded')
+
+    def handle_payment_failed(self, invoice: Dict) -> None:
+        """Handle failed payment events"""
+        self.handle_payment_status_change(invoice, 'failed')
+
+
+@app.route('/api/stripe-webhook', methods=['POST'])
+def stripe_webhook():
     db = firestore.client()
     stripe_service = StripeService(db)
-    setup_stripe_routes(app, stripe_service)
+    sig_header = request.headers.get('Stripe-Signature')
+    request_data = request.get_data(as_text=True)
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=request_data,
+            sig_header=sig_header,
+            secret=STRIPE_WEBHOOK
+        )
+    except ValueError as e:
+        logger.error(f"Invalid payload: {str(e)}")
+        return jsonify({'error': 'Invalid payload'}), 400
+    except stripe.error.SignatureVerificationError as e:
+        logger.error(f"Invalid signature: {str(e)}")
+        return jsonify({'error': 'Invalid signature'}), 400
+
+    try:
+        event_handlers = {
+            'checkout.session.completed': lambda obj: stripe_service.handle_checkout_completed(obj),
+            'customer.subscription.updated': lambda obj: stripe_service.handle_subscription_updated(obj),
+            'customer.subscription.deleted': lambda obj: stripe_service.handle_subscription_deleted(obj),
+            'invoice.payment_succeeded': lambda obj: stripe_service.handle_payment_succeeded(obj),
+            'invoice.payment_failed': lambda obj: stripe_service.handle_payment_failed(obj)
+        }
+
+        event_type = event['type']
+        if event_type in event_handlers:
+            event_handlers[event_type](event['data']['object'])
+            logger.info(f"Successfully processed {event_type} webhook")
+            return jsonify({'success': True})
+        else:
+            logger.warning(f"Unhandled webhook event type: {event_type}")
+            # Return success for unhandled events
+            return jsonify({'success': True})
+
+    except Exception as e:
+        logger.error(f"Error processing webhook: {str(e)}", exc_info=True)
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 if __name__ == '__main__':
-    init_stripe(app)
     app.run(host='0.0.0.0', port=8000)
