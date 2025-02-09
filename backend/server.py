@@ -324,8 +324,8 @@ def get_team_pitchers(team_name):
         SELECT Player,
                ERA,
                FIP,
-               "K%" as strikeout_rate,
-               "BB%" as walk_rate,
+               "K%",
+               "BB%",
                IP,
                WAR
         FROM pitching_war

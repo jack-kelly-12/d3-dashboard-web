@@ -4,7 +4,6 @@ import toast from "react-hot-toast";
 import ReportsList from "../components/scouting/ReportsList";
 import ScoutingView from "../components/scouting/ScoutingView";
 import CreateReportModal from "../components/modals/CreateReportModal";
-import AddPlayerModal from "../components/modals/AddPlayerModal";
 import ScoutingReportManager from "../managers/ScoutingReportsManager";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
@@ -55,7 +54,6 @@ const ScoutingReport = () => {
   const [state, updateState] = useScoutingState();
   const fetchTeams = useTeamsFetch(state.selectedDivision);
 
-  // Initialize auth and subscription
   useEffect(() => {
     let isMounted = true;
 
@@ -209,32 +207,6 @@ const ScoutingReport = () => {
     }
   };
 
-  const handleAddPlayer = async (newPlayer) => {
-    if (!state.selectedReport || !state.user || !state.isAuthReady) return;
-
-    const loadingToast = toast.loading("Adding player...");
-    try {
-      const updatedReport = {
-        ...state.selectedReport,
-        numHitters: state.selectedReport.numHitters + 1,
-        positionPlayers: [...state.selectedReport.positionPlayers, newPlayer],
-      };
-
-      await ScoutingReportManager.updateReport(updatedReport.id, updatedReport);
-      updateState({
-        reports: state.reports.map((r) =>
-          r.id === state.selectedReport.id ? updatedReport : r
-        ),
-        selectedReport: updatedReport,
-        isAddPlayerModalOpen: false,
-      });
-      toast.success("Player added", { id: loadingToast });
-    } catch (err) {
-      console.error("Error adding player:", err);
-      toast.error("Failed to add player", { id: loadingToast });
-    }
-  };
-
   const handleDeleteReport = async (reportId) => {
     if (!state.user || !state.isAuthReady) {
       navigate("/signin");
@@ -328,13 +300,6 @@ const ScoutingReport = () => {
           onDivisionChange={(division) =>
             updateState({ selectedDivision: division })
           }
-        />
-
-        <AddPlayerModal
-          isOpen={state.isAddPlayerModalOpen}
-          onClose={() => updateState({ isAddPlayerModalOpen: false })}
-          onSubmit={handleAddPlayer}
-          availablePlayers={state.availablePlayers}
         />
       </div>
     </div>

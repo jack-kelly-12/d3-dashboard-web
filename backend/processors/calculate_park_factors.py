@@ -34,17 +34,13 @@ def calculate_park_factors(schedules):
     home_away_games = schedules[
         schedules['neutral_site'].isna() &
         schedules['home_team_score'].notna() &
-        schedules['away_team_score'].notna() &
-        (schedules['home_team_id'] != 0) &
-        (schedules['away_team_id'] != 0)
+        schedules['away_team_score'].notna()
     ]
 
     neutral_games = schedules[
         schedules['neutral_site'].notna() &
         schedules['home_team_score'].notna() &
-        schedules['away_team_score'].notna() &
-        (schedules['home_team_id'] != 0) &
-        (schedules['away_team_id'] != 0)
+        schedules['away_team_score'].notna()
     ]
 
     # Calculate home stats from regular home games
@@ -100,7 +96,7 @@ def calculate_park_factors(schedules):
     park_factors = combined_stats.assign(
         H=lambda x: x['home_runs'] / x['home_games'],  # Runs per game at home
         R=lambda x: x['away_runs'] / x['away_games'],  # Runs per game on road
-        raw_PF=lambda x: (x['H'] * T) / ((T - 1) * \
+        raw_PF=lambda x: (x['H'] * T) / ((T - 1) *
                                          x['R'] + x['H']),  # Raw park factor
         iPF=lambda x: (x['raw_PF'] + 1) / 2,  # Regressed park factor
         PF=lambda x: 100 * (1 - (1 - x['iPF']) * .6),
