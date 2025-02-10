@@ -39,6 +39,7 @@ jobs:
           echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" >> .env
           echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "FIREBASE_SERVICE_ACCOUNT_KEY_PATH=${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_PATH }}" >> .env
 
       - name: Build React App
         working-directory: ./frontend
