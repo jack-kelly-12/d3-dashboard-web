@@ -26,7 +26,7 @@ STRIPE_WEBHOOK = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 
 cred = credentials.Certificate(
-    "d3-dash-13dc4-firebase-adminsdk-5y2t3-1582956c98.json")
+    os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY_PATH'))
 firebase_admin.initialize_app(cred)
 
 
@@ -37,10 +37,11 @@ CORS(app, resources={
             "https://www.d3-dashboard.com",
             "http://d3-dashboard.com",
             "http://www.d3-dashboard.com",
-            "http://localhost:3000"
+            "http://localhost:3000",
+            "https://api.stripe.com"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization"]
+        "allow_headers": ["Content-Type", "Authorization", "Stripe-Signature"]
     }
 })
 
