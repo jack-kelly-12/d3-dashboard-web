@@ -16,6 +16,7 @@ from llm_insights import InsightsProcessor
 from dotenv import load_dotenv
 import stripe
 import firebase_admin
+import json
 from firebase_admin import firestore, auth, credentials
 from functools import wraps
 
@@ -41,7 +42,7 @@ CORS(app, resources={
             "https://api.stripe.com"
         ],
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "Stripe-Signature"]
+        "allow_headers": ["Content-Type", "Authorization", "stripe-signature"]
     }
 })
 
@@ -1776,10 +1777,16 @@ class StripeService:
 def stripe_webhook():
     db = firestore.client()
     stripe_service = StripeService(db)
-    sig_header = request.headers.get('Stripe-Signature')
-    request_data = request.get_data(as_text=True)
+    request_data = request.data
 
     try:
+        event = json.loads(request_data)
+    except json.JSONDecodeError:
+        print('⚠️  Webhook error while parsing basic request.' + str(e))
+        return jsonify(success=False)
+    try:
+        sig_header = request.headers.get('stripe-signature')
+
         event = stripe.Webhook.construct_event(
             payload=request_data,
             sig_header=sig_header,
@@ -1808,7 +1815,6 @@ def stripe_webhook():
             return jsonify({'success': True})
         else:
             logger.warning(f"Unhandled webhook event type: {event_type}")
-            # Return success for unhandled events
             return jsonify({'success': True})
 
     except Exception as e:
