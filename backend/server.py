@@ -25,7 +25,6 @@ app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 STRIPE_API_KEY = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK = os.getenv('STRIPE_WEBHOOK_SECRET')
 
-
 cred = credentials.Certificate(
     os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY_PATH'))
 firebase_admin.initialize_app(cred)
@@ -1644,6 +1643,10 @@ class StripeService:
     def handle_checkout_completed(self, session: Dict) -> None:
         """Handle successful checkout completion"""
         try:
+            # Add detailed logging
+            logger.info(
+                f"Processing session with data: {json.dumps(session, default=str)}")
+
             customer_id = session.get('customer')
             subscription_id = session.get('subscription')
             user_id = session.get('client_reference_id')
@@ -1654,12 +1657,12 @@ class StripeService:
                 return
 
             if not subscription_id:
-                logger.error("No subscription ID found in checkout session")
-                return
+                # For testing, we might want to get the subscription from line items
+                logger.info("Attempting to find subscription in line items...")
+                # Add more detailed subscription lookup here
 
             subscription = stripe.Subscription.retrieve(subscription_id)
-            price_id = session.get('line_items', {}).get(
-                'data', [{}])[0].get('price', {}).get('id')
+            price_id = subscription.items.data[0].price.id
             plan_type = self._get_plan_type(price_id)
 
             self._update_subscription_data(user_id, {
@@ -1773,53 +1776,167 @@ class StripeService:
         self.handle_payment_status_change(invoice, 'failed')
 
 
+@app.route('/api/create-checkout-session', methods=['POST'])
+def create_checkout_session():
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+        plan_type = data.get('planType')
+        email = data.get('email')
+
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+
+        price_id = 'price_1QQjEeIb7aERwB58FkccirOh' if plan_type == 'yearly' else 'your_monthly_price_id'
+
+        session = stripe.checkout.sessions.create(
+            client_reference_id=user_id,
+            customer_email=email,
+            payment_method_types=['card'],
+            mode='subscription',
+            line_items=[{
+                'price': price_id,
+                'quantity': 1,
+            }],
+            success_url='https://d3-dashboard.com/subscriptions?status=success',
+            cancel_url='https://d3-dashboard.com/subscriptions?status=canceled',
+        )
+
+        return jsonify({'url': session.url})
+
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/stripe-webhook', methods=['POST'])
 def stripe_webhook():
     db = firestore.client()
     stripe_service = StripeService(db)
-    request_data = request.data
+
+    # Get the raw request data and signature
+    payload = request.get_data()
+    sig_header = request.headers.get('stripe-signature')
+
+    if not sig_header:
+        logger.error("No Stripe signature header found")
+        return jsonify({'error': 'No signature header'}), 400
 
     try:
-        event = json.loads(request_data)
-    except json.JSONDecodeError:
-        print('⚠️  Webhook error while parsing basic request.' + str(e))
-        return jsonify(success=False)
-    try:
-        sig_header = request.headers.get('stripe-signature')
-
+        # Verify the webhook signature
         event = stripe.Webhook.construct_event(
-            payload=request_data,
+            payload=payload,
             sig_header=sig_header,
             secret=STRIPE_WEBHOOK
         )
-    except ValueError as e:
-        logger.error(f"Invalid payload: {str(e)}")
-        return jsonify({'error': 'Invalid payload'}), 400
-    except stripe.error.SignatureVerificationError as e:
-        logger.error(f"Invalid signature: {str(e)}")
-        return jsonify({'error': 'Invalid signature'}), 400
 
-    try:
+        # Log the event details before processing
+        logger.info(
+            f"Processing Stripe webhook event: {event.type} | ID: {event.id}")
+
         event_handlers = {
-            'checkout.session.completed': lambda obj: stripe_service.handle_checkout_completed(obj),
-            'customer.subscription.updated': lambda obj: stripe_service.handle_subscription_updated(obj),
-            'customer.subscription.deleted': lambda obj: stripe_service.handle_subscription_deleted(obj),
-            'invoice.payment_succeeded': lambda obj: stripe_service.handle_payment_succeeded(obj),
-            'invoice.payment_failed': lambda obj: stripe_service.handle_payment_failed(obj)
+            'checkout.session.completed': lambda obj: handle_checkout_session_completed(obj, stripe_service),
+            'customer.subscription.updated': lambda obj: handle_subscription_updated(obj, stripe_service),
+            'customer.subscription.created': lambda obj: handle_subscription_created(obj, stripe_service),
+            'invoice.payment_succeeded': lambda obj: handle_payment_succeeded(obj, stripe_service),
+            'invoice.payment_failed': lambda obj: handle_payment_failed(obj, stripe_service)
         }
 
-        event_type = event['type']
-        if event_type in event_handlers:
-            event_handlers[event_type](event['data']['object'])
-            logger.info(f"Successfully processed {event_type} webhook")
-            return jsonify({'success': True})
+        if event.type in event_handlers:
+            try:
+                # Execute the appropriate handler with detailed logging
+                logger.info(f"Starting to process event {event.type}")
+                event_handlers[event.type](event.data.object)
+                logger.info(f"Successfully processed {event.type} event")
+                return jsonify({'success': True})
+            except Exception as e:
+                logger.error(
+                    f"Error processing {event.type} event: {str(e)}", exc_info=True)
+                # Return 200 even on processing error to prevent Stripe retries
+                return jsonify({'success': False, 'error': str(e)}), 200
         else:
-            logger.warning(f"Unhandled webhook event type: {event_type}")
+            logger.info(f"Received unhandled event type: {event.type}")
             return jsonify({'success': True})
 
+    except stripe.error.SignatureVerificationError as e:
+        logger.error(f"⚠️ Webhook signature verification failed: {str(e)}")
+        return jsonify({'error': 'Invalid signature'}), 400
     except Exception as e:
-        logger.error(f"Error processing webhook: {str(e)}", exc_info=True)
+        logger.error(f"⚠️ Unexpected webhook error: {str(e)}", exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
+
+
+def handle_checkout_session_completed(session, stripe_service):
+    """Handle checkout.session.completed event with detailed logging"""
+    logger.info(f"Processing checkout session: {session.id}")
+    try:
+        if not session.client_reference_id:
+            logger.error("No client_reference_id in checkout session")
+            return jsonify({'success': False, 'error': 'Missing client_reference_id'}), 200
+
+        if not session.subscription:
+            logger.error("No subscription ID in checkout session")
+            return jsonify({'success': False, 'error': 'Missing subscription ID'}), 200
+
+        stripe_service.handle_checkout_completed(session)
+        logger.info(f"Successfully processed checkout session {session.id}")
+        return jsonify({'success': True})
+    except Exception as e:
+        logger.error(f"Error in checkout completion: {str(e)}", exc_info=True)
+        return jsonify({'success': False, 'error': str(e)}), 200
+
+
+def handle_subscription_created(subscription, stripe_service):
+    """Handle customer.subscription.created event"""
+    logger.info(f"Processing subscription created: {subscription.id}")
+    try:
+        if not subscription.customer:
+            logger.error("No customer ID in subscription")
+            raise ValueError("Missing customer ID")
+
+        stripe_service.handle_subscription_updated(subscription)
+        logger.info(
+            f"Successfully processed subscription creation {subscription.id}")
+    except Exception as e:
+        logger.error(
+            f"Error in subscription creation: {str(e)}", exc_info=True)
+        raise
+
+
+def handle_subscription_updated(subscription, stripe_service):
+    """Handle customer.subscription.updated event"""
+    logger.info(f"Processing subscription update: {subscription.id}")
+    try:
+        stripe_service.handle_subscription_updated(subscription)
+        logger.info(
+            f"Successfully processed subscription update {subscription.id}")
+    except Exception as e:
+        logger.error(f"Error in subscription update: {str(e)}", exc_info=True)
+        raise
+
+
+def handle_payment_succeeded(invoice, stripe_service):
+    """Handle invoice.payment_succeeded event"""
+    logger.info(f"Processing successful payment: {invoice.id}")
+    try:
+        stripe_service.handle_payment_succeeded(invoice)
+        logger.info(f"Successfully processed payment {invoice.id}")
+    except Exception as e:
+        logger.error(
+            f"Error in payment success handling: {str(e)}", exc_info=True)
+        raise
+
+
+def handle_payment_failed(invoice, stripe_service):
+    """Handle invoice.payment_failed event"""
+    logger.info(f"Processing failed payment: {invoice.id}")
+    try:
+        stripe_service.handle_payment_failed(invoice)
+        logger.info(f"Successfully processed failed payment {invoice.id}")
+    except Exception as e:
+        logger.error(
+            f"Error in payment failure handling: {str(e)}", exc_info=True)
+        raise
 
 
 if __name__ == '__main__':

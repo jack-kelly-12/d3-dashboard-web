@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   ChartBar,
   ClipboardList,
@@ -31,6 +31,33 @@ function SubscriptionManagement() {
   const [subscriptionDetails, setSubscriptionDetails] = useState(null);
   const [showFeatureInfo, setShowFeatureInfo] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  const status = params.get("status");
+
+  const getValidDate = (dateValue) => {
+    if (!dateValue) return null;
+
+    if (dateValue && typeof dateValue.toDate === "function") {
+      return dateValue.toDate();
+    }
+
+    const parsedDate = new Date(dateValue);
+    return isNaN(parsedDate.getTime()) ? null : parsedDate;
+  };
+
+  const subscriptionEndsAt = getValidDate(subscriptionDetails?.expiresAt);
+  const daysUntilExpiration = subscriptionEndsAt
+    ? Math.ceil((subscriptionEndsAt - new Date()) / (1000 * 60 * 60 * 24))
+    : null;
+
+  useEffect(() => {
+    if (status === "success") {
+      toast.success("Successfully subscribed to premium!");
+    } else if (status === "canceled") {
+      toast.info("Payment canceled");
+    }
+  }, [status]);
 
   useEffect(() => {
     const unsubscribeAuth = AuthManager.onAuthStateChanged(
@@ -58,24 +85,6 @@ function SubscriptionManagement() {
     };
   }, []);
 
-  const getValidDate = (dateValue) => {
-    if (!dateValue) return null;
-
-    // Handle Firestore Timestamp
-    if (dateValue && typeof dateValue.toDate === "function") {
-      return dateValue.toDate();
-    }
-
-    // Handle string date
-    const parsedDate = new Date(dateValue);
-    return isNaN(parsedDate.getTime()) ? null : parsedDate;
-  };
-
-  const subscriptionEndsAt = getValidDate(subscriptionDetails?.expiresAt);
-  const daysUntilExpiration = subscriptionEndsAt
-    ? Math.ceil((subscriptionEndsAt - new Date()) / (1000 * 60 * 60 * 24))
-    : null;
-
   const handleUpgrade = async (planType) => {
     if (!user || user.isAnonymous) {
       toast.error("Please create an account to purchase a subscription");
@@ -89,16 +98,22 @@ function SubscriptionManagement() {
     }
 
     try {
-      const stripeUrls = {
-        monthly: process.env.REACT_APP_STRIPE_MONTHLY_URL,
-        yearly: process.env.REACT_APP_STRIPE_YEARLY_URL,
-      };
+      const response = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${await user.getIdToken()}`,
+        },
+        body: JSON.stringify({
+          userId: user.uid,
+          planType: planType,
+          email: user.email,
+        }),
+      });
 
-      const url = new URL(stripeUrls[planType]);
-      url.searchParams.append("client_reference_id", user.uid);
-      url.searchParams.append("prefilled_email", user.email);
+      const { url } = await response.json();
 
-      window.location.href = url.toString();
+      window.location.href = url;
     } catch (error) {
       console.error("Stripe redirect error:", error);
       toast.error("Unable to process payment request. Please try again later.");
