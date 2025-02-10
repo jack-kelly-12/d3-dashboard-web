@@ -1787,7 +1787,10 @@ def create_checkout_session():
         if not user_id:
             return jsonify({'error': 'User ID is required'}), 400
 
-        price_id = 'price_1QQjEeIb7aERwB58FkccirOh' if plan_type == 'yearly' else 'your_monthly_price_id'
+        price_id = 'price_1QQjEeIb7aERwB58FkccirOh' if plan_type == 'yearly' else 'price_1QQjCoIb7aERwB58JFcQWshS'
+
+        logger.info(
+            f"Creating checkout session for plan type: {plan_type} with price ID: {price_id}")
 
         session = stripe.checkout.sessions.create(
             client_reference_id=user_id,
@@ -1802,68 +1805,14 @@ def create_checkout_session():
             cancel_url='https://d3-dashboard.com/subscriptions?status=canceled',
         )
 
+        # Add logging for the created session URL
+        logger.info(f"Created checkout session with URL: {session.url}")
+
         return jsonify({'url': session.url})
 
     except Exception as e:
         logger.error(f"Error creating checkout session: {str(e)}")
         return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/stripe-webhook', methods=['POST'])
-def stripe_webhook():
-    db = firestore.client()
-    stripe_service = StripeService(db)
-
-    # Get the raw request data and signature
-    payload = request.get_data()
-    sig_header = request.headers.get('stripe-signature')
-
-    if not sig_header:
-        logger.error("No Stripe signature header found")
-        return jsonify({'error': 'No signature header'}), 400
-
-    try:
-        # Verify the webhook signature
-        event = stripe.Webhook.construct_event(
-            payload=payload,
-            sig_header=sig_header,
-            secret=STRIPE_WEBHOOK
-        )
-
-        # Log the event details before processing
-        logger.info(
-            f"Processing Stripe webhook event: {event.type} | ID: {event.id}")
-
-        event_handlers = {
-            'checkout.session.completed': lambda obj: handle_checkout_session_completed(obj, stripe_service),
-            'customer.subscription.updated': lambda obj: handle_subscription_updated(obj, stripe_service),
-            'customer.subscription.created': lambda obj: handle_subscription_created(obj, stripe_service),
-            'invoice.payment_succeeded': lambda obj: handle_payment_succeeded(obj, stripe_service),
-            'invoice.payment_failed': lambda obj: handle_payment_failed(obj, stripe_service)
-        }
-
-        if event.type in event_handlers:
-            try:
-                # Execute the appropriate handler with detailed logging
-                logger.info(f"Starting to process event {event.type}")
-                event_handlers[event.type](event.data.object)
-                logger.info(f"Successfully processed {event.type} event")
-                return jsonify({'success': True})
-            except Exception as e:
-                logger.error(
-                    f"Error processing {event.type} event: {str(e)}", exc_info=True)
-                # Return 200 even on processing error to prevent Stripe retries
-                return jsonify({'success': False, 'error': str(e)}), 200
-        else:
-            logger.info(f"Received unhandled event type: {event.type}")
-            return jsonify({'success': True})
-
-    except stripe.error.SignatureVerificationError as e:
-        logger.error(f"⚠️ Webhook signature verification failed: {str(e)}")
-        return jsonify({'error': 'Invalid signature'}), 400
-    except Exception as e:
-        logger.error(f"⚠️ Unexpected webhook error: {str(e)}", exc_info=True)
-        return jsonify({'error': 'Internal server error'}), 500
 
 
 def handle_checkout_session_completed(session, stripe_service):
