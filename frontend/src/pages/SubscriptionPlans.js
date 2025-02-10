@@ -15,6 +15,7 @@ import {
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
 import toast from "react-hot-toast";
+import { fetchAPI } from "../config/api";
 
 const Feature = ({ children, available, icon: Icon }) => (
   <div className="flex items-center gap-3">
@@ -98,20 +99,9 @@ function SubscriptionManagement() {
     }
 
     try {
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${await user.getIdToken()}`,
-        },
-        body: JSON.stringify({
-          userId: user.uid,
-          planType: planType,
-          email: user.email,
-        }),
-      });
+      const data = await fetchAPI("/api/create-checkout-session");
 
-      const { url } = await response.json();
+      const { url } = await data;
 
       window.location.href = url;
     } catch (error) {
