@@ -107,16 +107,22 @@ class SubscriptionManager {
     return this.unsubscribeFromFirestore;
   }
 
-  checkSubscriptionStatus = async (userId) => {
+  async checkSubscriptionStatus(userId) {
+    if (!userId) {
+      throw new Error("User ID is required");
+    }
+
     try {
-      const response = await fetch(`/api/subscriptions/status/${userId}`);
-      const data = await response.json();
+      const data = await fetchAPI(`/api/subscription/status/${userId}`, {
+        method: "GET",
+      });
+
       return data;
     } catch (error) {
-      console.error("Error checking subscription:", error);
-      return null;
+      console.error("Error checking subscription status:", error);
+      return { isActive: false, error: error.message };
     }
-  };
+  }
 
   async getActivePremiumMembers() {
     const q = query(

@@ -1857,6 +1857,43 @@ def cancel_subscription():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/subscription/status/<user_id>', methods=['GET'])
+def check_subscription_status(user_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        return jsonify({"isActive": False, "error": "Premium subscription required"}), 403
+
+    try:
+        token = auth_header.split('Bearer ')[1]
+        decoded_token = auth.verify_id_token(token)
+        authorized_user_id = decoded_token['uid']
+
+        db = firestore.client()
+        sub_doc = db.collection('subscriptions').document(user_id).get()
+
+        if not sub_doc.exists:
+            return jsonify({"isActive": False})
+
+        data = sub_doc.to_dict()
+        is_active = (
+            data.get('status') == 'active' and
+            data.get('expiresAt', datetime.now()
+                     ).timestamp() > datetime.now().timestamp()
+        )
+
+        return jsonify({
+            "isPremium": is_active,
+            "status": data.get('status'),
+            "planType": data.get('planType'),
+            "expiresAt": data.get('expiresAt'),
+            "cancelAtPeriodEnd": data.get('cancelAtPeriodEnd', False)
+        })
+
+    except Exception as e:
+        print(f"Error checking subscription status: {str(e)}")
+        return jsonify({"isActive": False, "error": str(e)}), 500
+
+
 @app.route('/api/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
