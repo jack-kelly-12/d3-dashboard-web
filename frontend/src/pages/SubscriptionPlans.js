@@ -99,11 +99,24 @@ function SubscriptionManagement() {
     }
 
     try {
-      const data = await fetchAPI("/api/create-checkout-session");
+      const response = await fetchAPI("/api/create-checkout-session", {
+        method: "POST",
+        body: JSON.stringify({
+          userId: user.uid,
+          planType: planType,
+          email: user.email,
+        }),
+      });
 
-      const { url } = await data;
+      console.log(response);
 
-      window.location.href = url;
+      const { url } = response;
+
+      if (url) {
+        window.location.href = url;
+      } else {
+        throw new Error("No checkout URL returned from API.");
+      }
     } catch (error) {
       console.error("Stripe redirect error:", error);
       toast.error("Unable to process payment request. Please try again later.");

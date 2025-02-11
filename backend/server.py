@@ -22,7 +22,7 @@ from functools import wraps
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
-STRIPE_API_KEY = os.getenv('STRIPE_SECRET_KEY')
+stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK = os.getenv('STRIPE_WEBHOOK_SECRET')
 
 cred = credentials.Certificate(
@@ -1849,7 +1849,7 @@ def create_checkout_session():
         logger.info(
             f"Creating checkout session for plan type: {plan_type} with price ID: {price_id}")
 
-        session = stripe.checkout.sessions.create(
+        session = stripe.checkout.Session.create(
             client_reference_id=user_id,
             customer_email=email,
             payment_method_types=['card'],
@@ -1862,7 +1862,6 @@ def create_checkout_session():
             cancel_url='https://d3-dashboard.com/subscriptions?status=canceled',
         )
 
-        # Add logging for the created session URL
         logger.info(f"Created checkout session with URL: {session.url}")
 
         return jsonify({'url': session.url})
