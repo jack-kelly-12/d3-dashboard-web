@@ -10,6 +10,7 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
+import { fetchAPI } from "../config/api";
 
 class SubscriptionManager {
   constructor() {
@@ -132,17 +133,42 @@ class SubscriptionManager {
   }
 
   async cancelSubscription(userId) {
-    const docRef = doc(this.subscriptionsRef, userId);
-    const docSnap = await getDoc(docRef);
+    try {
+      const docRef = doc(this.subscriptionsRef, userId);
+      const docSnap = await getDoc(docRef);
 
-    if (!docSnap.exists()) {
-      throw new Error("No subscription found for this user");
+      if (!docSnap.exists()) {
+        throw new Error("No subscription found for this user");
+      }
+
+      const subscriptionData = docSnap.data();
+      if (!subscriptionData.stripeSubscriptionId) {
+        throw new Error("No Stripe subscription ID found");
+      }
+
+      const response = await fetchAPI("/api/cancel-subscription", {
+        method: "POST",
+        body: JSON.stringify({
+          userId,
+          subscriptionId: subscriptionData.stripeSubscriptionId,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(
+          error.message || "Failed to cancel subscription in Stripe"
+        );
+      }
+
+      await updateDoc(docRef, {
+        cancelAtPeriodEnd: true,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      throw error;
     }
-
-    await updateDoc(docRef, {
-      cancelAtPeriodEnd: true,
-      updatedAt: serverTimestamp(),
-    });
   }
 
   stopListening() {

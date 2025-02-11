@@ -1833,6 +1833,30 @@ def stripe_webhook():
         return jsonify({'error': 'Internal server error'}), 500
 
 
+@app.route('/api/cancel-subscription', methods=['POST'])
+def cancel_subscription():
+    try:
+        data = request.get_json()
+        subscription_id = data.get('subscriptionId')
+
+        if not subscription_id:
+            return jsonify({'error': 'Subscription ID is required'}), 400
+
+        stripe.Subscription.modify(
+            subscription_id,
+            cancel_at_period_end=True
+        )
+
+        return jsonify({'success': True})
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error while cancelling subscription: {str(e)}")
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        logger.error(f"Error cancelling subscription: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:

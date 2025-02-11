@@ -54,9 +54,13 @@ function SubscriptionManagement() {
 
   useEffect(() => {
     if (status === "success") {
-      toast.success("Successfully subscribed to premium!");
+      toast("Successfully subscribed to premium!", {
+        icon: "✅",
+      });
     } else if (status === "canceled") {
-      toast.info("Payment canceled");
+      toast("Payment canceled", {
+        icon: "❌",
+      });
     }
   }, [status]);
 
@@ -88,7 +92,9 @@ function SubscriptionManagement() {
 
   const handleUpgrade = async (planType) => {
     if (!user || user.isAnonymous) {
-      toast.error("Please create an account to purchase a subscription");
+      toast("Please create an account to purchase a subscription", {
+        icon: "❌",
+      });
       navigate("/signin?signup=true", {
         state: {
           returnTo: "/subscriptions",
@@ -108,8 +114,6 @@ function SubscriptionManagement() {
         }),
       });
 
-      console.log(response);
-
       const { url } = response;
 
       if (url) {
@@ -119,18 +123,24 @@ function SubscriptionManagement() {
       }
     } catch (error) {
       console.error("Stripe redirect error:", error);
-      toast.error("Unable to process payment request. Please try again later.");
+      toast("Unable to process payment request. Please try again later.", {
+        icon: "❌",
+      });
     }
   };
 
   const handleCancel = async () => {
     try {
       await SubscriptionManager.cancelSubscription(user.uid);
-      toast.success("Your subscription has been cancelled");
+      toast("Your subscription has been cancelled", {
+        icon: "✅",
+      });
       setShowCancelConfirm(false);
     } catch (error) {
       console.error("Cancellation error:", error);
-      toast.error("Unable to cancel subscription. Please try again later.");
+      toast("Unable to cancel subscription. Please try again later.", {
+        icon: "❌",
+      });
     }
   };
 
