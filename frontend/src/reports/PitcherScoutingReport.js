@@ -339,7 +339,7 @@ const processPitchData = (pitches) => {
   const totals = pitches.reduce(
     (acc, pitch) => {
       const isLHH = pitch.batter?.batHand?.toLowerCase() === "left";
-      const isFirstPitch = pitch.pitchNumber === 1;
+      const isFirstPitch = pitch.balls === 0 && pitch.strikes === 0;
 
       if (isLHH) {
         acc.totalLHH++;
