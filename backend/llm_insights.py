@@ -6,11 +6,9 @@ from langchain.tools import Tool
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain.prompts import PromptTemplate
 import sqlite3
-import json
 import yaml
 import logging
 from pathlib import Path
-import sqlparse
 from functools import lru_cache
 
 logging.basicConfig(level=logging.INFO)
