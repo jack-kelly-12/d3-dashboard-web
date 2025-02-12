@@ -220,6 +220,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         "walk",
         "strikeout_swinging",
         "strikeout_looking",
+        "hbp",
       ].includes(currentPitch.result.toLowerCase());
 
       let newBalls = balls;

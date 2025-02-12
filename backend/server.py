@@ -19,14 +19,15 @@ import firebase_admin
 import json
 from firebase_admin import firestore, auth, credentials
 from functools import wraps
+import uuid
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK = os.getenv('STRIPE_WEBHOOK_SECRET')
+CERT_PATH = 'd3-dash-13dc4-firebase-adminsdk-5y2t3-802c0a4b99.json'
 
-cred = credentials.Certificate(
-    os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY_PATH'))
+cred = credentials.Certificate(CERT_PATH)
 firebase_admin.initialize_app(cred)
 
 
@@ -1590,6 +1591,7 @@ def query_insights():
         insights_processor = InsightsProcessor()
         data = request.get_json()
         question = data['question'].strip()
+        conversation_id = data.get('conversation_id', str(uuid.uuid4()))
 
         if len(question) > 1000:
             return jsonify({
@@ -1598,10 +1600,21 @@ def query_insights():
                 "data": None
             }), 400
 
-        # Process with explicit thought process
-        result = insights_processor.process_question(question)
+        # Process the question with conversation context
+        result = insights_processor.process_question(question, conversation_id)
 
-        return jsonify(result), 200
+        # Ensure result has the expected structure
+        formatted_result = {
+            "answer": result["result"]["answer"],
+            "analysis": result["result"]["analysis"],
+            "data": result["result"]["data"]  # SQL query results if any
+        }
+
+        return jsonify({
+            "status": "success",
+            "result": formatted_result,
+            "conversation_id": conversation_id
+        }), 200
 
     except Exception as e:
         logger.error(f"Error processing question: {str(e)}", exc_info=True)

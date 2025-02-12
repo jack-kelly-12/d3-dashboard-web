@@ -1,151 +1,201 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Send,
-  Loader2,
-  Search,
-  Sparkles,
-  Brain,
-  BarChart3,
-  TrendingUp,
-  Terminal,
-  ArrowRight,
-} from "lucide-react";
-import { ResultCard } from "../components/insights/ResultCard";
+import { Send, Loader2, User, Bot } from "lucide-react";
 import { fetchAPI } from "../config/api";
 import InfoBanner from "../components/data/InfoBanner";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
 
-const EXAMPLE_QUESTIONS = [
-  {
-    text: "Who led Division 3 in WAR in 2024?",
-    icon: <TrendingUp className="w-5 h-5" />,
-    category: "Leaders",
-    gradient: "from-orange-500 to-pink-500",
-  },
-  {
-    text: "Which team had the highest OPS in 2023?",
-    icon: <BarChart3 className="w-5 h-5" />,
-    category: "Team Stats",
-    gradient: "from-blue-500 to-cyan-500",
-  },
-  {
-    text: "Who were the top 5 pitchers by strikeout rate in 2024?",
-    icon: <Brain className="w-5 h-5" />,
-    category: "Rankings",
-    gradient: "from-violet-500 to-purple-500",
-  },
-  {
-    text: "What was the biggest change in win probability in 2024?",
-    icon: <Sparkles className="w-5 h-5" />,
-    category: "Analysis",
-    gradient: "from-emerald-500 to-teal-500",
-  },
-];
+const DataTable = ({ data }) => {
+  if (!data || !data.headers || !data.rows) return null;
 
-const LoadingSpinner = () => (
-  <div className="flex justify-center items-center py-20">
-    <div className="text-center">
-      <div className="w-16 h-16 mx-auto mb-6 relative">
-        <div className="absolute inset-0 rounded-full border-4 border-blue-100 border-t-blue-600 animate-spin" />
-        <div className="absolute inset-3 rounded-full border-4 border-indigo-100 border-t-indigo-600 animate-spin animate-delay-150" />
+  return (
+    <div className="mt-4 overflow-x-auto rounded-lg bg-white">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            {data.headers.map((header, index) => (
+              <th
+                key={index}
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              >
+                {header}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {data.rows.map((row, rowIndex) => (
+            <tr
+              key={rowIndex}
+              className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}
+            >
+              {row.map((cell, cellIndex) => (
+                <td
+                  key={cellIndex}
+                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+                >
+                  {cell !== null ? cell : "-"}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+const Message = ({ content, type, isLoading, timestamp, data }) => (
+  <div
+    className={`flex ${
+      type === "user" ? "justify-end" : "justify-start"
+    } mb-6 group`}
+  >
+    <div
+      className={`flex items-start max-w-2xl ${
+        type === "user" ? "flex-row-reverse" : "flex-row"
+      }`}
+    >
+      <div
+        className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center shadow-lg ${
+          type === "user"
+            ? "bg-gradient-to-tr from-blue-600 to-blue-500"
+            : "bg-gradient-to-tr from-gray-700 to-gray-600"
+        } text-white`}
+      >
+        {type === "user" ? (
+          <User className="w-5 h-5" />
+        ) : (
+          <Bot className="w-5 h-5" />
+        )}
       </div>
-      <p className="text-gray-600 text-lg font-medium">
-        Analyzing statistics...
-      </p>
-      <p className="text-gray-400 text-sm mt-2">Crunching the numbers</p>
+      <div
+        className={`mx-4 relative ${
+          type === "user" ? "text-right" : "text-left"
+        }`}
+      >
+        <div className="text-xs text-gray-500 mb-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {type === "user" ? "You" : "AI Assistant"} •{" "}
+          {new Date(timestamp).toLocaleTimeString()}
+        </div>
+        <div
+          className={`px-6 py-4 rounded-2xl shadow-sm ${
+            type === "user"
+              ? "bg-gradient-to-tr from-blue-600 to-blue-500 text-white"
+              : "bg-white border border-gray-100 text-gray-800"
+          }`}
+        >
+          {isLoading ? (
+            <div className="flex items-center gap-2 py-2 px-4">
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
+              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+            </div>
+          ) : (
+            <>
+              <div className="whitespace-pre-wrap leading-relaxed">
+                {content}
+              </div>
+              {data && <DataTable data={data} />}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   </div>
 );
 
 const QueryInput = ({ query, setQuery, isLoading, onSubmit, inputRef }) => (
-  <form onSubmit={onSubmit} className="max-w-4xl mx-auto relative">
-    <div className="flex gap-4">
-      <div className="flex-1 relative group">
-        <div className="relative flex items-center">
+  <div className="border-t border-gray-100 bg-white p-4 backdrop-blur-xl">
+    <form onSubmit={onSubmit} className="max-w-4xl mx-auto">
+      <div className="flex gap-3">
+        <div className="flex-1 relative">
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ask a question about D3 baseball..."
-            className="w-full px-6 pr-24 py-4 bg-gray-50 border-2 border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400 text-lg transition-all duration-200 group-hover:bg-gray-100"
+            className="w-full px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-700 placeholder-gray-400"
             disabled={isLoading}
           />
-          <div className="absolute right-4 flex items-center gap-2">
-            <Search className="w-5 h-5 text-gray-400" />
-          </div>
         </div>
-      </div>
-      <button
-        type="submit"
-        disabled={isLoading || !query.trim()}
-        className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-200 whitespace-nowrap group"
-      >
-        {isLoading ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
-        ) : (
-          <Send className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-        )}
-        <span className="font-medium">Ask AI</span>
-      </button>
-    </div>
-  </form>
-);
-
-const ExampleQuestion = ({ question, onClick }) => (
-  <button
-    onClick={() => onClick(question.text)}
-    className="flex items-center text-left p-6 rounded-xl border-2 border-gray-100 hover:border-transparent hover:ring-2 hover:ring-blue-500/20 transition-all duration-200 group relative overflow-hidden bg-white"
-  >
-    <div
-      className={`absolute inset-0 bg-gradient-to-r ${question.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-200`}
-    />
-    <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-xl bg-blue-100 text-blue-600 group-hover:scale-110 transition-transform duration-200">
-      {question.icon}
-    </div>
-    <div className="ml-4 flex-1 min-w-0">
-      <div className="text-xs font-semibold text-blue-600 mb-1 flex items-center gap-2">
-        {question.category}
-        <ArrowRight className="w-3 h-3 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200" />
-      </div>
-      <div className="text-gray-700 font-medium">{question.text}</div>
-    </div>
-  </button>
-);
-
-const PremiumPrompt = ({ onUpgrade }) => (
-  <div className="min-h-screen bg-gradient-to-b from-blue-50 via-indigo-50 to-white">
-    <div className="container max-w-[calc(100vw-128px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-12">
-      <div className="text-center py-12">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-          Premium Feature
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Access to AI Insights requires a premium subscription.
-        </p>
         <button
-          onClick={onUpgrade}
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg shadow-blue-200"
+          type="submit"
+          disabled={isLoading || !query.trim()}
+          className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-2xl hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-2 shadow-lg shadow-blue-500/20"
         >
-          Upgrade to Premium
+          {isLoading ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Send className="w-5 h-5" />
+          )}
         </button>
       </div>
+    </form>
+  </div>
+);
+
+const EmptyState = () => (
+  <div className="text-center text-gray-500 mt-20">
+    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 flex items-center justify-center shadow-xl">
+      <Bot className="w-10 h-10 text-white" />
     </div>
+    <h3 className="text-xl font-semibold text-gray-700 mb-2">
+      Welcome to D3 Baseball Insights
+    </h3>
+    <p className="text-gray-500 max-w-sm mx-auto">
+      Ask questions about D3 baseball statistics and get detailed analysis with
+      supporting evidence.
+    </p>
   </div>
 );
 
 const InsightsPage = () => {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [currentResult, setCurrentResult] = useState(null);
+  const [conversationState, setConversationState] = useState({
+    id: null,
+    messages: [],
+  });
   const [authState, setAuthState] = useState({
     isReady: false,
     isPremium: false,
   });
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    const savedConversation = localStorage.getItem("insights_conversation");
+    if (savedConversation) {
+      try {
+        const parsed = JSON.parse(savedConversation);
+        setConversationState(parsed);
+      } catch (e) {
+        console.error("Error loading saved conversation:", e);
+        localStorage.removeItem("insights_conversation");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (conversationState.id) {
+      localStorage.setItem(
+        "insights_conversation",
+        JSON.stringify(conversationState)
+      );
+    }
+  }, [conversationState]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [conversationState.messages]);
 
   useEffect(() => {
     let isMounted = true;
@@ -163,15 +213,6 @@ const InsightsPage = () => {
               isReady: true,
               isPremium: subscription?.isActive || false,
             });
-            SubscriptionManager.listenToSubscriptionUpdates(
-              user.uid,
-              (sub) =>
-                isMounted &&
-                setAuthState((prev) => ({
-                  ...prev,
-                  isPremium: sub?.isActive || false,
-                }))
-            );
           }
         } else {
           setAuthState({ isReady: true, isPremium: false });
@@ -181,11 +222,9 @@ const InsightsPage = () => {
     };
 
     const cleanup = initAuth();
-
     return () => {
       isMounted = false;
       cleanup.then((unsubscribe) => unsubscribe?.());
-      SubscriptionManager.stopListening();
     };
   }, []);
 
@@ -196,57 +235,144 @@ const InsightsPage = () => {
       return;
     }
 
+    const userMessage = query;
+    const timestamp = new Date().toISOString();
+
+    setConversationState((prev) => ({
+      ...prev,
+      messages: [
+        ...prev.messages,
+        { type: "user", content: userMessage, timestamp },
+      ],
+    }));
+
+    setQuery("");
     setIsLoading(true);
+
     try {
-      const data = await fetchAPI("/api/insights/query", {
+      const response = await fetchAPI("/api/insights/query", {
         method: "POST",
-        body: JSON.stringify({ question: query }),
+        body: JSON.stringify({
+          question: userMessage,
+          conversation_id: conversationState.id,
+        }),
       });
 
-      if (data.status === "error" || data.type === "error") {
+      if (response.status === "error" || response.type === "error") {
         throw new Error(
-          data.message || data.result?.answer || "An error occurred"
+          response.message || response.result?.answer || "An error occurred"
         );
       }
 
-      setCurrentResult({
-        question: query,
-        answer: data.message || data.result?.answer,
-        analysis: data.result?.analysis || [],
-        data: data.result?.data,
-      });
+      // Handle successful response with data
+      const result = response.result;
+
+      setConversationState((prev) => ({
+        id: response.conversation_id || prev.id,
+        messages: [
+          ...prev.messages,
+          {
+            type: "ai",
+            content: result.answer,
+            timestamp: new Date().toISOString(),
+            data: result.data, // Include the SQL query results
+          },
+        ],
+      }));
     } catch (error) {
       console.error("Error processing query:", error);
-      setCurrentResult({
-        question: query,
-        answer:
-          error.message ||
-          "Sorry, I encountered an error processing your request.",
-        analysis: ["Error occurred while processing the query"],
-        data: null,
-      });
+      setConversationState((prev) => ({
+        ...prev,
+        messages: [
+          ...prev.messages,
+          {
+            type: "ai",
+            content: "Sorry, I encountered an error processing your request.",
+            timestamp: new Date().toISOString(),
+          },
+        ],
+      }));
     } finally {
       setIsLoading(false);
     }
   };
 
+  const startNewConversation = () => {
+    setConversationState({
+      id: null,
+      messages: [],
+    });
+    localStorage.removeItem("insights_conversation");
+  };
+
   if (!authState.isReady) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!authState.isPremium) {
-    return <PremiumPrompt onUpgrade={() => navigate("/subscriptions")} />;
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-8">
+        <div className="max-w-md mx-auto text-center">
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-tr from-blue-600 to-blue-500 flex items-center justify-center shadow-xl">
+            <Bot className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+            Premium Feature
+          </h2>
+          <p className="text-gray-600 mb-6">
+            Access to AI Insights requires a premium subscription.
+          </p>
+          <button
+            onClick={() => navigate("/subscriptions")}
+            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-2xl hover:from-blue-700 hover:to-blue-600 transition-all duration-200 shadow-lg shadow-blue-500/20"
+          >
+            Upgrade to Premium
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 via-indigo-50 to-white">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="mb-8">
-          <InfoBanner dataType="insights" />
-        </div>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="container max-w-5xl mx-auto px-4">
+        <div className="h-screen flex flex-col">
+          <div className="py-4 flex justify-between items-center">
+            <InfoBanner dataType="insights" />
+            {conversationState.messages.length > 0 && (
+              <button
+                onClick={startNewConversation}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              >
+                Start New Conversation
+              </button>
+            )}
+          </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-gray-200 backdrop-blur-xl bg-white/50">
-          <div className="p-8">
+          <div className="flex-1 bg-gray-50 rounded-3xl shadow-xl border border-gray-100 flex flex-col overflow-hidden backdrop-blur-xl mb-8">
+            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+              {conversationState.messages.length === 0 ? (
+                <EmptyState />
+              ) : (
+                <div className="space-y-4">
+                  {conversationState.messages.map((message, index) => (
+                    <Message key={index} {...message} />
+                  ))}
+                  {isLoading && (
+                    <Message type="ai" isLoading={true} content="" />
+                  )}
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
             <QueryInput
               query={query}
               setQuery={setQuery}
@@ -254,39 +380,6 @@ const InsightsPage = () => {
               onSubmit={handleQuery}
               inputRef={inputRef}
             />
-
-            {!currentResult && !isLoading && (
-              <div className="mt-12 max-w-4xl mx-auto">
-                <h3 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-6 flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-blue-500" />
-                  Example Questions
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {EXAMPLE_QUESTIONS.map((question, index) => (
-                    <ExampleQuestion
-                      key={index}
-                      question={question}
-                      onClick={(text) => {
-                        if (!authState.isPremium) {
-                          navigate("/subscriptions");
-                          return;
-                        }
-                        setQuery(text);
-                        inputRef.current?.focus();
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {isLoading && <LoadingSpinner />}
-
-            {currentResult && !isLoading && (
-              <div className="mt-10 max-w-4xl mx-auto">
-                <ResultCard result={currentResult} />
-              </div>
-            )}
           </div>
         </div>
       </div>

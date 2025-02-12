@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
+import _ from "lodash";
 
 const RadioGroup = ({ options, value, onChange, title }) => (
   <div>
@@ -44,8 +45,47 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
   const [name, setName] = useState("");
   const [pitchHand, setPitchHand] = useState("right");
   const [batHand, setBatHand] = useState("right");
-  const [showRecent, setShowRecent] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [recentPlayers, setRecentPlayers] = useState([]);
+
+  useEffect(() => {
+    if (chart?.pitches) {
+      if (type === "pitcher") {
+        const pitchersData = chart.pitches
+          .filter((pitch) => pitch.pitcher && pitch.pitcher.name)
+          .map((pitch) => ({
+            name: pitch.pitcher.name,
+            pitchHand: pitch.pitcher.pitchHand,
+          }));
+
+        const unique = _.uniqBy(
+          pitchersData,
+          (pitcher) => `${pitcher.name}-${pitcher.pitchHand}`
+        );
+        setRecentPlayers(unique);
+      } else if (type === "batter") {
+        const currentTopBottom = chart.topBottom || "Top";
+        const isAwayTeam = currentTopBottom === "Top";
+
+        const teamBatters = chart.pitches
+          .filter((pitch) => {
+            const pitchTopBottom = pitch.topBottom || "Top";
+            const isPitchFromTeam = (pitchTopBottom === "Top") === isAwayTeam;
+            return pitch.batter && pitch.batter.name && isPitchFromTeam;
+          })
+          .map((pitch) => ({
+            name: pitch.batter.name,
+            batHand: pitch.batter.batHand,
+          }));
+
+        const unique = _.uniqBy(
+          teamBatters,
+          (batter) => `${batter.name}-${batter.batHand}`
+        );
+        setRecentPlayers(unique);
+      }
+    }
+  }, [chart, type]);
 
   const handleSubmit = () => {
     onSubmit({
@@ -59,8 +99,8 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
     onClose();
   };
 
-  const selectRecentPitcher = (pitcher) => {
-    onSubmit(pitcher);
+  const selectRecentPlayer = (player) => {
+    onSubmit(player);
     onClose();
   };
 
@@ -68,63 +108,32 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
     {
       value: "right",
       label: "Right",
-      icon: (
-        <svg
-          className="w-4 h-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M3 16C3 14.9391 3.42143 13.9217 4.17157 13.1716C4.92172 12.4214 5.93913 12 7 12H17C18.0609 12 19.0783 12.4214 19.8284 13.1716C20.5786 13.9217 21 14.9391 21 16V20H3V16Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M12 8C13.6569 8 15 6.65685 15 5C15 3.34315 13.6569 2 12 2C10.3431 2 9 3.34315 9 5C9 6.65685 10.3431 8 12 8Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
     },
     {
       value: "left",
       label: "Left",
-      icon: (
-        <svg
-          className="w-4 h-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M21 16C21 14.9391 20.5786 13.9217 19.8284 13.1716C19.0783 12.4214 18.0609 12 17 12H7C5.93913 12 4.92172 12.4214 4.17157 13.1716C3.42143 13.9217 3 14.9391 3 16V20H21V16Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <path
-            d="M12 8C10.3431 8 9 6.65685 9 5C9 3.34315 10.3431 2 12 2C13.6569 2 15 3.34315 15 5C15 6.65685 13.6569 8 12 8Z"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ),
     },
   ];
 
-  const recentPitchers = chart?.recentPitchers || [];
-  const filteredPitchers = recentPitchers.filter((pitcher) =>
-    pitcher.name.toLowerCase().includes(searchQuery.toLowerCase())
+  if (type === "batter") {
+    handOptions.push({
+      value: "switch",
+      label: "Switch",
+    });
+  }
+
+  const filteredPlayers = recentPlayers.filter((player) =>
+    player.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const getPlayerTypeDisplay = (player) => {
+    if (type === "pitcher") {
+      return player.pitchHand === "right" ? "RHP" : "LHP";
+    } else {
+      if (player.batHand === "switch") return "Switch";
+      return player.batHand === "right" ? "RHH" : "LHH";
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -137,38 +146,13 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
           </h2>
         </div>
 
-        {type === "pitcher" && recentPitchers.length > 0 && (
-          <div className="flex items-center gap-2 px-6 pt-6">
-            <button
-              onClick={() => setShowRecent(true)}
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                showRecent
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              Recent Pitchers
-            </button>
-            <button
-              onClick={() => setShowRecent(false)}
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                !showRecent
-                  ? "bg-blue-50 text-blue-600"
-                  : "text-gray-600 hover:bg-gray-50"
-              }`}
-            >
-              New Pitcher
-            </button>
-          </div>
-        )}
-
-        <div className="p-6">
-          {type === "pitcher" && showRecent && recentPitchers.length > 0 ? (
+        <div className="p-6 space-y-6">
+          {recentPlayers.length > 0 && (
             <div className="space-y-4">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search recent pitchers..."
+                  placeholder={`Search recent ${type}s...`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-10 pr-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -178,71 +162,84 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
                   size={20}
                 />
               </div>
-              <div className="max-h-[300px] overflow-y-auto space-y-2">
-                {filteredPitchers.map((pitcher) => (
+              <div className="max-h-[200px] overflow-y-auto space-y-2">
+                {filteredPlayers.map((player) => (
                   <button
-                    key={pitcher.name}
-                    onClick={() => selectRecentPitcher(pitcher)}
+                    key={player.name}
+                    onClick={() => selectRecentPlayer(player)}
                     className="w-full px-4 py-3 text-left border rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <div className="font-medium">{pitcher.name}</div>
+                    <div className="font-medium">{player.name}</div>
                     <div className="text-sm text-gray-500">
-                      {pitcher.pitchHand === "right" ? "RHP" : "LHP"}
+                      {getPlayerTypeDisplay(player)}
                     </div>
                   </button>
                 ))}
               </div>
             </div>
-          ) : (
-            <div className="space-y-6">
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-1 block">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={`Enter ${type} name...`}
-                />
+          )}
+
+          {recentPlayers.length > 0 && (
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
               </div>
-
-              {type === "pitcher" && (
-                <RadioGroup
-                  options={handOptions}
-                  value={pitchHand}
-                  onChange={setPitchHand}
-                  title="Throws"
-                />
-              )}
-
-              {type === "batter" && (
-                <RadioGroup
-                  options={handOptions}
-                  value={batHand}
-                  onChange={setBatHand}
-                  title="Bats"
-                />
-              )}
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  onClick={onClose}
-                  className="px-4 py-2 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!name.trim()}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  Save
-                </button>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">
+                  or add new {type}
+                </span>
               </div>
             </div>
           )}
+
+          <div className="space-y-6">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">
+                Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder={`Enter ${type} name...`}
+              />
+            </div>
+
+            {type === "pitcher" && (
+              <RadioGroup
+                options={handOptions}
+                value={pitchHand}
+                onChange={setPitchHand}
+                title="Throws"
+              />
+            )}
+
+            {type === "batter" && (
+              <RadioGroup
+                options={handOptions}
+                value={batHand}
+                onChange={setBatHand}
+                title="Bats"
+              />
+            )}
+
+            <div className="flex justify-end space-x-3 pt-4">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!name.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                Save
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
