@@ -335,7 +335,6 @@ const getPitchers = (charts) => {
 };
 
 const processPitchData = (pitches) => {
-  // First calculate totals across all pitch types
   const totals = pitches.reduce(
     (acc, pitch) => {
       const isLHH = pitch.batter?.batHand?.toLowerCase() === "left";
@@ -353,7 +352,6 @@ const processPitchData = (pitches) => {
     { totalLHH: 0, totalRHH: 0, totalFirstPitchLHH: 0, totalFirstPitchRHH: 0 }
   );
 
-  // Then process individual pitch types using the pre-calculated totals
   return pitches.reduce((acc, pitch) => {
     const type = pitch.type?.toUpperCase() || "UNKNOWN";
     const isLHH = pitch.batter?.batHand?.toLowerCase() === "left";

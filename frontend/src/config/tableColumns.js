@@ -9,31 +9,96 @@ const createPercentageSortFn = (field) => (rowA, rowB) => {
   return a - b;
 };
 
+const columnStyles = {
+  base: "w-16 sm:w-20 md:w-24 text-left", // For most numeric columns
+  wide: "w-20 sm:w-24 md:w-28 text-left", // For columns with longer headers
+};
+
 export const columnsGuts = [
-  { name: "Year", selector: (row) => row.Year, width: "80px" },
-  { name: "Division", selector: (row) => row.Division, width: "100px" },
-  { name: "wOBA", selector: (row) => roundTo(row.wOBA, 3), width: "80px" },
+  {
+    name: "Year",
+    selector: (row) => row.Year,
+    className: columnStyles.base,
+  },
+  {
+    name: "Division",
+    selector: (row) => row.Division,
+    className: columnStyles.base,
+  },
+  {
+    name: "wOBA",
+    selector: (row) => roundTo(row.wOBA, 3),
+    className: columnStyles.base,
+  },
   {
     name: "wOBA Scale",
     selector: (row) => roundTo(row.wOBAScale, 2),
-    width: "120px",
+    className: columnStyles.wide,
   },
-  { name: "wBB", selector: (row) => roundTo(row.wBB, 2), width: "80px" },
-  { name: "wHBP", selector: (row) => roundTo(row.wHBP, 2), width: "80px" },
-  { name: "w1B", selector: (row) => roundTo(row.w1B, 2), width: "80px" },
-  { name: "w2B", selector: (row) => roundTo(row.w2B, 2), width: "80px" },
-  { name: "w3B", selector: (row) => roundTo(row.w3B, 2), width: "80px" },
-  { name: "wHR", selector: (row) => roundTo(row.wHR, 2), width: "80px" },
-  { name: "wSB", selector: (row) => roundTo(row.runSB, 2), width: "80px" },
-  { name: "wCS", selector: (row) => roundTo(row.runCS, 2), width: "80px" },
-  { name: "R/PA", selector: (row) => roundTo(row.runsPA, 2), width: "80px" },
-  { name: "R/W", selector: (row) => roundTo(row.runsWin, 2), width: "80px" },
-  { name: "cFIP", selector: (row) => roundTo(row.cFIP, 2), width: "80px" },
-  { name: "R/Out", selector: (row) => roundTo(row.runsOut, 2), width: "80px" },
+  {
+    name: "wBB",
+    selector: (row) => roundTo(row.wBB, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "wHBP",
+    selector: (row) => roundTo(row.wHBP, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "w1B",
+    selector: (row) => roundTo(row.w1B, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "w2B",
+    selector: (row) => roundTo(row.w2B, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "w3B",
+    selector: (row) => roundTo(row.w3B, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "wHR",
+    selector: (row) => roundTo(row.wHR, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "wSB",
+    selector: (row) => roundTo(row.runSB, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "wCS",
+    selector: (row) => roundTo(row.runCS, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "R/PA",
+    selector: (row) => roundTo(row.runsPA, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "R/W",
+    selector: (row) => roundTo(row.runsWin, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "cFIP",
+    selector: (row) => roundTo(row.cFIP, 2),
+    className: columnStyles.base,
+  },
+  {
+    name: "R/Out",
+    selector: (row) => roundTo(row.runsOut, 2),
+    className: columnStyles.base,
+  },
   {
     name: "csRate",
     selector: (row) => roundTo(row.csRate, 1),
-    width: "80px",
+    className: columnStyles.base,
   },
 ];
 
@@ -42,42 +107,42 @@ export const columnsPF = [
     name: "Team",
     selector: (row) => row.team_name,
     sortable: true,
-    width: "20%",
+    className: "w-1/4 md:w-1/5 text-left",
   },
   {
     name: "Years",
     selector: (row) => row.Years,
-    width: "10%",
+    className: "w-1/12 md:w-1/10 text-left",
   },
   {
     name: "Runs @ Home",
     selector: (row) => roundTo(row.H, 2),
     sortable: true,
-    width: "15%",
+    className: "w-1/6 md:w-[15%] text-left",
   },
   {
     name: "Runs on Road",
     selector: (row) => roundTo(row.R, 2),
     sortable: true,
-    width: "15%",
+    className: "w-1/6 md:w-[15%] text-left",
   },
   {
     name: "Home Games",
     selector: (row) => row.total_home_games,
     sortable: true,
-    width: "15%",
+    className: "w-1/6 md:w-[15%] text-left",
   },
   {
     name: "Away Games",
     selector: (row) => row.total_away_games,
     sortable: true,
-    width: "15%",
+    className: "w-1/6 md:w-[15%] text-left",
   },
   {
     name: "PF",
     selector: (row) => roundTo(row.PF, 0),
     sortable: true,
-    width: "10%",
+    className: "w-1/12 md:w-1/10 text-left",
     cell: (row) => <PFCell value={row.PF} />,
   },
 ];

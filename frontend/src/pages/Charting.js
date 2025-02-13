@@ -167,11 +167,12 @@ const Charting = () => {
     try {
       const newChart = await ChartManager.createChart({
         chartType: "bullpen",
+        zoneType: "standard",
         date: chartData.date,
         source: chartData.source,
         pitches: chartData.pitches,
         totalPitches: chartData.pitches.length,
-        description: chartData.description || "User uploaded data",
+        description: chartData.description,
         userId: user.uid,
         isAnonymous: user.isAnonymous,
       });

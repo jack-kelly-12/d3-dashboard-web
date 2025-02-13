@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
-import { Plus, Trash2, FileDown, FileText } from "lucide-react";
+import { Plus, Trash2, FileDown, FileText, Upload } from "lucide-react";
 import AdvanceReportModal from "../modals/AdvanceReportModal";
 import PitchArsenalReport from "../../reports/BullpenReport";
 import { pdf } from "@react-pdf/renderer";
@@ -237,7 +237,7 @@ const ChartsList = ({
         ]);
         break;
 
-      default: // d3 format
+      default:
         if (chartType === "bullpen") {
           headers = [
             "time",
@@ -264,7 +264,6 @@ const ChartsList = ({
           ]);
         } else {
           headers = [
-            "time",
             "pitcher",
             "pitcherHand",
             "batter",
@@ -281,7 +280,7 @@ const ChartsList = ({
           ];
 
           rows = pitches.map((pitch) => [
-            new Date(pitch.timestamp).toLocaleString(),
+            pitch.time,
             pitch.pitcher?.name || "",
             pitch.pitcher?.pitchHand || "",
             pitch.batter?.name || "",
@@ -292,8 +291,8 @@ const ChartsList = ({
             pitch.hitResult?.replace(/_/g, " ") || "",
             pitch.x?.toFixed(1) || "",
             pitch.y?.toFixed(1) || "",
-            pitch.hitX?.toFixed(1) || "",
-            pitch.hitY?.toFixed(1) || "",
+            pitch.hitDetails?.x.toFixed(1) || "",
+            pitch.hitDetails?.y.toFixed(1) || "",
             pitch.note || "",
           ]);
         }
@@ -468,7 +467,7 @@ const ChartsList = ({
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <InfoBanner dataType={"charting"}></InfoBanner>
+      <InfoBanner dataType={"charting"} />
 
       <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex justify-between items-center mb-6">
@@ -481,22 +480,23 @@ const ChartsList = ({
               New Chart
             </button>
             {authState.isAuthenticated && isPremiumUser && (
-              <button
-                onClick={() => setIsReportModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-              >
-                <FileText size={14} />
-                Generate Report
-              </button>
+              <>
+                <button
+                  onClick={onUploadClick}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <Upload size={14} />
+                  Upload Data
+                </button>
+                <button
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  <FileText size={14} />
+                  Generate Report
+                </button>
+              </>
             )}
-
-            <button
-              onClick={onUploadClick}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
-            >
-              <Plus size={14} />
-              Upload Data
-            </button>
           </div>
         </div>
 

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Upload, AlertCircle } from "lucide-react";
+import { Upload, AlertCircle, FileText } from "lucide-react";
 import { fetchAPI } from "../../config/api";
 
 const DataUpload = ({ onUpload, chartType }) => {
@@ -8,6 +8,7 @@ const DataUpload = ({ onUpload, chartType }) => {
   const [uploading, setUploading] = useState(false);
   const [dataSource, setDataSource] = useState("trackman");
   const [description, setDescription] = useState("");
+  const [stagedFile, setStagedFile] = useState(null);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -26,21 +27,18 @@ const DataUpload = ({ onUpload, chartType }) => {
         credentials: "include",
       });
 
-      const defaultDescription = `${
-        dataSource.charAt(0).toUpperCase() + dataSource.slice(1)
-      } Upload - ${new Date().toLocaleDateString()}`;
-
-      const chartDescription = description
-        ? description.trim()
-        : defaultDescription;
-
       const chartData = {
-        chartType: chartType || "bullpen",
+        chartType: "bullpen",
+        zoneType: "standard",
         date: new Date().toISOString(),
         pitches: data.pitches,
         source: dataSource,
         playerInfo: data.playerInfo,
-        description: chartDescription,
+        description:
+          description.trim() ||
+          `${
+            dataSource.charAt(0).toUpperCase() + dataSource.slice(1)
+          } Upload - ${new Date().toLocaleDateString()}`,
       };
 
       return chartData;
@@ -50,23 +48,32 @@ const DataUpload = ({ onUpload, chartType }) => {
     }
   };
 
-  const handleFile = async (file) => {
+  const handleFile = (file) => {
+    setError("");
+
+    if (!file.name.match(/\.(csv|xlsx|xls)$/)) {
+      setError("Please upload a CSV or Excel file");
+      return;
+    }
+
+    setStagedFile(file);
+  };
+
+  const handleUploadClick = async () => {
+    if (!stagedFile) return;
+
     setUploading(true);
     setError("");
 
     try {
-      if (!file.name.match(/\.(csv|xlsx|xls)$/)) {
-        throw new Error("Please upload a CSV or Excel file");
-      }
-
-      const chartData = await uploadFile(file);
+      const chartData = await uploadFile(stagedFile);
       onUpload(chartData);
+      setStagedFile(null); // Clear the staged file after successful upload
     } catch (err) {
       setError(err.message);
       console.error("Upload error:", err);
     } finally {
       setUploading(false);
-      setDragActive(false);
     }
   };
 
@@ -84,6 +91,11 @@ const DataUpload = ({ onUpload, chartType }) => {
     if (e.target.files?.[0]) {
       handleFile(e.target.files[0]);
     }
+  };
+
+  const clearStagedFile = () => {
+    setStagedFile(null);
+    setError("");
   };
 
   return (
@@ -121,48 +133,86 @@ const DataUpload = ({ onUpload, chartType }) => {
         rows={1}
       />
 
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        className={`
-          relative border-2 border-dashed rounded-lg p-8 text-center
-          ${dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}
-          transition-colors duration-200
-        `}
-      >
-        <input
-          type="file"
-          accept=".csv,.xlsx,.xls"
-          onChange={handleChange}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-        />
+      {!stagedFile ? (
+        <div
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+          className={`
+            relative border-2 border-dashed rounded-lg p-8 text-center
+            ${dragActive ? "border-blue-500 bg-blue-50" : "border-gray-300"}
+            transition-colors duration-200
+          `}
+        >
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleChange}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+          />
 
-        <Upload className="mx-auto h-12 w-12 text-gray-400" />
+          <Upload className="mx-auto h-12 w-12 text-gray-400" />
 
-        <p className="mt-4 text-sm text-gray-600">
-          Drag and drop or click to upload{" "}
-          {dataSource === "trackman" ? "Trackman" : "Rapsodo"} data
-        </p>
+          <p className="mt-4 text-sm text-gray-600">
+            Drag and drop or click to upload{" "}
+            {dataSource === "trackman" ? "Trackman" : "Rapsodo"} data
+          </p>
 
-        <p className="mt-2 text-xs text-gray-500">
-          Supports CSV and Excel files
-        </p>
-
-        {uploading && (
-          <div className="mt-4">
-            <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="mt-2 text-xs text-gray-500">
+            Supports CSV and Excel files
+          </p>
+        </div>
+      ) : (
+        <div className="border rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <FileText className="h-6 w-6 text-blue-500" />
+              <div>
+                <p className="font-medium">{stagedFile.name}</p>
+                <p className="text-sm text-gray-500">
+                  {(stagedFile.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={clearStagedFile}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
           </div>
-        )}
 
-        {error && (
-          <div className="mt-4 flex items-center justify-center text-red-600 text-sm">
-            <AlertCircle className="w-4 h-4 mr-2" />
-            {error}
-          </div>
-        )}
-      </div>
+          <button
+            onClick={handleUploadClick}
+            disabled={uploading}
+            className={`
+              mt-4 w-full py-2 px-4 rounded-lg font-medium
+              ${
+                uploading
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
+              }
+            `}
+          >
+            {uploading ? (
+              <div className="flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                Uploading...
+              </div>
+            ) : (
+              "Upload File"
+            )}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="mt-4 flex items-center justify-center text-red-600 text-sm">
+          <AlertCircle className="w-4 h-4 mr-2" />
+          {error}
+        </div>
+      )}
     </div>
   );
 };
