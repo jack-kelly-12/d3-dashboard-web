@@ -2,11 +2,15 @@ import React, { useState } from "react";
 import { Upload, AlertCircle, FileText } from "lucide-react";
 import { fetchAPI } from "../../config/api";
 
-const DataUpload = ({ onUpload, chartType }) => {
+const DataUpload = ({ onUpload }) => {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [dataSource, setDataSource] = useState("trackman");
+  const [chartType, setChartType] = useState("bullpen");
+  const [zoneType, setZoneType] = useState("standard");
+  const [awayTeam, setAwayTeam] = useState("");
+  const [homeTeam, setHomeTeam] = useState("");
   const [description, setDescription] = useState("");
   const [stagedFile, setStagedFile] = useState(null);
 
@@ -21,24 +25,42 @@ const DataUpload = ({ onUpload, chartType }) => {
     formData.append("file", file);
 
     try {
-      const data = await fetchAPI(`/upload/${dataSource}`, {
+      let url = `/upload/${dataSource}`;
+      if (dataSource === "d3") {
+        url += `?chartType=${chartType}&zoneType=${zoneType}`;
+      }
+
+      const data = await fetchAPI(url, {
         method: "POST",
         body: formData,
         credentials: "include",
       });
 
+      let finalDescription;
+      if (dataSource === "d3" && chartType === "game") {
+        if (!awayTeam || !homeTeam) {
+          throw new Error("Please enter both team names");
+        }
+        finalDescription = `${awayTeam} @ ${homeTeam}`;
+      } else {
+        finalDescription =
+          description.trim() ||
+          `${dataSource.charAt(0).toUpperCase() + dataSource.slice(1)} ${
+            chartType.charAt(0).toUpperCase() + chartType.slice(1)
+          } - ${new Date().toLocaleDateString()}`;
+      }
+
       const chartData = {
-        chartType: "bullpen",
-        zoneType: "standard",
+        chartType: dataSource === "d3" ? chartType : "bullpen",
+        zoneType:
+          dataSource === "d3" && chartType === "bullpen"
+            ? zoneType
+            : "standard",
         date: new Date().toISOString(),
         pitches: data.pitches,
         source: dataSource,
         playerInfo: data.playerInfo,
-        description:
-          description.trim() ||
-          `${
-            dataSource.charAt(0).toUpperCase() + dataSource.slice(1)
-          } Upload - ${new Date().toLocaleDateString()}`,
+        description: finalDescription,
       };
 
       return chartData;
@@ -62,13 +84,25 @@ const DataUpload = ({ onUpload, chartType }) => {
   const handleUploadClick = async () => {
     if (!stagedFile) return;
 
+    if (
+      dataSource === "d3" &&
+      chartType === "game" &&
+      (!awayTeam || !homeTeam)
+    ) {
+      setError("Please enter both team names");
+      return;
+    }
+
     setUploading(true);
     setError("");
 
     try {
       const chartData = await uploadFile(stagedFile);
       onUpload(chartData);
-      setStagedFile(null); // Clear the staged file after successful upload
+      setStagedFile(null);
+      setAwayTeam("");
+      setHomeTeam("");
+      setDescription("");
     } catch (err) {
       setError(err.message);
       console.error("Upload error:", err);
@@ -100,6 +134,7 @@ const DataUpload = ({ onUpload, chartType }) => {
 
   return (
     <div className="w-full space-y-4">
+      {/* Data Source Selection */}
       <div className="flex justify-center gap-4">
         <button
           onClick={() => setDataSource("trackman")}
@@ -123,16 +158,122 @@ const DataUpload = ({ onUpload, chartType }) => {
         >
           Rapsodo
         </button>
+        <button
+          onClick={() => setDataSource("d3")}
+          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200
+            ${
+              dataSource === "d3"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+            }`}
+        >
+          D3
+        </button>
       </div>
 
-      <textarea
-        value={description}
-        placeholder="Add a description (optional)"
-        onChange={(e) => setDescription(e.target.value)}
-        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        rows={1}
-      />
+      {/* Chart Type Selection (only for D3) */}
+      {dataSource === "d3" && (
+        <div className="flex justify-center gap-4 text-sm">
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setChartType("bullpen")}
+              className={`px-3 py-1.5 transition-all duration-200
+                ${
+                  chartType === "bullpen"
+                    ? "bg-gray-100 text-gray-900"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              Bullpen
+            </button>
+            <button
+              onClick={() => setChartType("game")}
+              className={`px-3 py-1.5 transition-all duration-200 border-l border-gray-200
+                ${
+                  chartType === "game"
+                    ? "bg-gray-100 text-gray-900"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              Game
+            </button>
+          </div>
+        </div>
+      )}
 
+      {/* Zone Type Selection (only for D3 Bullpen) */}
+      {dataSource === "d3" && chartType === "bullpen" && (
+        <div className="flex justify-center items-center gap-2 text-sm text-gray-600">
+          <span className="text-gray-400">Zone Type:</span>
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            <button
+              onClick={() => setZoneType("standard")}
+              className={`px-3 py-1 transition-all duration-200
+                ${
+                  zoneType === "standard"
+                    ? "bg-gray-100 text-gray-900"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => setZoneType("detailed")}
+              className={`px-3 py-1 transition-all duration-200 border-l border-gray-200
+                ${
+                  zoneType === "detailed"
+                    ? "bg-gray-100 text-gray-900"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              RH 7 Zone
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Description Input - Team inputs for game charts, regular description for others */}
+      {dataSource === "d3" && chartType === "game" ? (
+        <div className="flex gap-4 items-center">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Away Team
+            </label>
+            <input
+              type="text"
+              value={awayTeam}
+              onChange={(e) => setAwayTeam(e.target.value)}
+              placeholder="Enter away team"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center h-full pt-6">
+            <span className="text-gray-400">@</span>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Home Team
+            </label>
+            <input
+              type="text"
+              value={homeTeam}
+              onChange={(e) => setHomeTeam(e.target.value)}
+              placeholder="Enter home team"
+              className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+      ) : (
+        <textarea
+          value={description}
+          placeholder="Add a description (optional)"
+          onChange={(e) => setDescription(e.target.value)}
+          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          rows={1}
+        />
+      )}
+
+      {/* File Upload Area */}
       {!stagedFile ? (
         <div
           onDragEnter={handleDrag}
@@ -156,7 +297,12 @@ const DataUpload = ({ onUpload, chartType }) => {
 
           <p className="mt-4 text-sm text-gray-600">
             Drag and drop or click to upload{" "}
-            {dataSource === "trackman" ? "Trackman" : "Rapsodo"} data
+            {dataSource === "trackman"
+              ? "Trackman"
+              : dataSource === "rapsodo"
+              ? "Rapsodo"
+              : "D3"}{" "}
+            data
           </p>
 
           <p className="mt-2 text-xs text-gray-500">
@@ -207,6 +353,7 @@ const DataUpload = ({ onUpload, chartType }) => {
         </div>
       )}
 
+      {/* Error Display */}
       {error && (
         <div className="mt-4 flex items-center justify-center text-red-600 text-sm">
           <AlertCircle className="w-4 h-4 mr-2" />

@@ -240,7 +240,6 @@ const ChartsList = ({
       default:
         if (chartType === "bullpen") {
           headers = [
-            "time",
             "pitcher",
             "pitcherHand",
             "pitchType",
@@ -252,7 +251,6 @@ const ChartsList = ({
           ];
 
           rows = pitches.map((pitch) => [
-            pitch.timestamp,
             pitch.pitcher?.name || "",
             pitch.pitcher?.pitchHand || "",
             pitch.type || "",
@@ -280,7 +278,6 @@ const ChartsList = ({
           ];
 
           rows = pitches.map((pitch) => [
-            pitch.time,
             pitch.pitcher?.name || "",
             pitch.pitcher?.pitchHand || "",
             pitch.batter?.name || "",
@@ -351,7 +348,7 @@ const ChartsList = ({
         <span className="font-medium text-gray-800">
           {row.homeTeam && row.awayTeam
             ? `${row.awayTeam} @ ${row.homeTeam}`
-            : "—"}
+            : `${row.description}`}
         </span>
       </div>
     );

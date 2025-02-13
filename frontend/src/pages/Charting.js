@@ -166,8 +166,8 @@ const Charting = () => {
     const loadingToast = toast.loading("Processing uploaded data...");
     try {
       const newChart = await ChartManager.createChart({
-        chartType: "bullpen",
-        zoneType: "standard",
+        chartType: chartData.chartType,
+        zoneType: chartData.zoneType,
         date: chartData.date,
         source: chartData.source,
         pitches: chartData.pitches,

@@ -749,6 +749,116 @@ def upload_trackman():
         return jsonify({"error": f"Error processing file: {str(e)}"}), 500
 
 
+@app.route('/api/upload/d3', methods=['POST', 'OPTIONS'])
+@cross_origin(supports_credentials=True)
+def upload_d3():
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+
+    if 'file' not in request.files:
+        response = jsonify({"error": "No file provided"})
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response, 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    # Get chart type from query params, default to 'game'
+    chart_type = request.args.get('chartType', 'game')
+    zone_type = request.args.get('zoneType', 'standard')
+
+    try:
+        if file.filename.endswith('.csv'):
+            df = pd.read_csv(file)
+        elif file.filename.endswith(('.xlsx', '.xls')):
+            df = pd.read_excel(file)
+        else:
+            return jsonify({"error": "Unsupported file format"}), 400
+
+        processed_pitches = []
+
+        if chart_type == 'bullpen':
+            for _, row in df.iterrows():
+                pitcher_info = {
+                    'name': row.get('pitcher', ''),
+                    'pitchHand': row.get('pitcherHand', '')
+                }
+
+                pitch = {
+                    'timestamp': row.get('time', pd.Timestamp.now().isoformat()),
+                    'pitcher': pitcher_info,
+                    'type': str(row.get('pitchType', '')).lower(),
+                    'velocity': float(row['velocity']) if pd.notna(row.get('velocity')) else None,
+                    'intendedZone': str(row.get('intendedZone', '')),
+                    'x': float(row['pitchX']) if pd.notna(row.get('pitchX')) else None,
+                    'y': float(row['pitchY']) if pd.notna(row.get('pitchY')) else None,
+                    'note': str(row.get('notes', '-')),
+                    'zoneType': zone_type
+                }
+                processed_pitches.append(pitch)
+
+        else:  # Game format
+            for _, row in df.iterrows():
+                pitcher_info = {
+                    'name': row.get('pitcher', ''),
+                    'pitchHand': row.get('pitcherHand', '')
+                }
+
+                batter_info = {
+                    'name': row.get('batter', ''),
+                    'batHand': row.get('batterHand', '')
+                }
+
+                hit_details = None
+                if pd.notna(row.get('hitX')) and pd.notna(row.get('hitY')):
+                    hit_details = {
+                        'x': float(row['hitX']),
+                        'y': float(row['hitY'])
+                    }
+
+                pitch = {
+                    'timestamp': row.get('time', pd.Timestamp.now().isoformat()),
+                    'pitcher': pitcher_info,
+                    'batter': batter_info,
+                    'type': str(row.get('pitchType', '')).lower(),
+                    'velocity': float(row['velocity']) if pd.notna(row.get('velocity')) else None,
+                    'result': str(row.get('result', '')).replace(' ', '_'),
+                    'hitResult': str(row.get('hitResult', '')).replace(' ', '_'),
+                    'x': float(row['pitchX']) if pd.notna(row.get('pitchX')) else None,
+                    'y': float(row['pitchY']) if pd.notna(row.get('pitchY')) else None,
+                    'hitDetails': hit_details,
+                    'note': str(row.get('notes', '-')),
+                    'zoneType': zone_type
+                }
+                processed_pitches.append(pitch)
+
+        if not processed_pitches:
+            return jsonify({"error": "No valid pitches found in file"}), 400
+
+        first_pitch = processed_pitches[0]
+        player_info = {
+            'pitcher': first_pitch.get('pitcher', {}).get('name'),
+            'pitcherHand': first_pitch.get('pitcher', {}).get('pitchHand')
+        }
+
+        return jsonify({
+            'pitches': processed_pitches,
+            'playerInfo': player_info,
+            'zoneType': zone_type
+        })
+
+    except Exception as e:
+        print(f"Error processing D3 file: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Error processing file: {str(e)}"}), 500
+
+
 @app.route('/api/conferences', methods=['GET'])
 def get_conferences():
     conn = get_db_connection()
