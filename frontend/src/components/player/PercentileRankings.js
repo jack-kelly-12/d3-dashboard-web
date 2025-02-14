@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ReactComponent as BatterIconSVG } from "./batter.svg";
 import { ReactComponent as TrophyIconSVG } from "./trophy.svg";
 import { ReactComponent as PitcherIconSVG } from "./pitcher.svg";
+import { Play, Pause } from "lucide-react";
 
 const StatBar = ({
   label,
@@ -96,9 +97,12 @@ export const PercentileSection = ({
   const [selectedYear, setSelectedYear] = useState("2024");
   const [isYearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const dropdownRef = useRef(null);
+  const animationTimer = useRef(null);
 
   const availableYears = playerData?.yearsPlayed || [];
+  const sortedYears = [...availableYears].sort((a, b) => Number(a) - Number(b));
 
   const handleYearChange = async (year) => {
     setSelectedYear(year);
@@ -106,6 +110,34 @@ export const PercentileSection = ({
     await onYearChange(year);
     setIsLoading(false);
     setYearDropdownOpen(false);
+  };
+
+  const playAnimation = async () => {
+    setIsPlaying(true);
+    await handleYearChange(sortedYears[0]);
+
+    const playNextYear = async (index) => {
+      if (index >= sortedYears.length - 1) {
+        setIsPlaying(false);
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const nextIndex = index + 1;
+      await handleYearChange(sortedYears[nextIndex]);
+
+      playNextYear(nextIndex);
+    };
+
+    playNextYear(0);
+  };
+
+  const pauseAnimation = () => {
+    setIsPlaying(false);
+    if (animationTimer.current) {
+      clearInterval(animationTimer.current);
+    }
   };
 
   useEffect(() => {
@@ -116,7 +148,18 @@ export const PercentileSection = ({
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+
+    // Copy the current value of animationTimer.current to a variable
+    const timer = animationTimer.current;
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+
+      // Use the variable in the cleanup function
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
   }, []);
 
   if (
@@ -212,6 +255,26 @@ export const PercentileSection = ({
             </button>
           </h2>
 
+          {/* Play/Pause Button */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={isPlaying ? pauseAnimation : playAnimation}
+              className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors text-sm"
+            >
+              {isPlaying ? (
+                <>
+                  <Pause className="w-4 h-4" />
+                  <span>Pause</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" />
+                  <span>Play Career</span>
+                </>
+              )}
+            </button>
+          </div>
+
           {/* Loading indicator */}
           {isLoading && (
             <div className="ml-2">
@@ -230,11 +293,11 @@ export const PercentileSection = ({
                   <button
                     key={year}
                     className={`w-full px-4 py-2 text-left hover:bg-gray-50 
-                            ${
-                              selectedYear === year
-                                ? "bg-blue-50 text-blue-700"
-                                : "text-gray-700"
-                            }`}
+                      ${
+                        selectedYear === year
+                          ? "bg-blue-50 text-blue-700"
+                          : "text-gray-700"
+                      }`}
                     onClick={() => handleYearChange(year)}
                   >
                     {year}
