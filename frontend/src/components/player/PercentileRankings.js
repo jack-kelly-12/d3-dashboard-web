@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ReactComponent as BatterIconSVG } from "./batter.svg";
 import { ReactComponent as TrophyIconSVG } from "./trophy.svg";
 import { ReactComponent as PitcherIconSVG } from "./pitcher.svg";
-import { Play, Pause } from "lucide-react";
+import { Play } from "lucide-react";
 
 const StatBar = ({
   label,
@@ -133,13 +133,6 @@ export const PercentileSection = ({
     playNextYear(0);
   };
 
-  const pauseAnimation = () => {
-    setIsPlaying(false);
-    if (animationTimer.current) {
-      clearInterval(animationTimer.current);
-    }
-  };
-
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -149,13 +142,11 @@ export const PercentileSection = ({
 
     document.addEventListener("mousedown", handleClickOutside);
 
-    // Copy the current value of animationTimer.current to a variable
     const timer = animationTimer.current;
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
 
-      // Use the variable in the cleanup function
       if (timer) {
         clearInterval(timer);
       }
@@ -255,24 +246,18 @@ export const PercentileSection = ({
             </button>
           </h2>
 
-          {/* Play/Pause Button */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={isPlaying ? pauseAnimation : playAnimation}
-              className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors text-sm"
-            >
-              {isPlaying ? (
-                <>
-                  <Pause className="w-4 h-4" />
-                  <span>Pause</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  <span>Play Career</span>
-                </>
-              )}
-            </button>
+            {isPlaying ? (
+              <></>
+            ) : (
+              <button
+                onClick={playAnimation}
+                className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors text-sm"
+              >
+                <Play className="w-4 h-4" />
+                <span>Play Career</span>
+              </button>
+            )}
           </div>
 
           {/* Loading indicator */}
