@@ -82,7 +82,7 @@ const calculateGameStats = (gameData) => {
 
   const mvp = Object.entries(playerWPA).sort((a, b) => b[1] - a[1])[0];
 
-  let leadChanges = 0;
+  let leadChanges = 1;
   let lastLeader = null;
   gameData.plays.forEach((play) => {
     const currentLeader =
