@@ -369,8 +369,8 @@ def get_expected_runs():
     return jsonify(data)
 
 
-@app.route('/api/player-percentiles/<player_id>', methods=['GET'])
-def get_player_percentiles(player_id):
+@app.route('/api/player-percentiles/<player_id>/<int:year>', methods=['GET'])
+def get_player_percentiles(player_id, year):
     conn = get_db_connection()
     cursor = conn.cursor()
     response = {"batting": None, "pitching": None}
@@ -379,24 +379,24 @@ def get_player_percentiles(player_id):
         # Check batting stats
         cursor.execute("""
             SELECT * FROM batting_war
-            WHERE player_id = ? AND Division = 3 AND Season = 2024
-        """, (player_id,))
+            WHERE player_id = ? AND Division = 3 AND Season = ?
+        """, (player_id, year))
         player = cursor.fetchone()
 
         if player:
             cursor.execute("""
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
-                       "Baserunning", "Adjustment", WAR, PA, "wRC+"
+                       "Baserunning", "Adjustment", WAR, PA, "wRC+", "WPA", "REA"
                 FROM batting_war
-                WHERE PA > 25 AND Division = 3 AND Season = 2024
+                WHERE PA > 25 AND Division = 3 AND Season = ?
                 ORDER BY PA DESC
-            """)
+            """, (year,))
             all_players = cursor.fetchall()
             player_stats = dict(player)
 
             percentiles = {}
             for stat in ['BA', 'OBPct', 'SlgPct', 'wOBA', 'OPS+', 'Batting',
-                         'Baserunning', 'Adjustment', 'WAR', 'wRC+']:
+                         'Baserunning', 'Adjustment', 'WAR', 'wRC+', 'WPA', 'REA']:
                 values = [p[stat] for p in all_players if p[stat] is not None]
                 player_value = player_stats[stat]
                 if values and player_value is not None:
@@ -411,30 +411,31 @@ def get_player_percentiles(player_id):
                 "stats": percentiles,
                 "qualified": player_stats['PA'] > 25,
                 "paThreshold": 25,
-                "playerPA": player_stats['PA']
+                "playerPA": player_stats['PA'],
+                "season": year
             }
 
         # Check pitching stats
         cursor.execute("""
             SELECT * FROM pitching_war
-            WHERE player_id = ? AND Division = 3 AND Season = 2024
-        """, (player_id,))
+            WHERE player_id = ? AND Division = 3 AND Season = ?
+        """, (player_id, year))
         player = cursor.fetchone()
 
         if player:
             cursor.execute("""
-                SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9
+                SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9, "pWPA", "pREA", "gmLI"
                 FROM pitching_war
-                WHERE IP > 10 AND Division = 3 AND Season = 2024
+                WHERE IP > 10 AND Division = 3 AND Season = ?
                 ORDER BY IP DESC
-            """)
+            """, (year,))
             all_players = cursor.fetchall()
             player_stats = dict(player)
 
             percentiles = {}
             reverse_stats = ['ERA', 'FIP', 'xFIP', 'BB%', 'HR/FB', 'RA9']
 
-            for stat in ['ERA', 'FIP', 'xFIP', 'K%', 'BB%', 'K-BB%', 'RA9', 'WAR']:
+            for stat in ['ERA', 'FIP', 'xFIP', 'K%', 'BB%', 'K-BB%', 'RA9', 'WAR', 'pREA', 'pWPA', 'gmLI']:
                 values = [p[stat] for p in all_players if p[stat] is not None]
                 player_value = player_stats[stat]
                 if values and player_value is not None:
@@ -450,13 +451,14 @@ def get_player_percentiles(player_id):
                 "stats": percentiles,
                 "qualified": player_stats['IP'] > 10,
                 "ipThreshold": 10,
-                "playerIP": player_stats['IP']
+                "playerIP": player_stats['IP'],
+                "season": year
             }
 
         if response["batting"] is None and response["pitching"] is None:
             return jsonify({
                 "inactive": True,
-                "message": "Player not active in 2024 season"
+                "message": f"Player not active in {year} season"
             })
 
         return jsonify(response)
@@ -529,6 +531,14 @@ def get_player_stats(player_id):
         is_active = any(stat['Season'] ==
                         2024 for stat in batting_stats + pitching_stats)
 
+        cursor.execute("""
+            SELECT r.height, r.bats, r.throws, r.hometown, r.high_school, r.position
+            FROM rosters r
+            WHERE r.player_id = ? AND Division = 3 AND Year = ?
+        """, (player_id, year))
+        player_info = cursor.fetchone()
+
+        # Add to the jsonify return:
         return jsonify({
             "playerId": player_id,
             "playerName": player_name,
@@ -538,6 +548,12 @@ def get_player_stats(player_id):
             "conference_id": current_conference_id,
             "isPitcher": is_pitcher,
             "isActive": is_active,
+            "height": player_info["height"] if player_info else None,
+            "bats": player_info["bats"] if player_info else None,
+            "throws": player_info["throws"] if player_info else None,
+            "hometown": player_info["hometown"] if player_info else None,
+            "highSchool": player_info["high_school"] if player_info else None,
+            "position": player_info["position"] if player_info else None,
             "battingStats": batting_stats,
             "pitchingStats": pitching_stats
         })

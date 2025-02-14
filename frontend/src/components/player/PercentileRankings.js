@@ -1,31 +1,9 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { ReactComponent as BatterIconSVG } from "./batter.svg";
+import { ReactComponent as TrophyIconSVG } from "./trophy.svg";
+import { ReactComponent as PitcherIconSVG } from "./pitcher.svg";
 
-export const PercentileLegend = () => (
-  <div className="flex items-center gap-4 mb-8">
-    <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-gradient-to-r from-red-600 to-red-500 rounded-sm mr-1" />
-      Great
-    </div>
-    <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-gradient-to-r from-red-500 to-red-400 rounded-sm mr-1" />
-      Good
-    </div>
-    <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-gradient-to-r from-red-400 to-red-300 rounded-sm mr-1" />
-      Average
-    </div>
-    <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-gradient-to-r from-blue-400 to-blue-300 rounded-sm mr-1" />
-      Below Average
-    </div>
-    <div className="text-xs flex items-center">
-      <span className="inline-block w-3 h-3 bg-gradient-to-r from-blue-600 to-blue-500 rounded-sm mr-1" />
-      Poor
-    </div>
-  </div>
-);
-
-export const StatBar = ({
+const StatBar = ({
   label,
   value,
   percentile,
@@ -45,70 +23,39 @@ export const StatBar = ({
     }
   };
 
-  const getBarColors = (pct, isQualified) => {
-    if (!isQualified)
-      return {
-        bar: "bg-gradient-to-r from-gray-300 to-gray-200",
-        circle: "bg-gray-300",
-      };
-    if (pct >= 90)
-      return {
-        bar: "bg-gradient-to-r from-red-600 to-red-500",
-        circle: "bg-red-600",
-      };
-    if (pct >= 75)
-      return {
-        bar: "bg-gradient-to-r from-red-500 to-red-400",
-        circle: "bg-red-500",
-      };
-    if (pct >= 50)
-      return {
-        bar: "bg-gradient-to-r from-red-400 to-red-300",
-        circle: "bg-red-400",
-      };
-    if (pct >= 25)
-      return {
-        bar: "bg-gradient-to-r from-blue-400 to-blue-300",
-        circle: "bg-blue-400",
-      };
-    return {
-      bar: "bg-gradient-to-r from-blue-600 to-blue-500",
-      circle: "bg-blue-600",
-    };
+  const getBarColor = (pct) => {
+    if (!qualified) return "bg-gray-200";
+    if (pct >= 90) return "bg-red-600";
+    if (pct >= 75) return "bg-red-500";
+    if (pct >= 50) return "bg-red-400";
+    if (pct >= 25) return "bg-blue-400";
+    return "bg-blue-600";
   };
 
   return (
-    <div className={`relative h-10 mb-4 ${!qualified ? "opacity-50" : ""}`}>
-      <div className="flex justify-between text-xs mb-2.5">
-        <div className="flex gap-3">
-          <span className="text-gray-600 font-medium">
+    <div className="relative h-8 mb-3">
+      <div className="flex justify-between items-center text-sm mb-1">
+        <div className="flex items-center gap-3 w-full">
+          <span className="text-gray-600 font-medium min-w-[140px]">
             {label}
-            {!qualified && (
-              <span className="ml-1 text-gray-400">(Unqualified)</span>
-            )}
           </span>
-          <span className="font-mono font-medium">
+          <span className="font-mono text-gray-800">
             {formatValue(value)}
             {suffix}
           </span>
-        </div>
-      </div>
-      <div className="relative h-2">
-        <div className="absolute inset-0 bg-gray-100 rounded-full" />
-        <div
-          className={`absolute h-full rounded-full transition-all duration-300 ${
-            getBarColors(percentile, qualified).bar
-          }`}
-          style={{ width: `${percentile}%` }}
-        />
-        <div
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
-          style={{ left: `${percentile}%` }}
-        >
+          <div className="flex-1 relative h-2.5 mx-4">
+            <div className="absolute inset-0 bg-gray-100 rounded-full" />
+            <div
+              className={`absolute h-full rounded-full transition-all duration-300 ${getBarColor(
+                percentile
+              )}`}
+              style={{ width: `${percentile}%` }}
+            />
+          </div>
           <div
-            className={`${
-              getBarColors(percentile, qualified).circle
-            } text-white text-xs rounded-full h-5 w-8 flex items-center justify-center`}
+            className={`w-8 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
+              percentile
+            )}`}
           >
             {percentile || 0}
           </div>
@@ -118,12 +65,72 @@ export const StatBar = ({
   );
 };
 
-export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
-  if (!percentiles || (!percentiles.batting && !percentiles.pitching))
+const CategorySection = ({ title, stats, currentPercentiles, isQualified }) => (
+  <div className="mb-8">
+    <div className="flex items-center gap-2 mb-4">
+      <CategoryIcon className="w-5 h-5 text-gray-400" category={title} />
+      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+    </div>
+    <div className="space-y-2">
+      {stats.map(({ key, label, decimals, suffix = "" }) => (
+        <StatBar
+          key={key}
+          label={label}
+          value={currentPercentiles.stats[key]}
+          percentile={currentPercentiles.stats[`${key}Percentile`]}
+          decimals={decimals}
+          suffix={suffix}
+          qualified={isQualified}
+        />
+      ))}
+    </div>
+  </div>
+);
+
+export const PercentileSection = ({
+  playerData,
+  initialPercentiles,
+  activeTab,
+  onYearChange,
+}) => {
+  const [selectedYear, setSelectedYear] = useState("2024");
+  const [isYearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const dropdownRef = useRef(null);
+
+  const availableYears = playerData?.yearsPlayed || [];
+
+  const handleYearChange = async (year) => {
+    setSelectedYear(year);
+    setIsLoading(true);
+    await onYearChange(year);
+    setIsLoading(false);
+    setYearDropdownOpen(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setYearDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  if (
+    !initialPercentiles ||
+    (!initialPercentiles.batting && !initialPercentiles.pitching)
+  ) {
     return null;
+  }
 
   const currentPercentiles =
-    activeTab === "batting" ? percentiles.batting : percentiles.pitching;
+    activeTab === "batting"
+      ? initialPercentiles.batting
+      : initialPercentiles.pitching;
+
   if (!currentPercentiles) return null;
 
   const isQualified = currentPercentiles.qualified;
@@ -136,106 +143,108 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
       ? currentPercentiles.playerPA
       : currentPercentiles.playerIP;
 
-  const stats =
+  const categories =
     activeTab === "batting"
       ? [
           {
-            key: "Baserunning",
-            label: "Baserunning Value",
-            decimals: 1,
+            title: "Value",
+            stats: [
+              { key: "Baserunning", label: "Baserunning", decimals: 1 },
+              { key: "Batting", label: "Batting", decimals: 1 },
+              { key: "Adjustment", label: "Positional", decimals: 1 },
+              { key: "WPA", label: "WPA", decimals: 1 },
+              { key: "REA", label: "RE24", decimals: 1 },
+            ],
           },
           {
-            key: "Batting",
-            label: "Batting Value",
-            decimals: 1,
-          },
-          {
-            key: "Adjustment",
-            label: "Positional Value",
-            decimals: 1,
-          },
-          {
-            key: "wOBA",
-            label: "wOBA",
-            decimals: 3,
-          },
-          {
-            key: "OPS+",
-            label: "OPS+",
-            decimals: 0,
-          },
-          {
-            key: "wRC+",
-            label: "wRC+",
-            decimals: 0,
-          },
-          {
-            key: "BA",
-            label: "AVG",
-            decimals: 3,
-          },
-          {
-            key: "SlgPct",
-            label: "SLG",
-            decimals: 3,
+            title: "Batting",
+            stats: [
+              { key: "wOBA", label: "wOBA", decimals: 3 },
+              { key: "OPS+", label: "OPS+", decimals: 0 },
+              { key: "wRC+", label: "wRC+", decimals: 0 },
+              { key: "BA", label: "AVG", decimals: 3 },
+              { key: "SlgPct", label: "SLG", decimals: 3 },
+            ],
           },
         ]
       : [
           {
-            key: "WAR",
-            label: "WAR",
-            decimals: 1,
+            title: "Pitching",
+            stats: [
+              { key: "WAR", label: "WAR", decimals: 1 },
+              { key: "ERA", label: "ERA", decimals: 2, reverse: true },
+              { key: "FIP", label: "FIP", decimals: 2, reverse: true },
+              { key: "xFIP", label: "xFIP", decimals: 2, reverse: true },
+              { key: "K%", label: "K%", decimals: 1, suffix: "%" },
+              {
+                key: "BB%",
+                label: "BB%",
+                decimals: 1,
+                suffix: "%",
+                reverse: true,
+              },
+              { key: "K-BB%", label: "K-BB%", decimals: 1, suffix: "%" },
+              { key: "RA9", label: "RA9", decimals: 2 },
+            ],
           },
           {
-            key: "ERA",
-            label: "ERA",
-            decimals: 2,
-            reverse: true,
-          },
-          {
-            key: "FIP",
-            label: "FIP",
-            decimals: 2,
-            reverse: true,
-          },
-          {
-            key: "xFIP",
-            label: "xFIP",
-            decimals: 2,
-            reverse: true,
-          },
-          {
-            key: "K%",
-            label: "K%",
-            decimals: 1,
-            suffix: "%",
-          },
-          {
-            key: "BB%",
-            label: "BB%",
-            decimals: 1,
-            suffix: "%",
-            reverse: true,
-          },
-          {
-            key: "K-BB%",
-            label: "K-BB%",
-            decimals: 1,
-            suffix: "%",
-          },
-          {
-            key: "RA9",
-            label: "RA9",
-            decimals: 2,
+            title: "Value",
+            stats: [
+              { key: "WAR", label: "WAR", decimals: 1 },
+              { key: "gmLI", label: "Leverage Index", decimals: 1 },
+              { key: "pWPA", label: "WPA", decimals: 1 },
+              { key: "pREA", label: "RE24", decimals: 1 },
+            ],
           },
         ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-10 mb-8">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-gray-900">
-          2024 Percentile Rankings
-        </h2>
+    <div className="p-6">
+      <div className="flex flex-col items-center mb-6">
+        <div className="flex items-center gap-3 mb-4 relative">
+          <h2 className="text-2xl font-bold text-gray-900">
+            {selectedYear} Percentile Rankings
+            <button
+              onClick={() => setYearDropdownOpen(!isYearDropdownOpen)}
+              className="ml-2 text-blue-600 hover:text-blue-700 text-lg"
+            >
+              ▾
+            </button>
+          </h2>
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="ml-2">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* Dropdown Menu */}
+          {isYearDropdownOpen && (
+            <div
+              ref={dropdownRef}
+              className="absolute mt-8 bg-white border border-gray-200 rounded-md shadow-lg z-50"
+            >
+              <div className="py-1">
+                {availableYears.map((year) => (
+                  <button
+                    key={year}
+                    className={`w-full px-4 py-2 text-left hover:bg-gray-50 
+                            ${
+                              selectedYear === year
+                                ? "bg-blue-50 text-blue-700"
+                                : "text-gray-700"
+                            }`}
+                    onClick={() => handleYearChange(year)}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {!isQualified && (
           <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
             Below qualification threshold ({appearances}/{threshold}{" "}
@@ -244,21 +253,49 @@ export const PercentileSection = ({ playerData, percentiles, activeTab }) => {
         )}
       </div>
 
-      <PercentileLegend />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12">
-        {stats.map(({ key, label, decimals, suffix = "" }) => (
-          <StatBar
-            key={key}
-            label={label}
-            value={currentPercentiles.stats[key]}
-            percentile={currentPercentiles.stats[`${key}Percentile`]}
-            decimals={decimals}
-            suffix={suffix}
-            qualified={isQualified}
+      <div className="grid grid-cols-1 gap-8">
+        {categories.map((category) => (
+          <CategorySection
+            key={category.title}
+            title={category.title}
+            stats={category.stats}
+            currentPercentiles={currentPercentiles}
+            isQualified={isQualified}
           />
         ))}
       </div>
     </div>
   );
+};
+
+const BatterIcon = ({ className }) => (
+  <BatterIconSVG className={`${className} w-8 h-8`} />
+);
+const TrophyIcon = ({ className }) => <TrophyIconSVG className={className} />;
+const PitcherIcon = ({ className }) => (
+  <PitcherIconSVG className={`${className} w-8 h-8`} />
+);
+
+const DefaultIcon = ({ className }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+  >
+    <circle cx="12" cy="12" r="10" strokeWidth="2" />
+    <path d="M12 6v12M6 12h12" strokeWidth="2" />
+  </svg>
+);
+
+const CategoryIcon = ({ className, category }) => {
+  if (category === "Batting") {
+    return <BatterIcon className={className} />;
+  } else if (category === "Value") {
+    return <TrophyIcon className={className} />;
+  } else if (category === "Pitching") {
+    return <PitcherIcon className={className} />;
+  } else {
+    return <DefaultIcon className={className} />;
+  }
 };
