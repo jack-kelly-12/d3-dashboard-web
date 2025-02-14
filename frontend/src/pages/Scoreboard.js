@@ -32,7 +32,7 @@ const TeamLogo = ({ teamId, teamName }) => {
         .toUpperCase() || "??";
 
     return (
-      <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-600">
+      <div className="w-8 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-600">
         <span className="text-xs font-medium">{initials}</span>
       </div>
     );
@@ -42,7 +42,7 @@ const TeamLogo = ({ teamId, teamName }) => {
     <img
       src={`${API_BASE_URL}/api/teams/logos/${teamId}.png`}
       alt={teamName}
-      className="w-8 h-8 rounded-full"
+      className="w-8 h-6 rounded-full"
       onError={() => setError(true)}
     />
   );

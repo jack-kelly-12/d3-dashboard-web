@@ -170,13 +170,10 @@ const ChartsList = ({
     URL.revokeObjectURL(url);
   };
 
-  const formatPitchesForExport = (
-    pitches,
-    source = "d3",
-    chartType = "game"
-  ) => {
+  const formatPitchesForExport = (chart, source = "d3", chartType = "game") => {
     let headers;
     let rows;
+    let pitches = chart.pitches | [];
 
     switch (source.toLowerCase()) {
       case "trackman":
@@ -266,6 +263,8 @@ const ChartsList = ({
             "pitcherHand",
             "batter",
             "batterHand",
+            "homeTeam",
+            "awayTeam",
             "pitchType",
             "velocity",
             "result",
@@ -282,6 +281,8 @@ const ChartsList = ({
             pitch.pitcher?.pitchHand || "",
             pitch.batter?.name || "",
             pitch.batter?.batHand || "",
+            chart.homeTeam || "",
+            chart.awayTeam || "",
             pitch.type || "",
             pitch.velocity || "",
             pitch.result?.replace(/_/g, " ") || "",
@@ -300,7 +301,7 @@ const ChartsList = ({
 
   const handleExport = (chart) => {
     const csvContent = formatPitchesForExport(
-      chart.pitches || [],
+      chart,
       chart.source,
       chart.chartType
     )

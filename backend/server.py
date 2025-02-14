@@ -1483,7 +1483,7 @@ def get_game(year, game_id):
             p.converted_batter_id as batter_id, p.converted_pitcher_id as pitcher_id,
             p.li, p.home_score_after, p.away_score_after,
             bw.Player as batter_name,
-            pw.Player as pitcher_name, p.woba
+            pw.Player as pitcher_name, p.woba, p.division
         FROM converted_pbp p
         LEFT JOIN converted_batting_war bw ON p.converted_batter_id = bw.converted_player_id
         LEFT JOIN converted_pitching_war pw ON p.converted_pitcher_id = pw.converted_player_id
@@ -1499,6 +1499,7 @@ def get_game(year, game_id):
         'away_team': plays[0]['away_team'],
         'game_date': plays[0]['game_date'],
         'game_id': plays[0]['game_id'],
+        'division': plays[0]['division'],
         'plays': plays
     }
 
@@ -1562,137 +1563,6 @@ def get_games_by_date():
         return jsonify({"error": f"Database error: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/projections-hit-25', methods=['GET'])
-def get_projections_hit():
-    min_pa = request.args.get('min_pa', '25')
-
-    try:
-        min_pa = int(min_pa)
-    except ValueError:
-        return jsonify({"error": "Invalid min_pa parameter"}), 400
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        query = """
-            WITH projections AS (
-                SELECT 
-                    p.Player,
-                    p.Team,
-                    p.Conference,
-                    p.player_id,
-                    p.Yr,
-                    p.Pos,
-                    p.PA,
-                    p.H,
-                    p.BB,
-                    p."K" as K,
-                    p.BA,
-                    p.OBPct,
-                    p.SLGPct,
-                    p.wOBA,
-                    p.Batting,
-                    p.Baserunning,
-                    p.Adjustment,
-                    p.WAR,
-                    i.prev_team_id,
-                    i.conference_id
-                FROM projections_bat_25 p
-                LEFT JOIN ids_for_images i 
-                    ON p.Team = i.team_name
-                WHERE p.PA >= ?
-                ORDER BY p.WAR DESC
-            )
-            SELECT * FROM projections
-        """
-
-        cursor.execute(query, (min_pa,))
-        columns = [col[0] for col in cursor.description]
-        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-        return jsonify(results)
-
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
-
-    finally:
-        conn.close()
-
-
-@app.route('/api/projections-pitch-25', methods=['GET'])
-def get_projections_pitch():
-    min_ip = request.args.get('min_ip', '10')
-
-    try:
-        min_ip = int(min_ip)
-    except ValueError:
-        return jsonify({"error": "Invalid min_ip parameter"}), 400
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        query = """
-            WITH projections AS (
-                SELECT 
-                    p.Player,
-                    p.Team,
-                    p.Conference,
-                    p.player_id,
-                    p.Yr,
-                    p.App,
-                    p.GS,
-                    p.IP,
-                    p.H,
-                    p.R,
-                    p.ER,
-                    p.BB,
-                    p.SO,
-                    p."HR-A",
-                    p."2B-A",
-                    p."3B-A",
-                    p.HB,
-                    p.BF,
-                    p.FO,
-                    p.GO,
-                    p.Pitches,
-                    p.gmLI,
-                    p."BB%",
-                    p."K%",
-                    p."K-BB%",
-                    p."HR/FB",
-                    p.FIP,
-                    p.xFIP,
-                    p."ERA+",
-                    ROUND(9.0 * p.ER / NULLIF(p.IP, 0), 2) as ERA,
-                    p.WAR,
-                    i.prev_team_id,
-                    i.conference_id
-                FROM projections_pitch_25 p
-                LEFT JOIN ids_for_images i 
-                    ON p.Team = i.team_name
-                WHERE p.IP >= ?
-                ORDER BY p.WAR DESC
-            )
-            SELECT * FROM projections
-        """
-
-        cursor.execute(query, (min_ip,))
-        columns = [col[0] for col in cursor.description]
-        results = [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-        return jsonify(results)
-
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
-        return jsonify({"error": f"Database error: {str(e)}"}), 500
-
-    finally:
-        conn.close()
 
 
 @app.route('/api/insights/query', methods=['POST'])
