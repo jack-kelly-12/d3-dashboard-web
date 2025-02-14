@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { DragDropContext, Droppable } from "react-beautiful-dnd";
+import { DragDropContext } from "react-beautiful-dnd";
 import { UserPlus, Users, ChevronLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import PlayersTable from "../tables/PlayersTable";
@@ -272,6 +272,7 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
 
     const sourceType = result.source.droppableId;
     let updatedReport = { ...report };
+    let originalReport = { ...report };
 
     if (sourceType === "positionPlayers") {
       const items = Array.from(report.positionPlayers);
@@ -285,14 +286,15 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
       updatedReport.pitchers = items;
     }
 
-    const loadingToast = toast.loading("Updating order...");
+    onUpdateReport(updatedReport);
+
     try {
       await ScoutingReportManager.updateReport(report.id, updatedReport);
-      onUpdateReport(updatedReport);
-      toast.success("Order updated successfully", { id: loadingToast });
+      toast.success("Order updated", { duration: 2000 });
     } catch (error) {
       console.error("Error updating player order:", error);
-      toast.error("Failed to update order", { id: loadingToast });
+      onUpdateReport(originalReport);
+      toast.error("Failed to update order", { duration: 3000 });
     }
   };
 
@@ -331,22 +333,16 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
                   </button>
                 </div>
 
-                <Droppable droppableId="positionPlayers">
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps}>
-                      <PlayersTable
-                        players={report.positionPlayers}
-                        onEditPlayer={(player) => {
-                          setEditingPlayer(player);
-                          setIsAddPlayerModalOpen(true);
-                        }}
-                        onDeletePlayer={handleDeletePlayer}
-                        isPitcherTable={false}
-                      />
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
+                <PlayersTable
+                  players={report.positionPlayers}
+                  onEditPlayer={(player) => {
+                    setEditingPlayer(player);
+                    setIsAddPlayerModalOpen(true);
+                  }}
+                  onDeletePlayer={handleDeletePlayer}
+                  isPitcherTable={false}
+                  droppableId="positionPlayers"
+                />
               </div>
 
               {/* Pitchers Section */}
@@ -370,22 +366,16 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
                   </button>
                 </div>
 
-                <Droppable droppableId="pitchers">
-                  {(provided) => (
-                    <div ref={provided.innerRef} {...provided.droppableProps}>
-                      <PlayersTable
-                        players={report.pitchers || []}
-                        onEditPlayer={(pitcher) => {
-                          setEditingPitcher(pitcher);
-                          setIsAddPitcherModalOpen(true);
-                        }}
-                        onDeletePlayer={handleDeletePitcher}
-                        isPitcherTable={true}
-                      />
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
+                <PlayersTable
+                  players={report.pitchers || []}
+                  onEditPlayer={(pitcher) => {
+                    setEditingPitcher(pitcher);
+                    setIsAddPitcherModalOpen(true);
+                  }}
+                  onDeletePlayer={handleDeletePitcher}
+                  isPitcherTable={true}
+                  droppableId="pitchers"
+                />
               </div>
             </DragDropContext>
           </div>
