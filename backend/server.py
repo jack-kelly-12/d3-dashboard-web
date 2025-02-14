@@ -23,9 +23,10 @@ import uuid
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
+load_dotenv()
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 STRIPE_WEBHOOK = os.getenv('STRIPE_WEBHOOK_SECRET')
-CERT_PATH = 'd3-dash-13dc4-firebase-adminsdk-5y2t3-802c0a4b99.json'
+CERT_PATH = os.getenv('FIREBASE_SERVICE_ACCOUNT_KEY_PATH')
 
 cred = credentials.Certificate(CERT_PATH)
 firebase_admin.initialize_app(cred)
@@ -50,7 +51,6 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 DB_PATH = 'ncaa.db'
-load_dotenv()
 
 
 def get_db_connection():
