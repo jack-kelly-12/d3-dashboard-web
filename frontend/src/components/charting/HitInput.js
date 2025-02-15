@@ -3,10 +3,10 @@ import { RotateCcw } from "lucide-react";
 
 const HitInput = ({ currentHit, onChange, onReset, disabled }) => {
   const hitTypes = [
-    { value: "groundout", label: "Ground Out" },
-    { value: "flyout", label: "Fly Out" },
-    { value: "lineout", label: "Line Out" },
-    { value: "popout", label: "Pop Out" },
+    { value: "ground_ball", label: "Ground Ball" },
+    { value: "fly_ball", label: "Fly Ball" },
+    { value: "line_drive", label: "Line Drive" },
+    { value: "popup", label: "Pop Up" },
     { value: "bunt", label: "Bunt" },
   ];
 
@@ -19,6 +19,7 @@ const HitInput = ({ currentHit, onChange, onReset, disabled }) => {
     { value: "triple_play", label: "Triple Play" },
     { value: "fielders_choice", label: "Fielder's Choice" },
     { value: "error", label: "Error" },
+    { value: "field_out", label: "Field Out" },
   ];
 
   const exitVelocityOptions = [
