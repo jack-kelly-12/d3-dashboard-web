@@ -109,7 +109,7 @@ const DataControls = ({
             Years to include:
           </span>
           <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 lg:mx-0 lg:px-0 lg:pb-0">
-            {[2024, 2023, 2022, 2021].map((year) => (
+            {[2025, 2024, 2023, 2022, 2021].map((year) => (
               <button
                 key={year}
                 onClick={() => {

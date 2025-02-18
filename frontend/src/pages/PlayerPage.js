@@ -35,7 +35,7 @@ const InactiveAlert = () => (
       <div>
         <h3 className="font-medium text-yellow-800 mb-1">Inactive Player</h3>
         <p className="text-yellow-700">
-          This player is not active in the 2024 season. Showing historical stats
+          This player is not active in the 2025 season. Showing historical stats
           only.
         </p>
       </div>
@@ -85,18 +85,18 @@ const PlayerPage = () => {
         const enhancedPlayerData = enhancePlayerData(playerResponse);
         setPlayerData(enhancedPlayerData);
 
-        const has2024Stats =
+        const has2025Stats =
           enhancedPlayerData.battingStats?.some(
-            (stat) => stat.Season === 2024
+            (stat) => stat.Season === 2025
           ) ||
           enhancedPlayerData.pitchingStats?.some(
-            (stat) => stat.Season === 2024
+            (stat) => stat.Season === 2025
           );
 
-        setIsActive(has2024Stats);
+        setIsActive(has2025Stats);
 
-        if (has2024Stats) {
-          await fetchPercentiles(2024);
+        if (has2025Stats) {
+          await fetchPercentiles(2025);
         }
 
         if (

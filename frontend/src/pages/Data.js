@@ -25,7 +25,7 @@ const Data = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [state, setState] = useState({
     dataType: searchParams.get("dataType") || "player_hitting",
-    selectedYears: searchParams.get("years")?.split(",").map(Number) || [2024],
+    selectedYears: searchParams.get("years")?.split(",").map(Number) || [2025],
     searchTerm: searchParams.get("search") || "",
     minPA: Number(searchParams.get("minPA")) || 50,
     minIP: Number(searchParams.get("minIP")) || 10,

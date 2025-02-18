@@ -20,10 +20,10 @@ const Guts = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2024");
+  const [selectedYear, setSelectedYear] = useState("2025");
   const [selectedDivision, setSelectedDivision] = useState(3);
   const [isPremiumUser, setIsPremiumUser] = useState(false);
-  const years = ["2024", "2023", "2022", "2021"];
+  const years = ["2025", "2024", "2023", "2022", "2021"];
 
   useEffect(() => {
     let isMounted = true;

@@ -22,10 +22,10 @@ class ScoutingReportManager {
       const userId = AuthManager.getCurrentUser()?.uid;
       if (!userId) throw new Error("User must be authenticated");
 
-      // Ensure division is included in the report
       const report = {
         ...reportData,
-        division: reportData.division || 3, // Default to D3 if not specified
+        division: reportData.division || 3,
+        year: reportData.year || 2025,
         userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -41,7 +41,7 @@ class ScoutingReportManager {
 
   async getUserReports() {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for auth to initialize
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const userId = AuthManager.getCurrentUser()?.uid;
       if (!userId) throw new Error("User must be authenticated");
 
@@ -51,7 +51,8 @@ class ScoutingReportManager {
       return snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        division: doc.data().division || 3, // Ensure division exists for older reports
+        division: doc.data().division || 3,
+        year: doc.data().year || 2024,
       }));
     } catch (error) {
       console.error("Error getting user reports:", error);
@@ -61,16 +62,16 @@ class ScoutingReportManager {
 
   async updateReport(reportId, updateData) {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for auth to initialize
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const userId = AuthManager.getCurrentUser()?.uid;
       if (!userId) throw new Error("User must be authenticated");
 
       const reportRef = doc(this.reportsRef, reportId);
 
-      // Preserve division when updating
       await updateDoc(reportRef, {
         ...updateData,
-        division: updateData.division || 3, // Ensure division is preserved
+        division: updateData.division || 3,
+        year: updateData.year || 2025,
         updatedAt: new Date().toISOString(),
       });
     } catch (error) {

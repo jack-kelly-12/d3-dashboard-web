@@ -13,7 +13,6 @@ const SignIn = () => {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Check for signup parameter when component mounts
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const shouldSignUp = searchParams.get("signup") === "true";

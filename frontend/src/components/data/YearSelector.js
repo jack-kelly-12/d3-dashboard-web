@@ -1,5 +1,5 @@
 const YearSelector = ({ selectedYears, onChange }) => {
-  const years = [2024, 2023, 2022, 2021];
+  const years = [2025, 2024, 2023, 2022, 2021];
 
   return (
     <div className="flex flex-wrap gap-2">

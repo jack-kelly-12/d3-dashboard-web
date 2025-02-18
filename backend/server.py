@@ -102,8 +102,8 @@ def require_premium(f):
 @app.route('/api/batting_war/<int:year>', methods=['GET'])
 @require_premium
 def get_batting_war(year):
-    if year < 2021 or year > 2024:
-        return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
+    if year < 2021 or year > 2025:
+        return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
 
     division = request.args.get('division', type=int, default=3)
     if division not in [1, 2, 3]:
@@ -130,8 +130,8 @@ def get_batting_war(year):
 @app.route('/api/pitching_war/<int:year>', methods=['GET'])
 @require_premium
 def get_pitching_war(year):
-    if year < 2021 or year > 2024:
-        return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
+    if year < 2021 or year > 2025:
+        return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
 
     division = request.args.get('division', type=int, default=3)
     if division not in [1, 2, 3]:
@@ -158,8 +158,8 @@ def get_pitching_war(year):
 @app.route('/api/batting_team_war/<int:year>', methods=['GET'])
 @require_premium
 def get_batting_team_war(year):
-    if year < 2021 or year > 2024:
-        return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
+    if year < 2021 or year > 2025:
+        return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
 
     division = request.args.get('division', type=int, default=3)
     if division not in [1, 2, 3]:
@@ -186,8 +186,8 @@ def get_batting_team_war(year):
 @app.route('/api/pitching_team_war/<int:year>', methods=['GET'])
 @require_premium
 def get_pitching_team_war(year):
-    if year < 2021 or year > 2024:
-        return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
+    if year < 2021 or year > 2025:
+        return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
 
     division = request.args.get('division', type=int, default=3)
     if division not in [1, 2, 3]:
@@ -242,17 +242,18 @@ def get_pf():
     return jsonify(data)
 
 
-@app.route('/api/teams-2024', methods=['GET'])
+@app.route('/api/teams', methods=['GET'])
 @require_premium
 def get_teams():
     division = request.args.get('division', 3, type=int)
+    year = request.args.get('year', 2024, type=int)
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT DISTINCT Team as team_name FROM batting_war WHERE Division = ? AND Season = 2024",
-        (division,)
+        "SELECT DISTINCT Team as team_name FROM batting_war WHERE Division = ? AND Season = ?",
+        (division, year)
     )
     data = cursor.fetchall()
 
@@ -264,10 +265,11 @@ def get_teams():
     return jsonify(teams)
 
 
-@app.route('/api/players-hit-2024/<team_name>', methods=['GET'])
+@app.route('/api/players-hit/<team_name>', methods=['GET'])
 @require_premium
 def get_team_players(team_name):
     division = request.args.get('division', type=int)
+    year = request.args.get('year', default=2024, type=int)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
@@ -276,8 +278,8 @@ def get_team_players(team_name):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT DISTINCT Team FROM batting_war WHERE Division = ? AND Season = 2024 AND Team = ?",
-        (division, team_name)
+        "SELECT DISTINCT Team FROM batting_war WHERE Division = ? AND Season = ? AND Team = ?",
+        (division, year, team_name)
     )
     if not cursor.fetchone():
         return jsonify({"error": "Invalid team name"}), 404
@@ -292,8 +294,8 @@ def get_team_players(team_name):
                SB,
                WAR
         FROM batting_war
-        WHERE Team = ? AND Division = ? AND Season = 2024
-    """, (team_name, division))
+        WHERE Team = ? AND Division = ? AND Season = ?
+    """, (team_name, division, year))
 
     data = [dict(zip([col[0] for col in cursor.description], row))
             for row in cursor.fetchall()]
@@ -302,10 +304,11 @@ def get_team_players(team_name):
     return jsonify(data)
 
 
-@app.route('/api/players-pitch-2024/<team_name>', methods=['GET'])
+@app.route('/api/players-pitch/<team_name>', methods=['GET'])
 @require_premium
 def get_team_pitchers(team_name):
     division = request.args.get('division', type=int)
+    year = request.args.get('year', default=2024, type=int)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
@@ -314,8 +317,8 @@ def get_team_pitchers(team_name):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT DISTINCT Team FROM pitching_war WHERE Division = ? AND Season = 2024 AND Team = ?",
-        (division, team_name)
+        "SELECT DISTINCT Team FROM pitching_war WHERE Division = ? AND Season = ? AND Team = ?",
+        (division, year, team_name)
     )
     if not cursor.fetchone():
         return jsonify({"error": "Invalid team name"}), 404
@@ -329,8 +332,8 @@ def get_team_pitchers(team_name):
                IP,
                WAR
         FROM pitching_war
-        WHERE Team = ? AND Division = ? AND Season = 2024
-    """, (team_name, division))
+        WHERE Team = ? AND Division = ? AND Season = ?
+    """, (team_name, division, year))
 
     data = [dict(zip([col[0] for col in cursor.description], row))
             for row in cursor.fetchall()]
@@ -342,13 +345,13 @@ def get_team_pitchers(team_name):
 @app.route('/api/expected-runs', methods=['GET'])
 @require_premium
 def get_expected_runs():
-    year = request.args.get('year', '2024')
+    year = request.args.get('year', '2025')
     division = request.args.get('division', default=3, type=int)
 
     try:
         year = int(year)
-        if not (2021 <= year <= 2024):
-            return jsonify({"error": "Invalid year. Must be between 2021 and 2024."}), 400
+        if not (2021 <= year <= 2025):
+            return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
 
         if not (1 <= division <= 3):
             return jsonify({"error": "Invalid division. Must be between 1 and 3."}), 400
@@ -527,9 +530,8 @@ def get_player_stats(player_id):
         if not player_found:
             return jsonify({"error": "Player not found"}), 404
 
-        # Check if player is active in 2024
         is_active = any(stat['Season'] ==
-                        2024 for stat in batting_stats + pitching_stats)
+                        2025 for stat in batting_stats + pitching_stats)
 
         cursor.execute("""
             SELECT r.height, r.bats, r.throws, r.hometown, r.high_school, r.position
@@ -538,7 +540,6 @@ def get_player_stats(player_id):
         """, (player_id, year))
         player_info = cursor.fetchone()
 
-        # Add to the jsonify return:
         return jsonify({
             "playerId": player_id,
             "playerName": player_name,
@@ -578,11 +579,9 @@ def search_players():
     cursor = conn.cursor()
 
     try:
-        # Create search terms for different match types
         exact_term = query
         starts_with_term = f"{query}%"
         contains_term = f"%{query}%"
-        # Matches start of any word after first
         word_boundary_term = f"% {query}%"
 
         cursor.execute("""
@@ -598,7 +597,7 @@ def search_players():
                 UNION
                 SELECT player_id, Player, Team, Conference
                 FROM pitching_war
-                WHERE Division = 3 AND Season = 2024
+                WHERE Division = 3 AND Season = 2025
             )
             WHERE Player LIKE ? OR Player LIKE ? OR Player LIKE ? OR Player LIKE ?
             ORDER BY
@@ -891,11 +890,11 @@ def get_conferences():
             FROM (
                 SELECT Conference 
                 FROM batting_war 
-                WHERE Division = ? AND Season = 2024
+                WHERE Division = ? AND Season = 2025
                 UNION
                 SELECT Conference 
                 FROM pitching_war 
-                WHERE Division = ? AND Season = 2024
+                WHERE Division = ? AND Season = 2025
             ) AS combined_conferences
             WHERE Conference IS NOT NULL
             ORDER BY Conference
@@ -999,8 +998,8 @@ def get_conference_logo(conference_id):
 @app.route('/api/leaderboards/value', methods=['GET'])
 @require_premium
 def get_value_leaderboard():
-    start_year = request.args.get('start_year', '2024')
-    end_year = request.args.get('end_year', '2024')
+    start_year = request.args.get('start_year', '2025')
+    end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
 
     if division not in [1, 2, 3]:
@@ -1113,8 +1112,8 @@ def get_value_leaderboard():
 @app.route('/api/leaderboards/baserunning', methods=['GET'])
 @require_premium
 def get_baserunning_leaderboard():
-    start_year = request.args.get('start_year', '2024')
-    end_year = request.args.get('end_year', '2024')
+    start_year = request.args.get('start_year', '2025')
+    end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
 
     if division not in [1, 2, 3]:
@@ -1126,7 +1125,7 @@ def get_baserunning_leaderboard():
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
-    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+    if start_year < 2021 or end_year > 2025 or start_year > end_year:
         return jsonify({"error": "Invalid year range"}), 400
 
     conn = get_db_connection()
@@ -1184,8 +1183,8 @@ def get_baserunning_leaderboard():
 @app.route('/api/leaderboards/situational', methods=['GET'])
 @require_premium
 def get_situational_leaderboard():
-    start_year = request.args.get('start_year', '2024')
-    end_year = request.args.get('end_year', '2024')
+    start_year = request.args.get('start_year', '2025')
+    end_year = request.args.get('end_year', '2025')
     min_pa = request.args.get('min_pa', '50')
     division = request.args.get('division', type=int, default=3)
 
@@ -1199,7 +1198,7 @@ def get_situational_leaderboard():
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
-    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+    if start_year < 2021 or end_year > 2025 or start_year > end_year:
         return jsonify({"error": "Invalid year range"}), 400
 
     conn = get_db_connection()
@@ -1211,7 +1210,7 @@ def get_situational_leaderboard():
         for year in range(start_year, end_year + 1):
             query = """
                 WITH situational_query AS (
-                    SELECT DISTINCT  -- Add DISTINCT to remove any remaining duplicates
+                    SELECT DISTINCT
                         p.Player,
                         p.Team,
                         p.Season,
@@ -1276,8 +1275,8 @@ def get_situational_leaderboard():
 @app.route('/api/leaderboards/splits', methods=['GET'])
 @require_premium
 def get_splits_leaderboard():
-    start_year = request.args.get('start_year', '2024')
-    end_year = request.args.get('end_year', '2024')
+    start_year = request.args.get('start_year', '2025')
+    end_year = request.args.get('end_year', '2025')
     min_pa = request.args.get('min_pa', '50')
     division = request.args.get('division', type=int, default=3)
 
@@ -1291,7 +1290,7 @@ def get_splits_leaderboard():
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
-    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+    if start_year < 2021 or end_year > 2025 or start_year > end_year:
         return jsonify({"error": "Invalid year range"}), 400
 
     conn = get_db_connection()
@@ -1366,8 +1365,8 @@ def get_splits_leaderboard():
 @app.route('/api/leaderboards/batted_ball', methods=['GET'])
 @require_premium
 def get_batted_ball_leaders():
-    start_year = request.args.get('start_year', '2024')
-    end_year = request.args.get('end_year', '2024')
+    start_year = request.args.get('start_year', '2025')
+    end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
     bb_count = request.args.get('min_bb', '50')
 
@@ -1380,7 +1379,7 @@ def get_batted_ball_leaders():
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
-    if start_year < 2021 or end_year > 2024 or start_year > end_year:
+    if start_year < 2021 or end_year > 2025 or start_year > end_year:
         return jsonify({"error": "Invalid year range"}), 400
 
     conn = get_db_connection()
@@ -1451,59 +1450,28 @@ def get_game(year, game_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
-        WITH division_info AS (
-            SELECT division FROM pbp 
-            WHERE game_id = ? AND year = ? 
-            LIMIT 1
-        ),
-        converted_pbp AS (
-            SELECT p.*,
-            CASE 
-                WHEN p.division IN (1, 2) THEN CAST(CAST(batter_id AS FLOAT) AS INTEGER)
-                ELSE batter_id 
-            END as converted_batter_id,
-            CASE 
-                WHEN p.division IN (1, 2) THEN CAST(CAST(pitcher_id AS FLOAT) AS INTEGER)
-                ELSE pitcher_id 
-            END as converted_pitcher_id
-            FROM pbp p
-            WHERE game_id = ? 
-            AND description IS NOT NULL 
-            AND year = ?
-        ),
-        converted_batting_war AS (
-            SELECT b.*,
-            CASE 
-                WHEN d.division IN (1, 2) THEN CAST(CAST(b.player_id AS FLOAT) AS INTEGER)
-                ELSE b.player_id 
-            END as converted_player_id
-            FROM batting_war b
-            CROSS JOIN division_info d
-            WHERE b.Season = ?
-        ),
-        converted_pitching_war AS (
-            SELECT p.*,
-            CASE 
-                WHEN d.division IN (1, 2) THEN CAST(CAST(p.player_id AS FLOAT) AS INTEGER)
-                ELSE p.player_id 
-            END as converted_player_id
-            FROM pitching_war p
-            CROSS JOIN division_info d
-            WHERE p.Season = ?
-        )
+    cursor.execute("""        
         SELECT DISTINCT
             p.home_team, p.away_team, p.home_score, p.away_score, p.date as game_date,
             p.inning, p.top_inning, p.game_id, p.description,
             p.home_win_exp_before, p.home_win_exp_after, p.wpa, p.run_expectancy_delta,
-            p.converted_batter_id as batter_id, p.converted_pitcher_id as pitcher_id,
+            p.batter_id, p.pitcher_id,
             p.li, p.home_score_after, p.away_score_after,
             bw.Player as batter_name,
             pw.Player as pitcher_name, p.woba, p.division
-        FROM converted_pbp p
-        LEFT JOIN converted_batting_war bw ON p.converted_batter_id = bw.converted_player_id
-        LEFT JOIN converted_pitching_war pw ON p.converted_pitcher_id = pw.converted_player_id
-    """, (game_id, year, game_id, year, year, year))
+        FROM pbp p
+        LEFT JOIN batting_war bw 
+            ON p.batter_id = bw.player_id 
+            AND bw.Season = p.year 
+            AND bw.Division = p.division
+        LEFT JOIN pitching_war pw 
+            ON p.pitcher_id = pw.player_id 
+            AND pw.Season = p.year
+            AND pw.Division = p.division
+        WHERE p.game_id = ? 
+        AND p.year = ?
+        ORDER BY p.inning, p.description
+    """, (game_id, year))
 
     plays = [dict(row) for row in cursor.fetchall()]
 
@@ -1537,8 +1505,8 @@ def get_games_by_date():
     try:
         year = int(year)
 
-        if year < 2021:  # Changed to 2024 as upper limit
-            return jsonify({"error": f"No games available for year {year}. Please select a year between 2021 and 2024"}), 400
+        if year < 2021:
+            return jsonify({"error": f"No games available for year {year}. Please select a year between 2021 and 2025"}), 400
 
         game_date = f"{month}/{day}/{year}"
 

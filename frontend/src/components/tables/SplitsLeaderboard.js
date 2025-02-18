@@ -14,8 +14,8 @@ const SplitsLeaderboard = () => {
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [startYear, setStartYear] = useState(2024);
-  const [endYear, setEndYear] = useState(2024);
+  const [startYear, setStartYear] = useState(2025);
+  const [endYear, setEndYear] = useState(2025);
   const [selectedConference, setSelectedConference] = useState("");
   const [minPA, setMinPA] = useState(50);
   const [conferences, setConferences] = useState([]);
@@ -282,7 +282,7 @@ const SplitsLeaderboard = () => {
     []
   );
 
-  const yearOptions = useMemo(() => [2024, 2023, 2022, 2021], []);
+  const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
   const paOptions = useMemo(
     () => [
       { value: 1, label: "Min 1 PA" },

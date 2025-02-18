@@ -14,8 +14,8 @@ const BaserunningLeaderboard = () => {
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [startYear, setStartYear] = useState(2024);
-  const [endYear, setEndYear] = useState(2024);
+  const [startYear, setStartYear] = useState(2025);
+  const [endYear, setEndYear] = useState(2025);
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
@@ -355,7 +355,7 @@ const BaserunningLeaderboard = () => {
                   className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
                     focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  {[2024, 2023, 2022, 2021].map((year) => (
+                  {[2025, 2024, 2023, 2022, 2021].map((year) => (
                     <option key={year} value={year}>
                       {year}
                     </option>
@@ -368,7 +368,7 @@ const BaserunningLeaderboard = () => {
                   className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
                     focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  {[2024, 2023, 2022, 2021].map((year) => (
+                  {[2025, 2024, 2023, 2022, 2021].map((year) => (
                     <option key={year} value={year}>
                       {year}
                     </option>

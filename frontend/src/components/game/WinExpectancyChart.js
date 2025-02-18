@@ -20,8 +20,7 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
         probability = play.away_score_after > play.home_score_after ? 0 : 100;
       }
 
-      // Calculate inning display
-      const inningDisplay = `${play.top_inning ? "Top" : "Bot"} ${play.inning}`;
+      const inningDisplay = `${play.top_inning} ${play.inning}`;
 
       return {
         probability,

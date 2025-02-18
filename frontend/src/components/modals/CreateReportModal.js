@@ -11,6 +11,7 @@ const CreateReportModal = ({
   onDivisionChange,
 }) => {
   const [selectedTeam, setSelectedTeam] = useState("");
+  const [selectedYear, setSelectedYear] = useState("2025"); // Default to 2025
   const [formError, setFormError] = useState("");
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
 
@@ -20,10 +21,10 @@ const CreateReportModal = ({
       return;
     }
 
-    // Create an object with both team and division info
     const reportData = {
       teamName: selectedTeam,
       division: selectedDivision,
+      year: selectedYear,
     };
 
     onSubmit(reportData);
@@ -32,7 +33,7 @@ const CreateReportModal = ({
 
   const handleDivisionChange = async (newDivision) => {
     setIsLoadingTeams(true);
-    setSelectedTeam(""); // Reset team selection when division changes
+    setSelectedTeam("");
     await onDivisionChange(Number(newDivision));
     setIsLoadingTeams(false);
   };
@@ -57,6 +58,20 @@ const CreateReportModal = ({
             </select>
           </div>
         )}
+
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Use 2024 or 2025 data?
+          </label>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+          </select>
+        </div>
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">

@@ -36,7 +36,7 @@ const useScoutingState = () => {
 const useTeamsFetch = (selectedDivision) => {
   return useCallback(async () => {
     try {
-      const data = await fetchAPI(`/teams-2024?division=${selectedDivision}`);
+      const data = await fetchAPI(`/teams?division=${selectedDivision}`);
       const uniqueTeams = Array.from(
         new Map(data.map((team) => [team.team_name, team])).values()
       ).sort((a, b) => a.team_name.localeCompare(b.team_name));
@@ -94,7 +94,6 @@ const ScoutingReport = () => {
               }
             );
 
-            // Load user data
             const [userReports, teams] = await Promise.all([
               ScoutingReportManager.getUserReports(),
               fetchTeams(),
@@ -142,13 +141,13 @@ const ScoutingReport = () => {
     updateState,
   ]);
 
-  const fetchPlayers = async (teamName, division) => {
+  const fetchPlayers = async (teamName, division, year) => {
     if (!state.isAuthReady) return;
 
     const loadingToast = toast.loading("Loading players...");
     try {
       const data = await fetchAPI(
-        `/players-hit-2024/${teamName}?division=${division}`
+        `/players-hit/${teamName}?division=${division}&year=${year}`
       );
       const transformedData = data.map((player) => ({
         name: player.Player,

@@ -14,8 +14,8 @@ const ValueLeaderboard = () => {
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [startYear, setStartYear] = useState(2024);
-  const [endYear, setEndYear] = useState(2024);
+  const [startYear, setStartYear] = useState(2025);
+  const [endYear, setEndYear] = useState(2025);
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
@@ -172,7 +172,7 @@ const ValueLeaderboard = () => {
     });
   }, [data, searchTerm, selectedConference]);
 
-  const yearOptions = useMemo(() => [2024, 2023, 2022, 2021], []);
+  const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
 
   const columns = useMemo(
     () => [

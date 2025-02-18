@@ -16,7 +16,7 @@ const DIVISIONS = [
 
 const DATE_RANGE = {
   min: 2021,
-  max: 2024,
+  max: 2025,
 };
 
 const TeamLogo = ({ teamId, teamName }) => {
