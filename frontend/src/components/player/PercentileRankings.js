@@ -94,15 +94,23 @@ export const PercentileSection = ({
   activeTab,
   onYearChange,
 }) => {
-  const [selectedYear, setSelectedYear] = useState("2024");
+  // Get the most recent year from the available years
+  const availableYears = playerData?.yearsPlayed || [];
+  const sortedYears = [...availableYears].sort((a, b) => Number(b) - Number(a)); // Sort descending
+
+  // Initialize with the most recent year
+  const [selectedYear, setSelectedYear] = useState(
+    sortedYears[0]?.toString() || ""
+  );
   const [isYearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const dropdownRef = useRef(null);
   const animationTimer = useRef(null);
 
-  const availableYears = playerData?.yearsPlayed || [];
-  const sortedYears = [...availableYears].sort((a, b) => Number(a) - Number(b));
+  const chronologicalYears = [...availableYears].sort(
+    (a, b) => Number(a) - Number(b)
+  );
 
   const handleYearChange = async (year) => {
     setSelectedYear(year);
@@ -114,10 +122,10 @@ export const PercentileSection = ({
 
   const playAnimation = async () => {
     setIsPlaying(true);
-    await handleYearChange(sortedYears[0]);
+    await handleYearChange(chronologicalYears[0]);
 
     const playNextYear = async (index) => {
-      if (index >= sortedYears.length - 1) {
+      if (index >= chronologicalYears.length - 1) {
         setIsPlaying(false);
         return;
       }
@@ -125,7 +133,7 @@ export const PercentileSection = ({
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       const nextIndex = index + 1;
-      await handleYearChange(sortedYears[nextIndex]);
+      await handleYearChange(chronologicalYears[nextIndex]);
 
       playNextYear(nextIndex);
     };
@@ -167,6 +175,7 @@ export const PercentileSection = ({
 
   if (!currentPercentiles) return null;
 
+  // Rest of the component remains the same...
   const isQualified = currentPercentiles.qualified;
   const threshold =
     activeTab === "batting"
@@ -260,26 +269,24 @@ export const PercentileSection = ({
             )}
           </div>
 
-          {/* Loading indicator */}
           {isLoading && (
             <div className="ml-2">
               <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
             </div>
           )}
 
-          {/* Dropdown Menu */}
           {isYearDropdownOpen && (
             <div
               ref={dropdownRef}
               className="absolute mt-8 bg-white border border-gray-200 rounded-md shadow-lg z-50"
             >
               <div className="py-1">
-                {availableYears.map((year) => (
+                {sortedYears.map((year) => (
                   <button
                     key={year}
                     className={`w-full px-4 py-2 text-left hover:bg-gray-50 
                       ${
-                        selectedYear === year
+                        selectedYear === year.toString()
                           ? "bg-blue-50 text-blue-700"
                           : "text-gray-700"
                       }`}

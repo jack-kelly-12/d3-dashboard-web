@@ -28,21 +28,6 @@ const ErrorState = ({ error }) => (
   </div>
 );
 
-const InactiveAlert = () => (
-  <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-xl p-6">
-    <div className="flex items-start gap-3">
-      <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-      <div>
-        <h3 className="font-medium text-yellow-800 mb-1">Inactive Player</h3>
-        <p className="text-yellow-700">
-          This player is not active in the 2025 season. Showing historical stats
-          only.
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
 const PlayerPage = () => {
   const { playerId } = useParams();
   const [playerData, setPlayerData] = useState(null);
@@ -50,7 +35,6 @@ const PlayerPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("batting");
-  const [isActive, setIsActive] = useState(true);
 
   const fetchPercentiles = useCallback(
     async (year) => {
@@ -59,14 +43,9 @@ const PlayerPage = () => {
           `/api/player-percentiles/${decodeURIComponent(playerId)}/${year}`
         );
 
-        if (percentileResponse.inactive) {
-          setIsActive(false);
-          setPercentiles(null);
-        } else {
-          setPercentiles(percentileResponse);
-          if (!percentileResponse.batting && percentileResponse.pitching) {
-            setActiveTab("pitching");
-          }
+        setPercentiles(percentileResponse);
+        if (!percentileResponse.batting && percentileResponse.pitching) {
+          setActiveTab("pitching");
         }
       } catch (err) {
         console.error("Error fetching percentiles:", err);
@@ -85,18 +64,20 @@ const PlayerPage = () => {
         const enhancedPlayerData = enhancePlayerData(playerResponse);
         setPlayerData(enhancedPlayerData);
 
-        const has2025Stats =
-          enhancedPlayerData.battingStats?.some(
-            (stat) => stat.Season === 2025
-          ) ||
-          enhancedPlayerData.pitchingStats?.some(
-            (stat) => stat.Season === 2025
-          );
+        const maxBattingSeason = Math.max(
+          ...(enhancedPlayerData.battingStats?.map((stat) => stat.Season) || [
+            0,
+          ])
+        );
+        const maxPitchingSeason = Math.max(
+          ...(enhancedPlayerData.pitchingStats?.map((stat) => stat.Season) || [
+            0,
+          ])
+        );
+        const mostRecentSeason = Math.max(maxBattingSeason, maxPitchingSeason);
 
-        setIsActive(has2025Stats);
-
-        if (has2025Stats) {
-          await fetchPercentiles(2025);
+        if (mostRecentSeason > 0) {
+          await fetchPercentiles(mostRecentSeason);
         }
 
         if (
@@ -222,26 +203,20 @@ const PlayerPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Player Info */}
             <div className="bg-white rounded-lg shadow-sm">
-              <PlayerHeader playerData={playerData} isActive={isActive} />
+              <PlayerHeader playerData={playerData} />
             </div>
 
             {/* Percentile Rankings */}
             <div className="lg:col-span-2 bg-white rounded-lg shadow-sm">
-              {!isActive ? (
-                <div className="p-6">
-                  <InactiveAlert />
-                </div>
-              ) : (
-                <PercentileSection
-                  playerData={{
-                    ...playerData,
-                    yearsPlayed: getAvailableYears(),
-                  }}
-                  initialPercentiles={percentiles}
-                  activeTab={activeTab}
-                  onYearChange={fetchPercentiles}
-                />
-              )}
+              <PercentileSection
+                playerData={{
+                  ...playerData,
+                  yearsPlayed: getAvailableYears(),
+                }}
+                initialPercentiles={percentiles}
+                activeTab={activeTab}
+                onYearChange={fetchPercentiles}
+              />
             </div>
           </div>
 
