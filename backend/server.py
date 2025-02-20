@@ -587,29 +587,21 @@ def search_players():
         cursor.execute("""
             SELECT DISTINCT
                 player_id,
-                Player as playerName,
-                Team as team,
-                Conference as conference
-            FROM (
-                SELECT player_id, Player, Team, Conference
-                FROM batting_war
-                WHERE Division = 3
-                UNION
-                SELECT player_id, Player, Team, Conference
-                FROM pitching_war
-                WHERE Division = 3 AND Season = 2025
-            )
-            WHERE Player LIKE ? OR Player LIKE ? OR Player LIKE ? OR Player LIKE ?
+                player_name as playerName,
+                team_name as team,
+                conference as conference
+            FROM rosters
+            WHERE player_name LIKE ? AND Division = 3
             ORDER BY
                 CASE
-                    WHEN LOWER(Player) = LOWER(?) THEN 1  -- Exact match (case insensitive)
-                    WHEN LOWER(Player) LIKE LOWER(?) THEN 2  -- Starts with query
-                    WHEN LOWER(Player) LIKE LOWER(?) THEN 3  -- Starts with query after space
-                    WHEN LOWER(Player) LIKE LOWER(?) THEN 4  -- Contains query anywhere
+                    WHEN LOWER(Player) = LOWER(?) THEN 1
+                    WHEN LOWER(Player) LIKE LOWER(?) THEN 2
+                    WHEN LOWER(Player) LIKE LOWER(?) THEN 3
+                    WHEN LOWER(Player) LIKE LOWER(?) THEN 4
                     ELSE 5
                 END,
-                LENGTH(Player),  -- Prefer shorter names when relevance is equal
-                Player  -- Alphabetical as final tiebreaker
+                LENGTH(player_name),
+                player_name
             LIMIT 5
         """, (contains_term, starts_with_term, word_boundary_term, contains_term,
               exact_term, starts_with_term, word_boundary_term, contains_term))
@@ -622,7 +614,7 @@ def search_players():
 
 
 @app.route('/api/upload/rapsodo', methods=['POST', 'OPTIONS'])
-@cross_origin(supports_credentials=True)  # Add this decorator
+@cross_origin(supports_credentials=True)
 def upload_rapsodo():
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
