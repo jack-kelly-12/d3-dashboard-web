@@ -594,10 +594,10 @@ def search_players():
             WHERE player_name LIKE ? AND Division = 3
             ORDER BY
                 CASE
-                    WHEN LOWER(Player) = LOWER(?) THEN 1
-                    WHEN LOWER(Player) LIKE LOWER(?) THEN 2
-                    WHEN LOWER(Player) LIKE LOWER(?) THEN 3
-                    WHEN LOWER(Player) LIKE LOWER(?) THEN 4
+                    WHEN LOWER(player_name) = LOWER(?) THEN 1
+                    WHEN LOWER(player_name) LIKE LOWER(?) THEN 2
+                    WHEN LOWER(player_name) LIKE LOWER(?) THEN 3
+                    WHEN LOWER(player_name) LIKE LOWER(?) THEN 4
                     ELSE 5
                 END,
                 LENGTH(player_name),
