@@ -58,10 +58,11 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
 
   const fetchPlayers = async () => {
     try {
+      console.log(report.year);
       const data = await fetchAPI(
         `/players-hit/${encodeURIComponent(report.teamName)}?division=${
           report.division
-        }&year=${report.year}`
+        }&year=${report.year || 2024}`
       );
 
       const uniqueData = data.reduce((acc, current) => {
@@ -98,7 +99,7 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
       const data = await fetchAPI(
         `/players-pitch/${encodeURIComponent(report.teamName)}?division=${
           report.division
-        }&year=${report.year}`
+        }&year=${report.year || 2024}`
       );
 
       const uniqueData = data.reduce((acc, current) => {

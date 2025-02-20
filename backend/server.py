@@ -1480,7 +1480,7 @@ def get_game(year, game_id):
             AND pw.Division = p.division
         WHERE p.game_id = ? 
         AND p.year = ?
-        ORDER BY p.inning, p.description
+        ORDER BY p.play_id
     """, (game_id, year))
 
     plays = [dict(row) for row in cursor.fetchall()]

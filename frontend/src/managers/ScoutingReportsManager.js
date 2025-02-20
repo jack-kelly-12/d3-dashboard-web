@@ -18,14 +18,14 @@ class ScoutingReportManager {
 
   async createReport(reportData) {
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for auth to initialize
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const userId = AuthManager.getCurrentUser()?.uid;
       if (!userId) throw new Error("User must be authenticated");
 
       const report = {
         ...reportData,
         division: reportData.division || 3,
-        year: reportData.year || 2025,
+        year: reportData.year || 2024,
         userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -71,7 +71,7 @@ class ScoutingReportManager {
       await updateDoc(reportRef, {
         ...updateData,
         division: updateData.division || 3,
-        year: updateData.year || 2025,
+        year: updateData.year || 2024,
         updatedAt: new Date().toISOString(),
       });
     } catch (error) {
