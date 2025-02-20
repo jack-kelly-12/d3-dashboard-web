@@ -188,7 +188,7 @@ const ValueLeaderboard = () => {
         sortable: true,
         width: "150px",
         cell: (row) =>
-          row.player_id.substring(0, 4) == "d3d-" ? (
+          row.player_id.substring(0, 4) === "d3d-" ? (
             <Link
               to={`/player/${row.player_id}`}
               className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
