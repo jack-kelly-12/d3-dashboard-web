@@ -579,7 +579,7 @@ def search_players():
     cursor = conn.cursor()
 
     try:
-        exact_term = query
+        exact_term = query.lower()
         starts_with_term = f"{query}%"
         contains_term = f"%{query}%"
         word_boundary_term = f"% {query}%"
@@ -591,25 +591,43 @@ def search_players():
                 team_name as team,
                 conference as conference
             FROM rosters
-            WHERE player_name LIKE ? AND Division = 3
+            WHERE (
+                player_name LIKE ? OR 
+                player_name LIKE ? OR 
+                player_name LIKE ? OR 
+                player_name LIKE ?
+            ) AND Division = 3
             ORDER BY
                 CASE
-                    WHEN LOWER(player_name) = LOWER(?) THEN 1
-                    WHEN LOWER(player_name) LIKE LOWER(?) THEN 2
-                    WHEN LOWER(player_name) LIKE LOWER(?) THEN 3
-                    WHEN LOWER(player_name) LIKE LOWER(?) THEN 4
+                    WHEN LOWER(player_name) = ? THEN 1
+                    WHEN LOWER(player_name) LIKE ? THEN 2
+                    WHEN LOWER(player_name) LIKE ? THEN 3
+                    WHEN LOWER(player_name) LIKE ? THEN 4
                     ELSE 5
                 END,
                 LENGTH(player_name),
                 player_name
             LIMIT 5
-        """, (contains_term, starts_with_term, word_boundary_term, contains_term,
-              exact_term, starts_with_term, word_boundary_term, contains_term))
+        """, (
+            contains_term,
+            starts_with_term,
+            word_boundary_term,
+            contains_term,
+            exact_term,
+            starts_with_term.lower(),
+            word_boundary_term.lower(),
+            contains_term.lower()
+        ))
 
         results = [dict(row) for row in cursor.fetchall()]
         return jsonify(results)
 
+    except Exception as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": "An error occurred while searching players"}), 500
+
     finally:
+        cursor.close()
         conn.close()
 
 
