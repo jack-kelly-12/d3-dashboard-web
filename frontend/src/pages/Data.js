@@ -7,8 +7,7 @@ import { getDataColumns } from "../config/tableColumns";
 import TeamLogo from "../components/data/TeamLogo";
 import { useSearchParams } from "react-router-dom";
 import debounce from "lodash/debounce";
-import SubscriptionManager from "../managers/SubscriptionManager";
-import AuthManager from "../managers/AuthManager";
+import { useSubscription } from "../contexts/SubscriptionContext";
 
 const MemoizedTable = React.memo(({ data, dataType, filename }) => (
   <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
@@ -23,6 +22,8 @@ const MemoizedTable = React.memo(({ data, dataType, filename }) => (
 
 const Data = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { isPremiumUser, isLoading: isSubscriptionLoading } = useSubscription();
+
   const [state, setState] = useState({
     dataType: searchParams.get("dataType") || "player_hitting",
     selectedYears: searchParams.get("years")?.split(",").map(Number) || [2025],
@@ -37,60 +38,6 @@ const Data = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [conferences, setConferences] = useState([]);
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
-  const [isAuthReady, setIsAuthReady] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const initializeAuth = async () => {
-      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-        if (!isMounted) return;
-
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
-
-            if (initialSubscription?.isActive) {
-              setState((prev) => ({
-                ...prev,
-                division: searchParams.get("division")
-                  ? Number(searchParams.get("division"))
-                  : prev.division,
-              }));
-            }
-          }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
-          }
-        }
-
-        setIsAuthReady(true);
-      });
-
-      return unsubscribeAuth;
-    };
-
-    const cleanup = initializeAuth();
-
-    return () => {
-      isMounted = false;
-      cleanup.then((unsubscribe) => unsubscribe());
-      SubscriptionManager.stopListening();
-    };
-  }, [searchParams]);
 
   useEffect(() => {
     if (isPremiumUser) {
@@ -182,7 +129,7 @@ const Data = () => {
   );
 
   const fetchData = useCallback(async () => {
-    if (!state.selectedYears.length || !isAuthReady) return;
+    if (!state.selectedYears.length || isSubscriptionLoading) return;
     setIsLoading(true);
 
     try {
@@ -219,7 +166,7 @@ const Data = () => {
     state.selectedYears,
     endpointMap,
     transformData,
-    isAuthReady,
+    isSubscriptionLoading,
   ]);
 
   useEffect(() => {
@@ -257,6 +204,8 @@ const Data = () => {
     setState((prev) => ({ ...prev, [key]: value }));
   }, []);
 
+  const isPageLoading = isSubscriptionLoading || isLoading;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
@@ -273,7 +222,7 @@ const Data = () => {
           conferences={conferences}
           isPremiumUser={isPremiumUser}
         />
-        {isLoading ? (
+        {isPageLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>

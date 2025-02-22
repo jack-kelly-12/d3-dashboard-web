@@ -18,7 +18,7 @@ import {
   User2,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
-import SubscriptionManager from "../managers/SubscriptionManager";
+import { useSubscription } from "../contexts/SubscriptionContext";
 
 const PremiumBadge = () => (
   <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-500 text-white">
@@ -67,7 +67,7 @@ const UserSection = ({
   onSignOut,
   collapsed,
   mobileOpen,
-  isLoadingSubscription,
+  isLoading,
 }) => (
   <div className="w-full space-y-1">
     <div
@@ -82,7 +82,7 @@ const UserSection = ({
             {user?.email || "Anonymous"}
           </div>
           <div className="flex items-center space-x-2 min-h-[20px]">
-            {isLoadingSubscription ? (
+            {isLoading ? (
               <div className="h-4 w-16 bg-gray-200 animate-pulse rounded" />
             ) : (
               <>
@@ -153,97 +153,28 @@ const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [isPremiumUser, setIsPremiumUser] = useState(false); // Remove localStorage initialization
-  const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const [authState, setAuthState] = useState({
     isAuthenticated: false,
     isAnonymous: false,
   });
 
+  const { isPremiumUser, isLoading: isLoadingSubscription } = useSubscription();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    if (user?.uid && !user.isAnonymous) {
-      setIsLoadingSubscription(true);
-      SubscriptionManager.checkSubscriptionStatus(user.uid)
-        .then((subscription) => {
-          if (subscription) {
-            setIsPremiumUser(subscription.isPremium || false);
-          }
-          setIsLoadingSubscription(false);
-        })
-        .catch((error) => {
-          console.error("Error checking subscription:", error);
-          setIsLoadingSubscription(false);
-        });
-    }
-  }, [user, location.pathname]); // Re-run on location change
+    const unsubscribeAuth = AuthManager.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+      setAuthState({
+        isAuthenticated: !!currentUser,
+        isAnonymous: currentUser?.isAnonymous || false,
+      });
+    });
 
-  // Modify your existing auth effect
-  useEffect(() => {
-    let subscriptionUnsubscribe = null;
-    let mounted = true;
-
-    const unsubscribeAuth = AuthManager.onAuthStateChanged(
-      async (currentUser) => {
-        if (!mounted) return;
-
-        setUser(currentUser);
-        setAuthState({
-          isAuthenticated: !!currentUser,
-          isAnonymous: currentUser?.isAnonymous || false,
-        });
-
-        if (subscriptionUnsubscribe) {
-          subscriptionUnsubscribe();
-          subscriptionUnsubscribe = null;
-        }
-
-        if (!currentUser || currentUser.isAnonymous) {
-          setIsPremiumUser(false);
-          setIsLoadingSubscription(false);
-          return;
-        }
-
-        try {
-          subscriptionUnsubscribe =
-            SubscriptionManager.listenToSubscriptionUpdates(
-              currentUser.uid,
-              (subscription) => {
-                if (!mounted) return;
-                setIsPremiumUser(subscription?.isActive || false);
-                setIsLoadingSubscription(false);
-              }
-            );
-
-          const status = await SubscriptionManager.checkSubscriptionStatus(
-            currentUser.uid
-          );
-          if (status && mounted) {
-            setIsPremiumUser(status.isPremium || false);
-          }
-        } catch (error) {
-          console.error("Subscription error:", error);
-          if (mounted) {
-            setIsPremiumUser(false);
-            setIsLoadingSubscription(false);
-          }
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      if (subscriptionUnsubscribe) {
-        subscriptionUnsubscribe();
-      }
-      unsubscribeAuth();
-    };
+    return () => unsubscribeAuth();
   }, []);
 
   const handleSignOut = async () => {
-    setIsPremiumUser(false);
     const result = await AuthManager.signOut();
     if (result.success) {
       navigate("/signin");
@@ -260,7 +191,6 @@ const Sidebar = () => {
     { icon: Activity, path: "/guts", label: "Guts" },
     { icon: Trophy, path: "/leaderboards", label: "Leaderboards" },
     { icon: CalendarCheck, path: "/scoreboard", label: "Scoreboard" },
-    // { icon: Bot, path: "/insights", label: "AI Insights" },
   ];
 
   const sidebarClasses = `
@@ -330,7 +260,7 @@ const Sidebar = () => {
               onSignOut={handleSignOut}
               collapsed={collapsed}
               mobileOpen={mobileOpen}
-              isLoadingSubscription={isLoadingSubscription}
+              isLoading={isLoadingSubscription}
             />
           ) : (
             <AuthButtons collapsed={collapsed} mobileOpen={mobileOpen} />

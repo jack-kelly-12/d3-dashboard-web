@@ -171,9 +171,23 @@ const ChartsList = ({
   };
 
   const formatPitchesForExport = (chart, source = "d3", chartType = "game") => {
+    // Ensure chart and pitches are properly defined
+    if (!chart) {
+      console.error("Chart object is required");
+      return [[], []];
+    }
+
+    // Fix the pitches initialization with proper OR operator
+    const pitches = chart.pitches || [];
+
+    // Validate pitches is an array
+    if (!Array.isArray(pitches)) {
+      console.error("Pitches must be an array");
+      return [[], []];
+    }
+
     let headers;
     let rows;
-    let pitches = chart.pitches | [];
 
     switch (source.toLowerCase()) {
       case "trackman":
@@ -191,16 +205,16 @@ const ChartsList = ({
         ];
 
         rows = pitches.map((pitch) => [
-          new Date(pitch.timestamp).toLocaleString(),
-          pitch.type || "",
-          pitch.velocity || "",
-          pitch.spinRate || "",
-          pitch.spinAxis || "",
-          pitch.horizontalBreak || "",
-          pitch.verticalBreak || "",
-          pitch.extension || "",
-          pitch.plateLocHeight || "",
-          pitch.plateLocSide || "",
+          pitch?.timestamp ? new Date(pitch.timestamp).toLocaleString() : "",
+          pitch?.type || "",
+          pitch?.velocity || "",
+          pitch?.spinRate || "",
+          pitch?.spinAxis || "",
+          pitch?.horizontalBreak || "",
+          pitch?.verticalBreak || "",
+          pitch?.extension || "",
+          pitch?.plateLocHeight || "",
+          pitch?.plateLocSide || "",
         ]);
         break;
 
@@ -220,78 +234,78 @@ const ChartsList = ({
         ];
 
         rows = pitches.map((pitch) => [
-          pitch.timestamp,
-          pitch.type || "",
-          pitch.velocity || "",
-          pitch.spinRate || "",
-          pitch.spinEff || "",
-          pitch.horzBreak || "",
-          pitch.vertBreak || "",
-          pitch.relHeight || "",
-          pitch.relSide || "",
-          pitch.strikeZoneX || "",
-          pitch.strikeZoneZ || "",
+          pitch?.timestamp || "",
+          pitch?.type || "",
+          pitch?.velocity || "",
+          pitch?.spinRate || "",
+          pitch?.spinEff || "",
+          pitch?.horzBreak || "",
+          pitch?.vertBreak || "",
+          pitch?.relHeight || "",
+          pitch?.relSide || "",
+          pitch?.strikeZoneX || "",
+          pitch?.strikeZoneZ || "",
         ]);
         break;
 
       default:
         if (chartType === "bullpen") {
           headers = [
-            "pitcher",
-            "pitcherHand",
-            "pitchType",
-            "velocity",
-            "intendedZone",
-            "pitchX",
-            "pitchY",
-            "notes",
+            "Pitcher",
+            "Pitcher Hand",
+            "Pitch Type",
+            "Velocity",
+            "Intended Zone",
+            "Pitch X",
+            "Pitch Y",
+            "Notes",
           ];
 
           rows = pitches.map((pitch) => [
-            pitch.pitcher?.name || "",
-            pitch.pitcher?.pitchHand || "",
-            pitch.type || "",
-            pitch.velocity || "",
-            pitch.intendedZone || "",
-            pitch.x?.toFixed(1) || "",
-            pitch.y?.toFixed(1) || "",
-            pitch.note || "",
+            pitch?.pitcher?.name || "",
+            pitch?.pitcher?.pitchHand || "",
+            pitch?.type || "",
+            pitch?.velocity || "",
+            pitch?.intendedZone || "",
+            pitch?.x ? pitch.x.toFixed(1) : "",
+            pitch?.y ? pitch.y.toFixed(1) : "",
+            pitch?.note || "",
           ]);
         } else {
           headers = [
-            "pitcher",
-            "pitcherHand",
-            "batter",
-            "batterHand",
-            "homeTeam",
-            "awayTeam",
-            "pitchType",
-            "velocity",
-            "result",
-            "hitResult",
-            "pitchX",
-            "pitchY",
-            "hitX",
-            "hitY",
-            "notes",
+            "Pitcher",
+            "Pitcher Hand",
+            "Batter",
+            "Batter Hand",
+            "Home Team",
+            "Away Team",
+            "Pitch Type",
+            "Velocity",
+            "Result",
+            "Hit Result",
+            "Pitch X",
+            "Pitch Y",
+            "Hit X",
+            "Hit Y",
+            "Notes",
           ];
 
           rows = pitches.map((pitch) => [
-            pitch.pitcher?.name || "",
-            pitch.pitcher?.pitchHand || "",
-            pitch.batter?.name || "",
-            pitch.batter?.batHand || "",
+            pitch?.pitcher?.name || "",
+            pitch?.pitcher?.pitchHand || "",
+            pitch?.batter?.name || "",
+            pitch?.batter?.batHand || "",
             chart.homeTeam || "",
             chart.awayTeam || "",
-            pitch.type || "",
-            pitch.velocity || "",
-            pitch.result?.replace(/_/g, " ") || "",
-            pitch.hitResult?.replace(/_/g, " ") || "",
-            pitch.x?.toFixed(1) || "",
-            pitch.y?.toFixed(1) || "",
-            pitch.hitDetails?.x.toFixed(1) || "",
-            pitch.hitDetails?.y.toFixed(1) || "",
-            pitch.note || "",
+            pitch?.type || "",
+            pitch?.velocity || "",
+            pitch?.result ? pitch.result.replace(/_/g, " ") : "",
+            pitch?.hitResult ? pitch.hitResult.replace(/_/g, " ") : "",
+            pitch?.x ? pitch.x.toFixed(1) : "",
+            pitch?.y ? pitch.y.toFixed(1) : "",
+            pitch?.hitDetails?.x ? pitch.hitDetails.x.toFixed(1) : "",
+            pitch?.hitDetails?.y ? pitch.hitDetails.y.toFixed(1) : "",
+            pitch?.note || "",
           ]);
         }
     }

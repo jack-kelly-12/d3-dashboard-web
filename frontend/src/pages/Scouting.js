@@ -146,6 +146,7 @@ const ScoutingReport = () => {
 
     const loadingToast = toast.loading("Loading players...");
     try {
+      console.log(year);
       const data = await fetchAPI(
         `/players-hit/${teamName}?division=${division}&year=${year}`
       );
@@ -185,6 +186,7 @@ const ScoutingReport = () => {
         teamId: selectedTeamData.team_id,
         teamName: selectedTeamData.team_name,
         division: reportData.division,
+        year: reportData.year,
         numPitchers: 0,
         numHitters: 0,
         dateCreated: new Date().toISOString(),

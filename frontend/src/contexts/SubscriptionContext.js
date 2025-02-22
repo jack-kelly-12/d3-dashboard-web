@@ -2,58 +2,86 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
 
-const SubscriptionContext = createContext(null);
+const SubscriptionContext = createContext();
 
-export const useSubscription = () => {
+export function SubscriptionProvider({ children }) {
+  const [subscriptionState, setSubscriptionState] = useState({
+    isPremiumUser: false,
+    isLoadingPremium: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+      if (!isMounted) return;
+
+      if (user) {
+        try {
+          const initialSubscription =
+            await SubscriptionManager.getUserSubscription(user.uid);
+
+          if (isMounted) {
+            setSubscriptionState((prev) => ({
+              ...prev,
+              isPremiumUser: initialSubscription?.isActive || false,
+              isLoadingPremium: false,
+            }));
+          }
+
+          SubscriptionManager.listenToSubscriptionUpdates(
+            user.uid,
+            (subscription) => {
+              if (isMounted) {
+                setSubscriptionState((prev) => ({
+                  ...prev,
+                  isPremiumUser: subscription?.isActive || false,
+                  isLoadingPremium: false,
+                }));
+              }
+            }
+          );
+        } catch (error) {
+          if (isMounted) {
+            setSubscriptionState((prev) => ({
+              ...prev,
+              error: error.message,
+              isLoadingPremium: false,
+            }));
+          }
+        }
+      } else {
+        if (isMounted) {
+          setSubscriptionState((prev) => ({
+            ...prev,
+            isPremiumUser: false,
+            isLoadingPremium: false,
+          }));
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribeAuth();
+      SubscriptionManager.stopListening();
+    };
+  }, []);
+
+  return (
+    <SubscriptionContext.Provider value={subscriptionState}>
+      {children}
+    </SubscriptionContext.Provider>
+  );
+}
+
+export function useSubscription() {
   const context = useContext(SubscriptionContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error(
       "useSubscription must be used within a SubscriptionProvider"
     );
   }
   return context;
-};
-
-export const SubscriptionProvider = ({ children }) => {
-  const [subscription, setSubscription] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let unsubscribe = () => {};
-
-    const setupSubscriptionListener = async () => {
-      const user = AuthManager.getCurrentUser();
-      if (!user) {
-        setSubscription(null);
-        setIsLoading(false);
-        return;
-      }
-
-      unsubscribe = SubscriptionManager.listenToSubscriptionUpdates(
-        user.uid,
-        (subscriptionData) => {
-          setSubscription(subscriptionData);
-          setIsLoading(false);
-        }
-      );
-    };
-
-    setupSubscriptionListener();
-
-    return () => unsubscribe();
-  }, []);
-
-  const value = {
-    subscription,
-    isLoading,
-    hasActiveSubscription: subscription?.isActive || false,
-    isPremium: subscription?.status === "active",
-    planType: subscription?.planType,
-  };
-
-  return (
-    <SubscriptionContext.Provider value={value}>
-      {children}
-    </SubscriptionContext.Provider>
-  );
-};
+}

@@ -268,42 +268,64 @@ def get_teams():
 @app.route('/api/players-hit/<team_name>', methods=['GET'])
 @require_premium
 def get_team_players(team_name):
-    division = request.args.get('division', type=int)
-    year = request.args.get('year', '2025')
+    try:
+        division = request.args.get('division')
+        year = request.args.get('year', '2025')
 
-    year = int(year)
+        if not division:
+            return jsonify({"error": "Division parameter is required"}), 400
 
-    if division not in [1, 2, 3]:
-        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+        try:
+            year = int(year)
+            division = int(division)
+        except ValueError:
+            return jsonify({"error": "Year and division must be valid numbers"}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+        if division not in [1, 2, 3]:
+            return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
 
-    cursor.execute(
-        "SELECT DISTINCT Team FROM batting_war WHERE Season = ? Division = ? AND Team = ?",
-        (division, year, team_name)
-    )
-    if not cursor.fetchone():
-        return jsonify({"error": "Invalid team name"}), 404
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    cursor.execute("""
-        SELECT Player,
-               Pos,
-               BA,
-               OBPct as OBP,
-               SlgPct as SLG,
-               HR,
-               SB,
-               WAR
-        FROM batting_war
-        WHERE Season = ? Team = ? AND Division = ?
-    """, (team_name, division, year))
+        cursor.execute("""
+            SELECT DISTINCT Team
+            FROM batting_war
+            WHERE Division = ? AND Season = ? AND Team = ?
+            """, (division, year, team_name))
 
-    data = [dict(zip([col[0] for col in cursor.description], row))
-            for row in cursor.fetchall()]
+        if not cursor.fetchone():
+            conn.close()
+            return jsonify({"error": f"No data found for team {team_name} in Division {division} for year {year}"}), 404
 
-    conn.close()
-    return jsonify(data)
+        cursor.execute("""
+            SELECT Player,
+                   Pos,
+                   BA,
+                   OBPct as OBP,
+                   SlgPct as SLG,
+                   HR,
+                   SB,
+                   WAR
+            FROM batting_war
+            WHERE Team = ?
+            AND Season = ?
+            AND Division = ?
+            ORDER BY WAR DESC
+            """, (team_name, year, division))
+
+        columns = [col[0] for col in cursor.description]
+        data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+        conn.close()
+
+        if not data:
+            return jsonify({"error": "No players found"}), 404
+
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"Error in get_team_players: {str(e)}")  # Log the error
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @app.route('/api/players-pitch/<team_name>', methods=['GET'])
@@ -366,8 +388,8 @@ def get_expected_runs():
     cursor = conn.cursor()
 
     cursor.execute("""
-        SELECT * 
-        FROM expected_runs 
+        SELECT *
+        FROM expected_runs
         WHERE Division = ? AND Year = ?
     """, (division, year))
 
@@ -596,9 +618,9 @@ def search_players():
                 conference as conference
             FROM rosters
             WHERE (
-                player_name LIKE ? OR 
-                player_name LIKE ? OR 
-                player_name LIKE ? OR 
+                player_name LIKE ? OR
+                player_name LIKE ? OR
+                player_name LIKE ? OR
                 player_name LIKE ?
             ) AND Division = 3
             ORDER BY
@@ -902,12 +924,12 @@ def get_conferences():
         cursor.execute("""
             SELECT DISTINCT Conference
             FROM (
-                SELECT Conference 
-                FROM batting_war 
+                SELECT Conference
+                FROM batting_war
                 WHERE Division = ? AND Season = 2025
                 UNION
-                SELECT Conference 
-                FROM pitching_war 
+                SELECT Conference
+                FROM pitching_war
                 WHERE Division = ? AND Season = 2025
             ) AS combined_conferences
             WHERE Conference IS NOT NULL
@@ -1150,7 +1172,7 @@ def get_baserunning_leaderboard():
         for year in range(start_year, end_year + 1):
             query = """
                 WITH baserunning_query AS (
-                    SELECT DISTINCT 
+                    SELECT DISTINCT
                         b.Player,
                         b.player_id,
                         b.Team,
@@ -1171,7 +1193,7 @@ def get_baserunning_leaderboard():
                         b.Year,
                         b.Division
                     FROM baserunning b
-                    LEFT JOIN ids_for_images i 
+                    LEFT JOIN ids_for_images i
                         ON b.Team = i.team_name
                     WHERE b.Division = ? AND b.Year = ?
                     ORDER BY b.Baserunning DESC
@@ -1248,21 +1270,21 @@ def get_situational_leaderboard():
                         s.RE24_Overall,
                         s.RE24_High_Leverage,
                         s.RE24_Low_Leverage,
-                        s.RE24_RISP, 
+                        s.RE24_RISP,
                         p.Clutch,
                         p.WPA,
                         p.[WPA/LI],
                         p.REA
                     FROM situational s
-                    JOIN batting_war p 
-                        ON s.batter_standardized = p.Player 
+                    JOIN batting_war p
+                        ON s.batter_standardized = p.Player
                         AND s.bat_team = p.Team
                         AND s.year = p.Season
                         AND s.division = p.Division
-                    LEFT JOIN ids_for_images i 
+                    LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
-                    WHERE s.PA_Overall >= ? 
-                        AND p.Division = ? 
+                    WHERE s.PA_Overall >= ?
+                        AND p.Division = ?
                         AND p.Season = ?
                         AND s.year = ?
                     ORDER BY s.wOBA_Overall DESC
@@ -1344,15 +1366,15 @@ def get_splits_leaderboard():
                         s.[SLG_vs LHP] as 'SLG_vs LHP',
                         s.[wOBA_vs LHP] as 'wOBA_vs LHP'
                     FROM splits s
-                    JOIN batting_war p 
-                        ON s.batter_standardized = p.Player 
+                    JOIN batting_war p
+                        ON s.batter_standardized = p.Player
                         AND s.bat_team = p.Team
                         AND s.Year = p.Season
                         AND s.Division = p.Division
-                    LEFT JOIN ids_for_images i 
+                    LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
-                    WHERE s.[PA_Overall] >= ? 
-                        AND p.Division = ? 
+                    WHERE s.[PA_Overall] >= ?
+                        AND p.Division = ?
                         AND p.Season = ?
                         AND s.Year = ?
                     ORDER BY s.[wOBA_Overall] DESC
@@ -1426,14 +1448,14 @@ def get_batted_ball_leaders():
                         bb.pull_air_pct,
                         bb.oppo_gb_pct
                     FROM batted_ball bb
-                    JOIN batting_war p 
-                        ON bb.batter_standardized = p.Player 
+                    JOIN batting_war p
+                        ON bb.batter_standardized = p.Player
                         AND bb.bat_team = p.Team
                         AND bb.year = p.Season
                         AND bb.Division = p.Division
-                    LEFT JOIN ids_for_images i 
+                    LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
-                    WHERE p.Division = ? 
+                    WHERE p.Division = ?
                         AND bb.count >= ?
                         AND p.Season = ?
                         AND bb.year = ?
@@ -1464,7 +1486,7 @@ def get_game(year, game_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""        
+    cursor.execute("""
         SELECT DISTINCT
             p.home_team, p.away_team, p.home_score, p.away_score, p.date as game_date,
             p.inning, p.top_inning, p.game_id, p.description,
@@ -1474,15 +1496,15 @@ def get_game(year, game_id):
             bw.Player as batter_name,
             pw.Player as pitcher_name, p.woba, p.division
         FROM pbp p
-        LEFT JOIN batting_war bw 
-            ON p.batter_id = bw.player_id 
-            AND bw.Season = p.year 
+        LEFT JOIN batting_war bw
+            ON p.batter_id = bw.player_id
+            AND bw.Season = p.year
             AND bw.Division = p.division
-        LEFT JOIN pitching_war pw 
-            ON p.pitcher_id = pw.player_id 
+        LEFT JOIN pitching_war pw
+            ON p.pitcher_id = pw.player_id
             AND pw.Season = p.year
             AND pw.Division = p.division
-        WHERE p.game_id = ? 
+        WHERE p.game_id = ?
         AND p.year = ?
         ORDER BY p.play_id
     """, (game_id, year))
@@ -1528,7 +1550,7 @@ def get_games_by_date():
         cursor = conn.cursor()
 
         cursor.execute(f"""
-            SELECT DISTINCT 
+            SELECT DISTINCT
                 p.game_id,
                 p.year,
                 p.home_team,
@@ -1539,9 +1561,9 @@ def get_games_by_date():
                 i_home.prev_team_id as home_team_logo_id,
                 i_away.prev_team_id as away_team_logo_id
             FROM pbp p
-            LEFT JOIN ids_for_images i_home 
+            LEFT JOIN ids_for_images i_home
                 ON p.home_team = i_home.team_name
-            LEFT JOIN ids_for_images i_away 
+            LEFT JOIN ids_for_images i_away
                 ON p.away_team = i_away.team_name
             WHERE p.date = ? AND p.division = ?
             GROUP BY p.game_id, p.home_team, p.away_team, p.date
