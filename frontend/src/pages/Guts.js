@@ -108,7 +108,6 @@ const Guts = () => {
     fetchData();
   }, [selectedYear, selectedDivision, isAuthReady]);
 
-  // Update URL when division changes
   useEffect(() => {
     if (isPremiumUser) {
       const url = new URL(window.location);

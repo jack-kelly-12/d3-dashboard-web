@@ -269,7 +269,9 @@ def get_teams():
 @require_premium
 def get_team_players(team_name):
     division = request.args.get('division', type=int)
-    year = request.args.get('year', default=2024, type=int)
+    year = request.args.get('year', '2025')
+
+    year = int(year)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
@@ -278,7 +280,7 @@ def get_team_players(team_name):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT DISTINCT Team FROM batting_war WHERE Division = ? AND Season = ? AND Team = ?",
+        "SELECT DISTINCT Team FROM batting_war WHERE Season = ? Division = ? AND Team = ?",
         (division, year, team_name)
     )
     if not cursor.fetchone():
@@ -294,7 +296,7 @@ def get_team_players(team_name):
                SB,
                WAR
         FROM batting_war
-        WHERE Team = ? AND Division = ? AND Season = ?
+        WHERE Season = ? Team = ? AND Division = ?
     """, (team_name, division, year))
 
     data = [dict(zip([col[0] for col in cursor.description], row))
@@ -308,7 +310,9 @@ def get_team_players(team_name):
 @require_premium
 def get_team_pitchers(team_name):
     division = request.args.get('division', type=int)
-    year = request.args.get('year', default=2024, type=int)
+    year = request.args.get('year', '2025')
+
+    year = int(year)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
