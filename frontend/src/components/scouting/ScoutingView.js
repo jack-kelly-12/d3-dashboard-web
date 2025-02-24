@@ -64,8 +64,6 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
         }&year=${report.year || 2024}`
       );
 
-      console.log(data);
-
       const uniqueData = data.reduce((acc, current) => {
         const x = acc.find((item) => item.Player === current.Player);
         if (!x) {

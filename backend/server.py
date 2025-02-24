@@ -444,7 +444,6 @@ def get_player_percentiles(player_id, year):
                 "season": year
             }
 
-        # Check pitching stats
         cursor.execute("""
             SELECT * FROM pitching_war
             WHERE player_id = ? AND Division = 3 AND Season = ?
@@ -512,9 +511,7 @@ def get_player_stats(player_id):
         batting_stats = []
         pitching_stats = []
 
-        # Get stats for all years
-        for year in range(2021, 2025):
-            # Check batting stats with team/conference IDs
+        for year in range(2021, 2026):
             cursor.execute(f"""
                 SELECT b.*, i.prev_team_id, i.conference_id
                 FROM batting_war b
@@ -525,7 +522,6 @@ def get_player_stats(player_id):
             if bat_stats:
                 player_found = True
                 batting_stats.append(dict(bat_stats))
-                # Update current info if it's the most recent year we've found
                 if not player_name or year > max(s['Season'] for s in batting_stats):
                     player_name = bat_stats["Player"]
                     current_team = bat_stats["Team"]
@@ -533,7 +529,6 @@ def get_player_stats(player_id):
                     current_prev_team_id = bat_stats["prev_team_id"]
                     current_conference_id = bat_stats["conference_id"]
 
-            # Check pitching stats with team/conference IDs
             cursor.execute(f"""
                 SELECT p.*, i.prev_team_id, i.conference_id
                 FROM pitching_war p
@@ -544,7 +539,6 @@ def get_player_stats(player_id):
             if pitch_stats:
                 player_found = True
                 pitching_stats.append(dict(pitch_stats))
-                # Update current info if it's the most recent year we've found
                 if not player_name or year > max(s['Season'] for s in pitching_stats):
                     player_name = pitch_stats["Player"]
                     current_team = pitch_stats["Team"]
