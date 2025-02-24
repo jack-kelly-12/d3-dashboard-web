@@ -516,7 +516,7 @@ def get_player_stats(player_id):
                 SELECT b.*, i.prev_team_id, i.conference_id
                 FROM batting_war b
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
-                WHERE b.player_id = ? AND Division = 3 AND Season = ?
+                WHERE b.player_id = ? AND Season = ?
             """, (player_id, year))
             bat_stats = cursor.fetchone()
             if bat_stats:
@@ -1487,17 +1487,17 @@ def get_game(year, game_id):
             p.home_win_exp_before, p.home_win_exp_after, p.wpa, p.run_expectancy_delta,
             p.batter_id, p.pitcher_id,
             p.li, p.home_score_after, p.away_score_after,
-            bw.Player as batter_name,
-            pw.Player as pitcher_name, p.woba, p.division
+            r_batter.player_name as batter_name,
+            r_pitcher.player_name as pitcher_name, p.woba, p.division
         FROM pbp p
-        LEFT JOIN batting_war bw
-            ON p.batter_id = bw.player_id
-            AND bw.Season = p.year
-            AND bw.Division = p.division
-        LEFT JOIN pitching_war pw
-            ON p.pitcher_id = pw.player_id
-            AND pw.Season = p.year
-            AND pw.Division = p.division
+        LEFT JOIN rosters r_batter
+            ON p.batter_id = r_batter.player_id
+            AND p.year = r_batter.year
+            AND p.division = r_batter.division
+        LEFT JOIN rosters r_pitcher
+            ON p.pitcher_id = r_pitcher.player_id
+            AND p.year = r_pitcher.year
+            AND p.division = r_pitcher.division
         WHERE p.game_id = ?
         AND p.year = ?
         ORDER BY p.play_id

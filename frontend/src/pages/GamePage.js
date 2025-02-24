@@ -74,9 +74,19 @@ const calculateGameStats = (gameData) => {
   )[0];
 
   const playerWPA = gameData.plays.reduce((acc, play) => {
+    const isTopInning = play.top_inning;
+
     if (play.batter_name) {
-      acc[play.batter_name] = (acc[play.batter_name] || 0) + (play.wpa || 0);
+      const batterWPA = isTopInning ? -play.wpa : play.wpa;
+      acc[play.batter_name] = (acc[play.batter_name] || 0) + (batterWPA || 0);
     }
+
+    if (play.pitcher_name) {
+      const pitcherWPA = isTopInning ? play.wpa : -play.wpa;
+      acc[play.pitcher_name] =
+        (acc[play.pitcher_name] || 0) + (pitcherWPA || 0);
+    }
+
     return acc;
   }, {});
 

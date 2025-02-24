@@ -38,7 +38,6 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
   const [hoverData, setHoverData] = useState(chartData[chartData.length - 1]);
   const [highlightedPlay, setHighlightedPlay] = useState(null);
 
-  // Find the biggest momentum swings
   const momentumSwings = useMemo(() => {
     return plays
       .map((play, index) => ({
