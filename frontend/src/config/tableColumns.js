@@ -770,6 +770,18 @@ export const getDataColumns = (dataType) => {
           width: "80px",
         },
         {
+          name: "Batting",
+          selector: (row) => roundTo(row["Batting"], 1),
+          sortable: true,
+          width: "100px",
+        },
+        {
+          name: "Base Run",
+          selector: (row) => roundTo(row["Baserunning"], 1),
+          sortable: true,
+          width: "100px",
+        },
+        {
           name: "WPA",
           selector: (row) => roundTo(row["WPA"], 1),
           sortable: true,
@@ -789,10 +801,10 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "WAR",
-          selector: (row) => roundTo(row["WAR"], 1),
+          selector: (row) => roundTo(row.WAR, 1),
           sortable: true,
           width: "80px",
-          cell: (row) => <WARCell value={row.WAR} isTeam={true} />,
+          cell: (row) => <WARCell value={row.WAR} />,
         },
       ];
     case "team_pitching":
