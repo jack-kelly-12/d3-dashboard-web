@@ -1864,41 +1864,91 @@ def cancel_subscription():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/subscription/status/<user_id>', methods=['GET'])
-def check_subscription_status(user_id):
+@app.route('/api/stripe/subscription/<user_id>', methods=['GET'])
+def get_stripe_subscription(user_id):
     auth_header = request.headers.get('Authorization')
     if not auth_header:
-        return jsonify({"isActive": False, "error": "Premium subscription required"}), 403
+        return jsonify({"error": "Authentication required"}), 401
 
     try:
         token = auth_header.split('Bearer ')[1]
         decoded_token = auth.verify_id_token(token)
         authorized_user_id = decoded_token['uid']
 
+        if authorized_user_id != user_id:
+            return jsonify({"error": "Unauthorized"}), 403
+
         db = firestore.client()
         sub_doc = db.collection('subscriptions').document(user_id).get()
 
-        if not sub_doc.exists:
-            return jsonify({"isActive": False})
+        stripe_customer_id = None
+        stripe_subscription_id = None
 
-        data = sub_doc.to_dict()
-        is_active = (
-            data.get('status') == 'active' and
-            data.get('expiresAt', datetime.now()
-                     ).timestamp() > datetime.now().timestamp()
-        )
+        if sub_doc.exists:
+            data = sub_doc.to_dict()
+            stripe_customer_id = data.get('stripeCustomerId')
+            stripe_subscription_id = data.get('stripeSubscriptionId')
 
-        return jsonify({
-            "isPremium": is_active,
-            "status": data.get('status'),
-            "planType": data.get('planType'),
-            "expiresAt": data.get('expiresAt'),
-            "cancelAtPeriodEnd": data.get('cancelAtPeriodEnd', False)
-        })
+        if stripe_subscription_id:
+            try:
+                subscription = stripe.Subscription.retrieve(
+                    stripe_subscription_id)
+                return jsonify({"subscription": subscription})
+            except stripe.error.StripeError as e:
+                logger.error(f"Stripe error retrieving subscription: {str(e)}")
+
+        if stripe_customer_id:
+            try:
+                subscriptions = stripe.Subscription.list(
+                    customer=stripe_customer_id,
+                    status='active',
+                    limit=1
+                )
+
+                if subscriptions and len(subscriptions.data) > 0:
+                    return jsonify({"subscription": subscriptions.data[0]})
+            except stripe.error.StripeError as e:
+                logger.error(f"Stripe error listing subscriptions: {str(e)}")
+
+        try:
+            user = auth.get_user(user_id)
+            user_email = user.email
+
+            if user_email:
+                customers = stripe.Customer.list(email=user_email, limit=1)
+
+                if customers and len(customers.data) > 0:
+                    customer = customers.data[0]
+
+                    if sub_doc.exists:
+                        db.collection('subscriptions').document(user_id).set({
+                            'stripeCustomerId': customer.id,
+                            'updatedAt': datetime.now()
+                        }, merge=True)
+
+                    subscriptions = stripe.Subscription.list(
+                        customer=customer.id,
+                        status='active',
+                        limit=1
+                    )
+
+                    if subscriptions and len(subscriptions.data) > 0:
+                        db.collection('subscriptions').document(user_id).set({
+                            'stripeSubscriptionId': subscriptions.data[0].id,
+                            'updatedAt': datetime.now()
+                        }, merge=True)
+
+                        return jsonify({"subscription": subscriptions.data[0]})
+        except Exception as e:
+            logger.error(
+                f"Error in customer/subscription lookup: {str(e)}", exc_info=True)
+
+        return jsonify({"subscription": None})
 
     except Exception as e:
-        print(f"Error checking subscription status: {str(e)}")
-        return jsonify({"isActive": False, "error": str(e)}), 500
+        logger.error(
+            f"Error retrieving Stripe subscription: {str(e)}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/create-checkout-session', methods=['POST'])
