@@ -6,7 +6,7 @@ import PitchArsenalReport from "../../reports/BullpenReport";
 import { pdf } from "@react-pdf/renderer";
 import InfoBanner from "../data/InfoBanner";
 import AuthManager from "../../managers/AuthManager";
-import SubscriptionManager from "../../managers/SubscriptionManager";
+import { useSubscription } from "../../contexts/SubscriptionContext";
 
 const ChartsList = ({
   charts,
@@ -21,7 +21,7 @@ const ChartsList = ({
     isAuthenticated: false,
     user: null,
   });
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const { isPremiumUser } = useSubscription();
 
   useEffect(() => {
     const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
@@ -29,22 +29,10 @@ const ChartsList = ({
         isAuthenticated: !!user,
         user: user,
       });
-
-      if (user) {
-        SubscriptionManager.listenToSubscriptionUpdates(
-          user.uid,
-          (subscription) => {
-            setIsPremiumUser(subscription?.isActive || false);
-          }
-        );
-      } else {
-        setIsPremiumUser(false);
-      }
     });
 
     return () => {
       unsubscribeAuth();
-      SubscriptionManager.stopListening();
     };
   }, []);
 

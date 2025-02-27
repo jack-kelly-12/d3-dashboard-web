@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { ChevronDown } from "lucide-react";
+import { useSubscription } from "../contexts/SubscriptionContext";
+import AuthManager from "../managers/AuthManager";
 
 const ValueLeaderboard = lazy(() =>
   import("../components/tables/ValueLeaderboard")
@@ -67,7 +69,32 @@ const Leaderboards = () => {
       : LEADERBOARD_TYPES.VALUE.id;
   });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const { isPremiumUser, isLoadingPremium } = useSubscription();
   const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
+        if (!isMounted) return;
+
+        if (isMounted) {
+          setIsAuthReady(true);
+        }
+      });
+
+      return unsubscribeAuth;
+    };
+
+    const cleanup = initializeAuth();
+
+    return () => {
+      isMounted = false;
+      cleanup.then((unsubscribe) => unsubscribe());
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -119,10 +146,14 @@ const Leaderboards = () => {
 
     return LeaderboardComponent ? (
       <Suspense fallback={<LoadingFallback />}>
-        <LeaderboardComponent />
+        <LeaderboardComponent isPremiumUser={isPremiumUser} />
       </Suspense>
     ) : null;
   };
+
+  if (!isAuthReady || isLoadingPremium) {
+    return <LoadingFallback />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">

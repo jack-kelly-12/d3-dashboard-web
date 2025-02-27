@@ -11,7 +11,7 @@ const CreateReportModal = ({
   onDivisionChange,
 }) => {
   const [selectedTeam, setSelectedTeam] = useState("");
-  const [selectedYear, setSelectedYear] = useState("2025"); // Default to 2025
+  const [selectedYear, setSelectedYear] = useState("2025");
   const [formError, setFormError] = useState("");
   const [isLoadingTeams, setIsLoadingTeams] = useState(false);
 

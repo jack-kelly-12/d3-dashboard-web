@@ -6,7 +6,7 @@ import ScoutingView from "../components/scouting/ScoutingView";
 import CreateReportModal from "../components/modals/CreateReportModal";
 import ScoutingReportManager from "../managers/ScoutingReportsManager";
 import AuthManager from "../managers/AuthManager";
-import SubscriptionManager from "../managers/SubscriptionManager";
+import { useSubscription } from "../contexts/SubscriptionContext";
 import { fetchAPI } from "../config/api";
 import { LoadingState } from "../components/alerts/Alerts";
 
@@ -22,7 +22,6 @@ const useScoutingState = () => {
     isLoading: true,
     isCreateModalOpen: false,
     isAddPlayerModalOpen: false,
-    isPremiumUser: false,
     isAuthReady: false,
   });
 
@@ -33,10 +32,10 @@ const useScoutingState = () => {
   return [state, updateState];
 };
 
-const useTeamsFetch = (selectedDivision) => {
-  return useCallback(async () => {
+const useTeamsFetch = () => {
+  return useCallback(async (divisionValue) => {
     try {
-      const data = await fetchAPI(`/teams?division=${selectedDivision}`);
+      const data = await fetchAPI(`/teams?division=${divisionValue}`);
       const uniqueTeams = Array.from(
         new Map(data.map((team) => [team.team_name, team])).values()
       ).sort((a, b) => a.team_name.localeCompare(b.team_name));
@@ -46,13 +45,14 @@ const useTeamsFetch = (selectedDivision) => {
       toast.error("Failed to load teams");
       return [];
     }
-  }, [selectedDivision]);
+  }, []);
 };
 
 const ScoutingReport = () => {
   const navigate = useNavigate();
   const [state, updateState] = useScoutingState();
-  const fetchTeams = useTeamsFetch(state.selectedDivision);
+  const fetchTeams = useTeamsFetch();
+  const { isPremiumUser, isLoadingPremium } = useSubscription();
 
   useEffect(() => {
     let isMounted = true;
@@ -68,36 +68,13 @@ const ScoutingReport = () => {
             const result = await AuthManager.anonymousSignIn();
             if (result.success && isMounted) {
               updateState({ user: result.user });
-              user = result.user; // Update user for subsequent operations
+              user = result.user;
             }
           }
 
           if (user) {
-            // Get initial subscription state
-            const initialSubscription =
-              await SubscriptionManager.getUserSubscription(user.uid);
-            if (isMounted) {
-              updateState({
-                isPremiumUser: initialSubscription?.isActive || false,
-              });
-            }
-
-            // Set up subscription listener
-            SubscriptionManager.listenToSubscriptionUpdates(
-              user.uid,
-              (subscription) => {
-                if (isMounted) {
-                  updateState({
-                    isPremiumUser: subscription?.isActive || false,
-                  });
-                }
-              }
-            );
-
-            const [userReports, teams] = await Promise.all([
-              ScoutingReportManager.getUserReports(),
-              fetchTeams(),
-            ]);
+            const userReports = await ScoutingReportManager.getUserReports();
+            const teams = await fetchTeams();
 
             if (isMounted) {
               updateState({
@@ -124,19 +101,20 @@ const ScoutingReport = () => {
     return () => {
       isMounted = false;
       cleanup.then((unsubscribe) => unsubscribe());
-      SubscriptionManager.stopListening();
     };
   }, [updateState, fetchTeams]);
 
   useEffect(() => {
     if (state.user && state.isAuthReady && !state.isLoading) {
-      fetchTeams().then((teams) => updateState({ availableTeams: teams }));
+      fetchTeams(state.selectedDivision).then((teams) =>
+        updateState({ availableTeams: teams })
+      );
     }
   }, [
     state.user,
     state.isAuthReady,
-    state.selectedDivision,
     state.isLoading,
+    state.selectedDivision,
     fetchTeams,
     updateState,
   ]);
@@ -257,7 +235,8 @@ const ScoutingReport = () => {
     }
   };
 
-  if (!state.isAuthReady || state.isLoading) return <LoadingState />;
+  if (!state.isAuthReady || state.isLoading || isLoadingPremium)
+    return <LoadingState />;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -283,7 +262,8 @@ const ScoutingReport = () => {
               if (state.selectedReport) {
                 fetchPlayers(
                   state.selectedReport.teamName,
-                  state.selectedReport.division || 3
+                  state.selectedReport.division || 3,
+                  state.selectedReport.year
                 );
                 updateState({ isAddPlayerModalOpen: true });
               }
@@ -296,7 +276,7 @@ const ScoutingReport = () => {
           onClose={() => updateState({ isCreateModalOpen: false })}
           onSubmit={handleCreateReport}
           availableTeams={state.availableTeams}
-          isPremiumUser={state.isPremiumUser}
+          isPremiumUser={isPremiumUser}
           selectedDivision={state.selectedDivision}
           onDivisionChange={(division) =>
             updateState({ selectedDivision: division })

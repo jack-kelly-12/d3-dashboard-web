@@ -4,7 +4,7 @@ import ParkFactorsTable from "../components/tables/ParkFactorsTable";
 import ExpectedRunsTable from "../components/tables/ExpectedRunsTable";
 import { fetchAPI } from "../config/api";
 import InfoBanner from "../components/data/InfoBanner";
-import SubscriptionManager from "../managers/SubscriptionManager";
+import { useSubscription } from "../contexts/SubscriptionContext";
 import AuthManager from "../managers/AuthManager";
 
 const divisions = [
@@ -22,7 +22,7 @@ const Guts = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedYear, setSelectedYear] = useState("2025");
   const [selectedDivision, setSelectedDivision] = useState(3);
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const { isPremiumUser, isLoadingPremium } = useSubscription();
   const years = ["2025", "2024", "2023", "2022", "2021"];
 
   useEffect(() => {
@@ -32,32 +32,11 @@ const Guts = () => {
       const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
         if (!isMounted) return;
 
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
-
-            if (initialSubscription?.isActive) {
-              const urlParams = new URLSearchParams(window.location.search);
-              const divisionParam = urlParams.get("division");
-              if (divisionParam) {
-                setSelectedDivision(Number(divisionParam));
-              }
-            }
-          }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
+        if (user && isPremiumUser) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const divisionParam = urlParams.get("division");
+          if (divisionParam) {
+            setSelectedDivision(Number(divisionParam));
           }
         }
 
@@ -74,13 +53,12 @@ const Guts = () => {
     return () => {
       isMounted = false;
       cleanup.then((unsubscribe) => unsubscribe());
-      SubscriptionManager.stopListening();
     };
-  }, []);
+  }, [isPremiumUser]);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!isAuthReady) return;
+      if (!isAuthReady || isLoadingPremium) return;
 
       setIsLoading(true);
       try {
@@ -106,7 +84,7 @@ const Guts = () => {
     };
 
     fetchData();
-  }, [selectedYear, selectedDivision, isAuthReady]);
+  }, [selectedYear, selectedDivision, isAuthReady, isLoadingPremium]);
 
   useEffect(() => {
     if (isPremiumUser) {
@@ -139,7 +117,7 @@ const Guts = () => {
     );
   };
 
-  if (!isAuthReady || isLoading) {
+  if (!isAuthReady || isLoading || isLoadingPremium) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />

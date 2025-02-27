@@ -5,7 +5,7 @@ import { fetchAPI, API_BASE_URL } from "../config/api";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import InfoBanner from "../components/data/InfoBanner";
-import SubscriptionManager from "../managers/SubscriptionManager";
+import { useSubscription } from "../contexts/SubscriptionContext";
 import AuthManager from "../managers/AuthManager";
 
 const DIVISIONS = [
@@ -172,8 +172,8 @@ const NoGames = () => (
 
 const Scoreboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const { isPremiumUser, isLoadingPremium } = useSubscription();
   const [state, setState] = useState({
     games: [],
     isLoading: true,
@@ -203,34 +203,14 @@ const Scoreboard = () => {
       const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
         if (!isMounted) return;
 
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
-
-            if (initialSubscription?.isActive) {
-              setState((prev) => ({
-                ...prev,
-                division: searchParams.get("division")
-                  ? Number(searchParams.get("division"))
-                  : prev.division,
-              }));
-            }
-          }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
-          }
+        if (user && isPremiumUser) {
+          // Update division from URL if premium user
+          setState((prev) => ({
+            ...prev,
+            division: searchParams.get("division")
+              ? Number(searchParams.get("division"))
+              : prev.division,
+          }));
         }
 
         setIsAuthReady(true);
@@ -244,9 +224,8 @@ const Scoreboard = () => {
     return () => {
       isMounted = false;
       cleanup.then((unsubscribe) => unsubscribe());
-      SubscriptionManager.stopListening();
     };
-  }, [searchParams]);
+  }, [searchParams, isPremiumUser]);
 
   useEffect(() => {
     if (isPremiumUser) {
@@ -276,7 +255,7 @@ const Scoreboard = () => {
   }, [state.currentDate, state.division, isPremiumUser, setSearchParams]);
 
   const fetchGames = useCallback(async () => {
-    if (!isAuthReady) return;
+    if (!isAuthReady || isLoadingPremium) return;
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -305,7 +284,7 @@ const Scoreboard = () => {
         isLoading: false,
       }));
     }
-  }, [state.currentDate, state.division, isAuthReady]);
+  }, [state.currentDate, state.division, isAuthReady, isLoadingPremium]);
 
   useEffect(() => {
     fetchGames();
@@ -328,7 +307,7 @@ const Scoreboard = () => {
     setState((prev) => ({ ...prev, division }));
   }, []);
 
-  if (!isAuthReady || state.isLoading) {
+  if (!isAuthReady || state.isLoading || isLoadingPremium) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
