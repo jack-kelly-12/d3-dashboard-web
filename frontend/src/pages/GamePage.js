@@ -7,37 +7,37 @@ import { fetchAPI } from "../config/api";
 
 const LoadingSkeleton = () => (
   <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 max-w-7xl">
-      <div className="w-32 h-6 bg-gray-200 rounded animate-pulse mb-6" />
-      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-8 backdrop-blur-xl">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-6">
-          <div className="w-64 h-10 bg-gray-200 rounded-lg animate-pulse" />
-          <div className="w-48 h-10 bg-gray-200 rounded-lg animate-pulse" />
+    <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl">
+      <div className="w-24 sm:w-32 h-4 sm:h-6 bg-gray-200 rounded animate-pulse mb-4 sm:mb-6" />
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 p-4 sm:p-6 md:p-8 mb-4 sm:mb-8 backdrop-blur-xl">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-6">
+          <div className="w-48 sm:w-64 h-8 sm:h-10 bg-gray-200 rounded-lg animate-pulse" />
+          <div className="w-32 sm:w-48 h-6 sm:h-10 bg-gray-200 rounded-lg animate-pulse" />
         </div>
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {[...Array(3)].map((_, i) => (
           <div
             key={i}
-            className="h-24 bg-white rounded-xl shadow-sm border border-gray-100 p-6 animate-pulse"
+            className="h-20 sm:h-24 bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-pulse"
           >
-            <div className="w-24 h-4 bg-gray-200 rounded mb-3" />
-            <div className="w-32 h-6 bg-gray-200 rounded" />
+            <div className="w-20 sm:w-24 h-3 sm:h-4 bg-gray-200 rounded mb-2 sm:mb-3" />
+            <div className="w-28 sm:w-32 h-5 sm:h-6 bg-gray-200 rounded" />
           </div>
         ))}
       </div>
-      <div className="space-y-6 mt-6">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-8">
-          <div className="w-40 h-6 bg-gray-200 rounded animate-pulse mb-8" />
-          <div className="w-full h-96 bg-gray-200 rounded-lg animate-pulse" />
+      <div className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
+          <div className="w-32 sm:w-40 h-5 sm:h-6 bg-gray-200 rounded animate-pulse mb-4 sm:mb-8" />
+          <div className="w-full h-64 sm:h-80 md:h-96 bg-gray-200 rounded-lg animate-pulse" />
         </div>
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-8">
-          <div className="w-32 h-6 bg-gray-200 rounded animate-pulse mb-8" />
-          <div className="space-y-4">
+        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
+          <div className="w-24 sm:w-32 h-5 sm:h-6 bg-gray-200 rounded animate-pulse mb-4 sm:mb-8" />
+          <div className="space-y-2 sm:space-y-4">
             {[...Array(5)].map((_, i) => (
               <div
                 key={i}
-                className="w-full h-16 bg-gray-200 rounded-lg animate-pulse"
+                className="w-full h-12 sm:h-16 bg-gray-200 rounded-lg animate-pulse"
               />
             ))}
           </div>
@@ -48,12 +48,12 @@ const LoadingSkeleton = () => (
 );
 
 const ErrorDisplay = ({ error }) => (
-  <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-50 to-white">
-    <div className="bg-red-50 border border-red-100 rounded-xl p-8 shadow-lg max-w-md w-full mx-4">
-      <h3 className="text-red-800 font-semibold text-lg mb-3">
+  <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-50 to-white p-4">
+    <div className="bg-red-50 border border-red-100 rounded-xl p-4 sm:p-8 shadow-lg max-w-md w-full">
+      <h3 className="text-red-800 font-semibold text-base sm:text-lg mb-2 sm:mb-3">
         Error Loading Game
       </h3>
-      <p className="text-red-600">{error}</p>
+      <p className="text-red-600 text-sm sm:text-base">{error}</p>
     </div>
   </div>
 );
@@ -113,61 +113,93 @@ const calculateGameStats = (gameData) => {
 };
 
 const StatCard = ({ icon: Icon, title, value, color }) => (
-  <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow">
-    <div className="flex items-center gap-3 mb-2">
-      <Icon className={`w-5 h-5 ${color}`} />
-      <h3 className="font-semibold text-gray-700">{title}</h3>
+  <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6 hover:shadow-md transition-shadow">
+    <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
+      <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
+      <h3 className="font-semibold text-sm sm:text-base text-gray-700">
+        {title}
+      </h3>
     </div>
-    <p className="text-xl font-bold text-gray-900">{value}</p>
+    <p className="text-base sm:text-lg md:text-xl font-bold text-gray-900 line-clamp-2">
+      {value}
+    </p>
   </div>
 );
 
 const GameContent = ({ gameData, handleBack }) => {
   const gameStats = calculateGameStats(gameData);
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("resize", handleResize);
+      return () => {
+        window.removeEventListener("resize", handleResize);
+      };
+    }
+  }, []);
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    if (windowWidth < 640) {
+      return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    }
+    return date.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
 
   if (!gameStats) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 mb-8 backdrop-blur-xl">
-          <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-3 text-gray-400">
+      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+        <div className="bg-white rounded-xl sm:rounded-xl shadow-md sm:shadow-lg border border-gray-100 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 md:mb-8 backdrop-blur-xl">
+          <div className="flex flex-col gap-3 sm:gap-6">
+            <div className="flex items-center gap-2 sm:gap-3 text-gray-400">
               <button
                 onClick={handleBack}
                 className="hover:text-gray-900 transition-colors rounded-full p-1 hover:bg-gray-50 group"
                 aria-label="Back to scoreboard"
               >
-                <ChevronLeft className="w-5 h-5 group-hover:-translate-x-0.5 transition-transform" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-0.5 transition-transform" />
               </button>
-              <div className="h-4 w-px bg-gray-200"></div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <span className="text-sm">
-                  {new Date(gameData.game_date).toLocaleDateString(undefined, {
-                    weekday: "long",
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+              <div className="h-3 sm:h-4 w-px bg-gray-200"></div>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm">
+                  {formatDate(gameData.game_date)}
                 </span>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between sm:items-center">
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-bold text-gray-900">
                 {gameData.away_team} @ {gameData.home_team}
               </h1>
-              <div className="flex items-center text-2xl font-bold">
+              <div className="flex items-center text-xl sm:text-2xl font-bold mt-2 sm:mt-0">
                 <span className="text-gray-900">{gameStats.awayScore}</span>
-                <span className="mx-3 text-gray-400">-</span>
+                <span className="mx-2 sm:mx-3 text-gray-400">-</span>
                 <span className="text-gray-900">{gameStats.homeScore}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-4 sm:mb-6 md:mb-8">
           <StatCard
             icon={Zap}
             title="Biggest Play"
@@ -202,10 +234,10 @@ const GameContent = ({ gameData, handleBack }) => {
           />
         </div>
 
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <div className="w-1 h-8 bg-blue-500 rounded"></div>
+        <div className="space-y-4 sm:space-y-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">
+              <div className="w-1 h-6 sm:h-8 bg-blue-500 rounded"></div>
               Win Probability
             </h2>
             <WinExpectancyChart
@@ -215,12 +247,12 @@ const GameContent = ({ gameData, handleBack }) => {
             />
           </div>
 
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-lg p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-              <div className="w-1 h-8 bg-green-500 rounded"></div>
+          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">
+              <div className="w-1 h-6 sm:h-8 bg-green-500 rounded"></div>
               Game Log
             </h2>
-            <div className="overflow-hidden rounded-xl">
+            <div className="overflow-hidden rounded-lg sm:rounded-xl">
               <GameLog
                 plays={gameData.plays || []}
                 homeTeam={gameData.home_team}

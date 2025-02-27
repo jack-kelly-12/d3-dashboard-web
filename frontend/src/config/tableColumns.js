@@ -523,12 +523,6 @@ export const getDataColumns = (dataType) => {
           width: "80px",
         },
         {
-          name: "LI",
-          selector: (row) => roundTo(row.gmLI, 2),
-          sortable: true,
-          width: "80px",
-        },
-        {
           name: "RA9",
           selector: (row) => roundTo(row.RA9, 2),
           sortable: true,
@@ -592,6 +586,12 @@ export const getDataColumns = (dataType) => {
           sortable: true,
           width: "90px",
           sortFunction: createPercentageSortFn("IR-A%"),
+        },
+        {
+          name: "LI",
+          selector: (row) => roundTo(row.gmLI, 2),
+          sortable: true,
+          width: "80px",
         },
         {
           name: "WPA",

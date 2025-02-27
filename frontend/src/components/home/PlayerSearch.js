@@ -51,7 +51,7 @@ const PlayerSearch = () => {
   };
 
   return (
-    <div className="relative max-w-xl mx-auto mt-8">
+    <div className="relative w-full">
       <div className="relative">
         <input
           type="text"
@@ -59,7 +59,8 @@ const PlayerSearch = () => {
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           placeholder="Search for a player..."
-          className="w-full h-12 px-4 pl-12 text-base rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full h-12 px-4 pl-12 text-base rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          autoComplete="off"
         />
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           {isLoading ? (
@@ -71,11 +72,13 @@ const PlayerSearch = () => {
       </div>
 
       {results.length > 0 && query && (
-        <div className="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+        <div className="absolute z-50 w-full bg-white mt-1 rounded-lg shadow-lg border border-gray-200 overflow-hidden">
           {results.map((player, index) => (
             <div
-              key={player.playerId}
-              onClick={() => navigate(`/player/${player.player_id}`)}
+              key={player.playerId || index}
+              onClick={() =>
+                navigate(`/player/${player.player_id || player.playerId}`)
+              }
               onMouseEnter={() => setSelectedIndex(index)}
               className={`cursor-pointer p-3 hover:bg-gray-50 ${
                 index === selectedIndex ? "bg-gray-50" : ""
