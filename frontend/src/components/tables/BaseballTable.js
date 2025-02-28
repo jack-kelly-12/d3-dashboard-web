@@ -6,14 +6,14 @@ const customStyles = {
     style: {
       backgroundColor: "#ffffff",
       color: "#1e293b",
-      padding: "16px 24px",
+      padding: "1rem 1.5rem",
     },
   },
   headRow: {
     style: {
       backgroundColor: "#f8fafc",
       borderBottom: "2px solid #e2e8f0",
-      minHeight: "48px",
+      minHeight: "3rem",
       position: "sticky",
       top: 0,
       zIndex: 2,
@@ -22,14 +22,15 @@ const customStyles = {
   headCells: {
     style: {
       color: "#64748b",
-      fontSize: "10px",
+      fontSize: "0.625rem",
       "@media (min-width: 1024px)": {
-        fontSize: "12px",
+        fontSize: "0.75rem",
       },
       fontWeight: "600",
       letterSpacing: "0.05em",
-      padding: "8px 5px",
-      justifyContent: "center",
+      padding: "0.5rem 0.3125rem",
+      justifyContent: "flex-start",
+      textAlign: "center",
     },
     activeSortStyle: {
       color: "#3b82f6",
@@ -40,19 +41,21 @@ const customStyles = {
   },
   cells: {
     style: {
-      fontSize: "12px",
+      fontSize: "0.75rem",
       "@media (min-width: 1024px)": {
-        fontSize: "14px",
+        fontSize: "0.875rem",
       },
       color: "#334155",
-      padding: "10px 12px",
+      padding: "0.625rem 0.75rem",
+      justifyContent: "flex-start",
+      textAlign: "left",
     },
   },
   rows: {
     style: {
       backgroundColor: "white",
       borderBottom: "1px solid #f1f5f9",
-      minHeight: "48px",
+      minHeight: "3rem",
       "&:nth-child(odd)": {
         backgroundColor: "#f8fafc",
       },
@@ -73,12 +76,34 @@ export const BaseballTable = ({
   searchComponent,
   stickyColumns = [],
 }) => {
+  // Function to convert rem to pixels based on base font size
+  const remToPx = (rem) => {
+    // Get the base font size from the document (default is 16px)
+    const baseFontSize = parseFloat(
+      getComputedStyle(document.documentElement).fontSize
+    );
+    return parseFloat(rem) * baseFontSize;
+  };
+
   const getStickyStyles = () => {
     const styles = {};
     let currentLeft = 0;
 
     stickyColumns.forEach((columnIndex) => {
-      const columnWidth = columns[columnIndex].width || "150px";
+      const columnWidthValue = columns[columnIndex].width || "9.375rem"; // default 150px as 9.375rem
+
+      // Extract numeric value and unit
+      const match = columnWidthValue.match(/^([\d.]+)(\w+)$/);
+      if (!match) return;
+
+      const [, value, unit] = match;
+      let widthInPixels = parseFloat(value);
+
+      // Convert rem to pixels if needed
+      if (unit === "rem") {
+        widthInPixels = remToPx(value);
+      }
+
       styles[`.rdt_TableCol:nth-child(${columnIndex + 1})`] = {
         position: "sticky",
         left: `${currentLeft}px`,
@@ -93,7 +118,7 @@ export const BaseballTable = ({
         backgroundColor: "inherit",
       };
 
-      currentLeft += parseInt(columnWidth);
+      currentLeft += widthInPixels;
     });
 
     styles[".rdt_TableHead"] = {
@@ -105,19 +130,41 @@ export const BaseballTable = ({
     return styles;
   };
 
-  const mergedStyles = {
-    ...customStyles,
-    tableWrapper: {
-      style: getStickyStyles(),
-    },
-  };
+  // Create a useEffect to handle the initial calculation and window resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      // Force a re-render to recalculate sticky column positions
+      setForceUpdate((prev) => !prev);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // State to force re-render on resize
+  const [forceUpdate, setForceUpdate] = React.useState(false);
+
+  const mergedStyles = React.useMemo(
+    () => ({
+      ...customStyles,
+      tableWrapper: {
+        style: getStickyStyles(),
+      },
+    }),
+    [forceUpdate, stickyColumns, columns]
+  );
 
   const formattedColumns = columns.map((column, index) => ({
     ...column,
     grow: stickyColumns.includes(index) ? 0 : column.grow || 1,
     width: stickyColumns.includes(index)
-      ? column.width || "150px"
+      ? column.width || "9.5rem"
       : column.width || "auto",
+    style: {
+      ...(column.style || {}),
+      justifyContent: "flex-start",
+      textAlign: "center",
+    },
   }));
 
   return (
