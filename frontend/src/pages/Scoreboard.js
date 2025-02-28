@@ -55,27 +55,29 @@ const DateControl = ({
   displayDate,
   filterDate,
 }) => (
-  <div className="flex items-center gap-4">
+  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
     <DatePicker
       selected={currentDate}
       onChange={onDateChange}
       filterDate={filterDate}
-      className="px-4 py-2 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500"
+      className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500"
     />
-    <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200 w-full sm:w-auto">
       <button
         onClick={() => onNavigate(-1)}
         className="p-2 hover:bg-gray-50 text-gray-600 border-r border-gray-200"
+        aria-label="Previous day"
       >
         <ChevronLeft size={20} />
       </button>
-      <div className="px-4 py-2 flex items-center gap-2">
-        <Calendar size={18} className="text-gray-500" />
-        <span className="font-medium">{displayDate}</span>
+      <div className="px-4 py-2 flex items-center gap-2 flex-1 justify-center sm:justify-start overflow-hidden">
+        <Calendar size={18} className="text-gray-500 flex-shrink-0" />
+        <span className="font-medium truncate">{displayDate}</span>
       </div>
       <button
         onClick={() => onNavigate(1)}
         className="p-2 hover:bg-gray-50 text-gray-600 border-l border-gray-200"
+        aria-label="Next day"
       >
         <ChevronRight size={20} />
       </button>
@@ -84,14 +86,14 @@ const DateControl = ({
 );
 
 const DivisionSelector = ({ division, onDivisionChange }) => (
-  <div className="flex items-center gap-2">
+  <div className="flex items-center gap-2 w-full sm:w-auto">
     <label className="text-sm font-medium text-gray-700">Division:</label>
     <select
       value={division}
       onChange={(e) => onDivisionChange(Number(e.target.value))}
       className="px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm text-gray-700
         focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-        hover:border-gray-300 transition-colors w-32"
+        hover:border-gray-300 transition-colors w-full sm:w-32"
     >
       {DIVISIONS.map((div) => (
         <option key={div.value} value={div.value}>
@@ -115,41 +117,43 @@ const GameCard = ({ game }) => {
       className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md 
         transition-all duration-200 overflow-hidden cursor-pointer hover:border-blue-300"
     >
-      <div className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-2">
-        <div className="text-sm text-gray-600">{game.game_date}</div>
+      <div className="border-b border-gray-100 bg-gradient-to-r from-blue-50 to-blue-100 px-3 sm:px-4 py-2">
+        <div className="text-xs sm:text-sm text-gray-600 truncate">
+          {game.game_date}
+        </div>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         {/* Teams */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <TeamLogo
                 teamId={game.away_team_logo_id}
                 teamName={game.away_team}
               />
-              <span className="font-medium">{game.away_team}</span>
+              <span className="font-medium truncate">{game.away_team}</span>
             </div>
-            <span className="font-mono font-bold">{game.away_score}</span>
+            <span className="font-mono font-bold ml-2">{game.away_score}</span>
           </div>
 
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               <TeamLogo
                 teamId={game.home_team_logo_id}
                 teamName={game.home_team}
               />
-              <span className="font-medium">{game.home_team}</span>
+              <span className="font-medium truncate">{game.home_team}</span>
             </div>
-            <span className="font-mono font-bold">{game.home_score}</span>
+            <span className="font-mono font-bold ml-2">{game.home_score}</span>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="pt-3 border-t border-gray-100">
-          <div className="flex items-center justify-between text-sm">
-            <div className="text-gray-600">Game #{game.game_id}</div>
-            <div className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+        <div className="pt-2 sm:pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <div className="text-gray-600 truncate">Game #{game.game_id}</div>
+            <div className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 ml-2 flex-shrink-0">
               Final
             </div>
           </div>
@@ -160,10 +164,10 @@ const GameCard = ({ game }) => {
 };
 
 const NoGames = () => (
-  <div className="text-center py-12">
+  <div className="text-center py-8 sm:py-12">
     <Calendar size={48} className="mx-auto text-gray-400 mb-4" />
     <h3 className="text-lg font-medium text-gray-900">No Games Found</h3>
-    <p className="text-gray-600 mt-1">
+    <p className="text-gray-600 mt-1 px-4">
       Either no games have been played on this date, or data is not available
       yet.
     </p>
@@ -317,10 +321,10 @@ const Scoreboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         <InfoBanner dataType="scoreboard" />
 
-        <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <DateControl
             currentDate={state.currentDate}
             onDateChange={handleDateChange}
@@ -338,11 +342,11 @@ const Scoreboard = () => {
         </div>
 
         {state.error ? (
-          <div className="text-center py-8 bg-red-50 rounded-lg mb-6">
-            <div className="text-red-600">{state.error}</div>
+          <div className="text-center py-6 sm:py-8 bg-red-50 rounded-lg mb-6">
+            <div className="text-red-600 px-4">{state.error}</div>
           </div>
         ) : state.games.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {state.games.map((game) => (
               <GameCard key={game.game_id} game={game} />
             ))}

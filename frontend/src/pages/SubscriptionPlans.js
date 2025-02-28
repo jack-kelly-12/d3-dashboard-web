@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import SubscriptionManager from "../managers/SubscriptionManager";
+import { useSubscription } from "../contexts/SubscriptionContext";
 import toast from "react-hot-toast";
 import { fetchAPI } from "../config/api";
 
@@ -28,13 +29,15 @@ const Feature = ({ children, available, icon: Icon }) => (
 function SubscriptionManagement() {
   const navigate = useNavigate();
   const [user, setUser] = useState(AuthManager.getCurrentUser());
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
-  const [subscriptionDetails, setSubscriptionDetails] = useState(null);
   const [showFeatureInfo, setShowFeatureInfo] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const status = params.get("status");
+
+  // Use the subscription context instead of local state
+  const { isPremiumUser, isLoadingPremium, error } = useSubscription();
+  const [subscriptionDetails, setSubscriptionDetails] = useState(null);
 
   const getValidDate = (dateValue) => {
     if (!dateValue) return null;
@@ -70,15 +73,13 @@ function SubscriptionManagement() {
         setUser(currentUser);
 
         if (currentUser) {
-          SubscriptionManager.listenToSubscriptionUpdates(
-            currentUser.uid,
-            (subscription) => {
-              setIsPremiumUser(subscription?.status === "active");
-              setSubscriptionDetails(subscription);
-            }
+          // Only fetch subscription details for display purposes
+          // The subscription status is already handled by the context
+          const subscription = await SubscriptionManager.getUserSubscription(
+            currentUser.uid
           );
+          setSubscriptionDetails(subscription);
         } else {
-          setIsPremiumUser(false);
           setSubscriptionDetails(null);
         }
       }
@@ -86,7 +87,6 @@ function SubscriptionManagement() {
 
     return () => {
       unsubscribeAuth();
-      SubscriptionManager.stopListening();
     };
   }, []);
 
@@ -154,6 +154,37 @@ function SubscriptionManagement() {
       day: "numeric",
     });
   };
+
+  // Show loading state
+  if (isLoadingPremium) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="w-full max-w-lg bg-white rounded-lg shadow-sm p-8 flex flex-col items-center justify-center">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-600">Loading subscription information...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">
+        <div className="w-full max-w-lg bg-white rounded-lg shadow-sm p-8">
+          <div className="text-red-600 bg-red-50 p-4 rounded-lg">
+            <p>Error loading subscription information: {error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center">

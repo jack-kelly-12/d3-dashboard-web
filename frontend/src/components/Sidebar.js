@@ -20,20 +20,30 @@ import {
 import AuthManager from "../managers/AuthManager";
 import { useSubscription } from "../contexts/SubscriptionContext";
 
-const PremiumBadge = () => (
-  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-500 text-white">
-    Premium
-  </span>
-);
+const PremiumBadge = ({ isLoading = false }) =>
+  isLoading ? (
+    <div className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-200 text-transparent animate-pulse w-16">
+      Loading
+    </div>
+  ) : (
+    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-500 text-white">
+      Premium
+    </span>
+  );
 
-const SubscriptionLink = ({ isPremiumUser }) => (
-  <Link
-    to="/subscriptions"
-    className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
-  >
-    {isPremiumUser ? "View plan" : "Upgrade to Premium"}
-  </Link>
-);
+const SubscriptionLink = ({ isPremiumUser, isLoading = false }) =>
+  isLoading ? (
+    <div className="text-xs text-transparent bg-gray-200 animate-pulse rounded w-20">
+      Loading
+    </div>
+  ) : (
+    <Link
+      to="/subscriptions"
+      className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+    >
+      {isPremiumUser ? "View plan" : "Upgrade to Premium"}
+    </Link>
+  );
 
 const MenuItem = ({
   icon: Icon,
@@ -83,7 +93,13 @@ const UserSection = ({
           </div>
           <div className="flex items-center space-x-2 min-h-[20px]">
             {isLoading ? (
-              <div className="h-4 w-16 bg-gray-200 animate-pulse rounded" />
+              <>
+                <PremiumBadge isLoading={true} />
+                <SubscriptionLink
+                  isPremiumUser={isPremiumUser}
+                  isLoading={true}
+                />
+              </>
             ) : (
               <>
                 {isPremiumUser && <PremiumBadge />}
