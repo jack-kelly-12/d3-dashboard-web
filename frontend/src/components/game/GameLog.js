@@ -211,7 +211,7 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
   };
 
   return (
-    <div className="w-full overflow-hidden">
+    <div className="w-full">
       <BaseballTable
         data={plays}
         columns={columns}

@@ -11,7 +11,7 @@ import PlayerSearch from "../components/home/PlayerSearch";
 
 const HomePage = () => {
   return (
-    <div className="h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col overflow-hidden">
+    <div className="h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
       <div className="container max-w-full lg:max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col h-full">
         {/* Background Elements */}
         <div className="absolute inset-0 overflow-hidden">

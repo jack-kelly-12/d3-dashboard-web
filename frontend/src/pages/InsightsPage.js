@@ -356,7 +356,7 @@ const InsightsPage = () => {
             )}
           </div>
 
-          <div className="flex-1 bg-gray-50 rounded-3xl shadow-xl border border-gray-100 flex flex-col overflow-hidden backdrop-blur-xl mb-8">
+          <div className="flex-1 bg-gray-50 rounded-3xl shadow-xl border border-gray-100 flex flex-col backdrop-blur-xl mb-8">
             <div className="flex-1 overflow-y-auto p-6 md:p-8">
               {conversationState.messages.length === 0 ? (
                 <EmptyState />

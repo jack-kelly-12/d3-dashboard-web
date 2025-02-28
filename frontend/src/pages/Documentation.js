@@ -174,7 +174,7 @@ const Documentation = () => {
             {sections.map((section, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+                className="bg-white rounded-xl shadow-sm border border-gray-200"
               >
                 <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200">
                   <h2 className="text-lg font-semibold text-gray-900">

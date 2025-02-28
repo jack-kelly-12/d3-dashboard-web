@@ -221,7 +221,7 @@ const PlayerPage = () => {
           </div>
 
           {/* Stats Section */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-white rounded-lg shadow-sm">
             {/* Navigation */}
             <div className="border-b border-gray-100">
               <div className="px-6 py-4 flex gap-4">

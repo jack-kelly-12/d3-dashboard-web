@@ -7,6 +7,7 @@ import AddPlayerModal from "../modals/AddPlayerModal";
 import AddPitcherModal from "../modals/AddPitcherModal";
 import ScoutingReportManager from "../../managers/ScoutingReportsManager";
 import { fetchAPI } from "../../config/api";
+import { useMediaQuery } from "react-responsive";
 
 const ScoutingView = ({ report, onBack, onUpdateReport }) => {
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
@@ -15,6 +16,9 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
   const [availablePitchers, setAvailablePitchers] = useState([]);
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingPitcher, setEditingPitcher] = useState(null);
+
+  const isXSmall = useMediaQuery({ maxWidth: 480 });
+  const isSmall = useMediaQuery({ maxWidth: 640 });
 
   const handleEditPlayer = async (updatedPlayer) => {
     const loadingToast = toast.loading("Updating player...");
@@ -300,24 +304,41 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container max-w-[calc(100vw-100px)] lg:max-w-[1200px] mx-auto px-4 sm:px-6 md:px-8 py-8">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <div className="container mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors"
+            className="flex items-center gap-1 sm:gap-2 text-gray-600 hover:text-blue-600 transition-colors text-sm sm:text-base"
           >
-            <ChevronLeft size={18} />
-            <span>Back to Reports</span>
+            <ChevronLeft size={isSmall ? 16 : 18} />
+            <span>{isXSmall ? "Back" : "Back to Reports"}</span>
           </button>
 
-          <div className="mt-8 space-y-6">
+          {/* Report Header */}
+          <div className="mt-4 sm:mt-6">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-0">
+                {report.teamName}
+              </h1>
+              <div className="flex flex-wrap gap-2">
+                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs sm:text-sm">
+                  {report.division}
+                </span>
+                <span className="px-2 py-1 bg-gray-50 text-gray-700 rounded-full text-xs sm:text-sm">
+                  {report.year || "2024"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
             <DragDropContext onDragEnd={handleDragEnd}>
               {/* Position Players Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    <h2 className="text-xl font-semibold text-gray-900">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                    <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900">
                       Position Players
                     </h2>
                   </div>
@@ -326,31 +347,35 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
                       fetchPlayers();
                       setIsAddPlayerModalOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
+                    className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
                   >
-                    <UserPlus size={14} />
-                    Add Hitter
+                    <UserPlus size={isSmall ? 12 : 14} />
+                    {isXSmall ? "Add" : "Add Hitter"}
                   </button>
                 </div>
 
-                <PlayersTable
-                  players={report.positionPlayers}
-                  onEditPlayer={(player) => {
-                    setEditingPlayer(player);
-                    setIsAddPlayerModalOpen(true);
-                  }}
-                  onDeletePlayer={handleDeletePlayer}
-                  isPitcherTable={false}
-                  droppableId="positionPlayers"
-                />
+                <div className="overflow-x-auto -mx-3 sm:mx-0">
+                  <PlayersTable
+                    players={report.positionPlayers}
+                    onEditPlayer={(player) => {
+                      setEditingPlayer(player);
+                      setIsAddPlayerModalOpen(true);
+                    }}
+                    onDeletePlayer={handleDeletePlayer}
+                    isPitcherTable={false}
+                    droppableId="positionPlayers"
+                    isSmallScreen={isSmall}
+                    isXSmallScreen={isXSmall}
+                  />
+                </div>
               </div>
 
               {/* Pitchers Section */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-600" />
-                    <h2 className="text-xl font-semibold text-gray-900">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 sm:p-4 md:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-0 mb-4 sm:mb-6">
+                  <div className="flex items-center gap-1 sm:gap-2">
+                    <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                    <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900">
                       Pitchers
                     </h2>
                   </div>
@@ -359,23 +384,27 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
                       fetchPitchers();
                       setIsAddPitcherModalOpen(true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
+                    className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
                   >
-                    <UserPlus size={14} />
-                    Add Pitcher
+                    <UserPlus size={isSmall ? 12 : 14} />
+                    {isXSmall ? "Add" : "Add Pitcher"}
                   </button>
                 </div>
 
-                <PlayersTable
-                  players={report.pitchers || []}
-                  onEditPlayer={(pitcher) => {
-                    setEditingPitcher(pitcher);
-                    setIsAddPitcherModalOpen(true);
-                  }}
-                  onDeletePlayer={handleDeletePitcher}
-                  isPitcherTable={true}
-                  droppableId="pitchers"
-                />
+                <div className="overflow-x-auto -mx-3 sm:mx-0">
+                  <PlayersTable
+                    players={report.pitchers || []}
+                    onEditPlayer={(pitcher) => {
+                      setEditingPitcher(pitcher);
+                      setIsAddPitcherModalOpen(true);
+                    }}
+                    onDeletePlayer={handleDeletePitcher}
+                    isPitcherTable={true}
+                    droppableId="pitchers"
+                    isSmallScreen={isSmall}
+                    isXSmallScreen={isXSmall}
+                  />
+                </div>
               </div>
             </DragDropContext>
           </div>

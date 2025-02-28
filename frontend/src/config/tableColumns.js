@@ -9,96 +9,125 @@ const createPercentageSortFn = (field) => (rowA, rowB) => {
   return a - b;
 };
 
-const columnStyles = {
-  base: "w-16 sm:w-20 md:w-24 text-left", // For most numeric columns
-  wide: "w-20 sm:w-24 md:w-28 text-left", // For columns with longer headers
-};
-
 export const columnsGuts = [
   {
     name: "Year",
     selector: (row) => row.Year,
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 font-medium",
+    width: "6rem",
   },
   {
     name: "Division",
     selector: (row) => row.Division,
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3",
+    width: "7.5rem",
   },
   {
     name: "wOBA",
     selector: (row) => roundTo(row.wOBA, 3),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "6rem",
   },
   {
     name: "wOBA Scale",
     selector: (row) => roundTo(row.wOBAScale, 2),
-    className: columnStyles.wide,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "8rem",
   },
   {
     name: "wBB",
     selector: (row) => roundTo(row.wBB, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "wHBP",
     selector: (row) => roundTo(row.wHBP, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "w1B",
     selector: (row) => roundTo(row.w1B, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "w2B",
     selector: (row) => roundTo(row.w2B, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "w3B",
     selector: (row) => roundTo(row.w3B, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "wHR",
     selector: (row) => roundTo(row.wHR, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "wSB",
     selector: (row) => roundTo(row.runSB, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "wCS",
     selector: (row) => roundTo(row.runCS, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "R/PA",
     selector: (row) => roundTo(row.runsPA, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "R/W",
     selector: (row) => roundTo(row.runsWin, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "cFIP",
     selector: (row) => roundTo(row.cFIP, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center font-medium",
+    width: "5.5rem",
   },
   {
     name: "R/Out",
     selector: (row) => roundTo(row.runsOut, 2),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5.5rem",
   },
   {
     name: "csRate",
     selector: (row) => roundTo(row.csRate, 1),
-    className: columnStyles.base,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "6rem",
   },
 ];
 
@@ -107,43 +136,51 @@ export const columnsPF = [
     name: "Team",
     selector: (row) => row.team_name,
     sortable: true,
-    className: "w-1/4 md:w-1/5 text-left",
+    className: "px-4 py-3 font-medium",
+    width: "180px",
   },
   {
     name: "Years",
     selector: (row) => row.Years,
-    className: "w-1/12 md:w-1/10 text-left",
-  },
-  {
-    name: "Runs @ Home",
-    selector: (row) => roundTo(row.H, 2),
     sortable: true,
-    className: "w-1/6 md:w-[15%] text-left",
-  },
-  {
-    name: "Runs on Road",
-    selector: (row) => roundTo(row.R, 2),
-    sortable: true,
-    className: "w-1/6 md:w-[15%] text-left",
-  },
-  {
-    name: "Home Games",
-    selector: (row) => row.total_home_games,
-    sortable: true,
-    className: "w-1/6 md:w-[15%] text-left",
-  },
-  {
-    name: "Away Games",
-    selector: (row) => row.total_away_games,
-    sortable: true,
-    className: "w-1/6 md:w-[15%] text-left",
+    className: "px-4 py-3 text-center",
+    width: "110px",
   },
   {
     name: "PF",
     selector: (row) => roundTo(row.PF, 0),
     sortable: true,
-    className: "w-1/12 md:w-1/10 text-left",
+    className: "px-4 py-3 text-center font-bold",
+    width: "80px",
     cell: (row) => <PFCell value={row.PF} />,
+  },
+  {
+    name: "Runs @ Home",
+    selector: (row) => roundTo(row.H, 2),
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "130px",
+  },
+  {
+    name: "Runs on Road",
+    selector: (row) => roundTo(row.R, 2),
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "130px",
+  },
+  {
+    name: "Home Games",
+    selector: (row) => row.total_home_games,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "130px",
+  },
+  {
+    name: "Away Games",
+    selector: (row) => row.total_away_games,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "130px",
   },
 ];
 
@@ -157,7 +194,7 @@ export const getDataColumns = (dataType) => {
           name: "Player",
           selector: (row) => row.Player,
           sortable: true,
-          width: "9.5rem",
+          width: "7.5rem",
           cell: (row) =>
             row.player_id.substring(0, 4) === "d3d-" ? (
               <Link
@@ -172,7 +209,7 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "Team",
-          width: "5rem",
+          width: "4.5rem",
           selector: (row) => row.Team,
           cell: (row) => row.renderedTeam,
           sortable: true,
@@ -182,7 +219,7 @@ export const getDataColumns = (dataType) => {
           selector: (row) => row.Conference,
           cell: (row) => row.renderedConference,
           sortable: true,
-          width: "6.5rem",
+          width: "6rem",
         },
         {
           name: "Season",
@@ -387,7 +424,7 @@ export const getDataColumns = (dataType) => {
           name: "Player",
           selector: (row) => row.Player,
           sortable: true,
-          width: "9.5rem",
+          width: "7.5rem",
           cell: (row) =>
             row.player_id.substring(0, 4) === "d3d-" ? (
               <Link
@@ -402,7 +439,7 @@ export const getDataColumns = (dataType) => {
         },
         {
           name: "Team",
-          width: "5rem",
+          width: "4.5rem",
           selector: (row) => row.Team,
           cell: (row) => row.renderedTeam,
           sortable: true,
@@ -412,13 +449,13 @@ export const getDataColumns = (dataType) => {
           selector: (row) => row.Conference,
           cell: (row) => row.renderedConference,
           sortable: true,
-          width: "6.5rem",
+          width: "6rem",
         },
         {
           name: "Season",
           selector: (row) => row.Season,
           sortable: true,
-          width: "5rem",
+          width: "6rem",
         },
         {
           name: "Year",
@@ -623,16 +660,17 @@ export const getDataColumns = (dataType) => {
       return [
         {
           name: "Team",
+          width: "4.5rem",
           selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
           sortable: true,
-          width: "9.5rem",
         },
         {
           name: "Conference",
           selector: (row) => row.Conference,
           cell: (row) => row.renderedConference,
           sortable: true,
-          width: "6.5rem",
+          width: "6rem",
         },
         {
           name: "Season",
@@ -811,22 +849,23 @@ export const getDataColumns = (dataType) => {
       return [
         {
           name: "Team",
+          width: "4.5rem",
           selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
           sortable: true,
-          width: "9.5rem",
         },
         {
           name: "Conference",
           selector: (row) => row.Conference,
           cell: (row) => row.renderedConference,
           sortable: true,
-          width: "6.5rem",
+          width: "6rem",
         },
         {
           name: "Season",
           selector: (row) => row.Season,
           sortable: true,
-          width: "5rem",
+          width: "6rem",
         },
         {
           name: "IP",

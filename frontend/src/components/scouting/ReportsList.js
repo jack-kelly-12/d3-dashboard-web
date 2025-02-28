@@ -21,7 +21,7 @@ const ReportsList = ({
     toast(
       (t) => (
         <div className="flex flex-col gap-4">
-          <p>Delete report for {truncateText(report.teamName)}?</p>
+          <p>Delete report for {report.teamName}?</p>
           <div className="flex gap-2">
             <button
               className="px-3 py-2 text-sm text-white bg-red-500 rounded-full hover:bg-red-600 transition-colors shadow-sm"
@@ -68,27 +68,6 @@ const ReportsList = ({
     }
   };
 
-  const truncateText = (text, maxLengthOverride) => {
-    if (!text) return "";
-
-    let maxLength;
-    if (maxLengthOverride) {
-      maxLength = maxLengthOverride;
-    } else if (isXSmall) {
-      maxLength = 10;
-    } else if (isSmall) {
-      maxLength = 15;
-    } else if (isMedium) {
-      maxLength = 20;
-    } else {
-      return text;
-    }
-
-    return text.length > maxLength
-      ? text.substring(0, maxLength) + "..."
-      : text;
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return "—";
     const date = new Date(dateString);
@@ -96,8 +75,7 @@ const ReportsList = ({
     if (isXSmall) {
       return `${date.getMonth() + 1}/${date.getDate()}/${date
         .getFullYear()
-        .toString()
-        .substr(2, 2)}`;
+        .toString()}`;
     } else if (isSmall) {
       return date.toLocaleDateString();
     } else {
@@ -191,12 +169,10 @@ const ReportsList = ({
       return [
         {
           name: "Team Info",
-          width: "70%",
+          width: "50%",
           cell: (row) => (
             <div className="flex flex-col">
-              <span className="font-medium text-gray-800">
-                {truncateText(row.teamName)}
-              </span>
+              <span className="font-medium text-gray-800">{row.teamName}</span>
               <div className="flex gap-2 text-xs text-gray-500">
                 <span>{formatDate(row.dateCreated)}</span>
                 <span className="text-gray-300">•</span>
@@ -209,7 +185,7 @@ const ReportsList = ({
         },
         {
           name: "",
-          width: "30%",
+          width: "50%",
           cell: (row) => <ActionMenu row={row} />,
         },
       ];
@@ -222,7 +198,7 @@ const ReportsList = ({
           selector: (row) => row.teamName,
           sortable: true,
           width: "40%",
-          cell: (row) => <span>{truncateText(row.teamName)}</span>,
+          cell: (row) => <span>{row.teamName}</span>,
         },
         {
           name: "Date",

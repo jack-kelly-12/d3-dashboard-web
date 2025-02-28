@@ -10,7 +10,7 @@ import debounce from "lodash/debounce";
 import { useSubscription } from "../contexts/SubscriptionContext";
 
 const MemoizedTable = React.memo(({ data, dataType, filename }) => (
-  <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+  <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
     <BaseballTable
       data={data}
       columns={getDataColumns(dataType)}

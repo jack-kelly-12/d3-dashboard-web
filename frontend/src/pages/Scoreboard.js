@@ -70,7 +70,7 @@ const DateControl = ({
       >
         <ChevronLeft size={20} />
       </button>
-      <div className="px-4 py-2 flex items-center gap-2 flex-1 justify-center sm:justify-start overflow-hidden">
+      <div className="px-4 py-2 flex items-center gap-2 flex-1 justify-center sm:justify-start">
         <Calendar size={18} className="text-gray-500 flex-shrink-0" />
         <span className="font-medium truncate">{displayDate}</span>
       </div>
