@@ -23,7 +23,7 @@ const InfoBanner = ({ dataType }) => {
         return {
           title: "Scouting Reports",
           description:
-            "Automatically build spray charts that query up-to-date data from any Division 3 team in the country. Export to PDF when finished and share with your team.",
+            "Automatically build scouting reports that query up-to-date data from any Division 3 team in the country. Export to PDF when finished and share with your team.",
         };
       case "player_hitting":
         return {

@@ -1,4 +1,5 @@
 import React from "react";
+import { useMemo, useCallback } from "react";
 import DataTable from "react-data-table-component";
 
 const customStyles = {
@@ -76,30 +77,26 @@ export const BaseballTable = ({
   searchComponent,
   stickyColumns = [],
 }) => {
-  // Function to convert rem to pixels based on base font size
-  const remToPx = (rem) => {
-    // Get the base font size from the document (default is 16px)
+  const remToPx = useCallback((rem) => {
     const baseFontSize = parseFloat(
       getComputedStyle(document.documentElement).fontSize
     );
     return parseFloat(rem) * baseFontSize;
-  };
+  }, []);
 
-  const getStickyStyles = () => {
+  const getStickyStyles = useCallback(() => {
     const styles = {};
     let currentLeft = 0;
 
     stickyColumns.forEach((columnIndex) => {
       const columnWidthValue = columns[columnIndex].width || "9.375rem"; // default 150px as 9.375rem
 
-      // Extract numeric value and unit
       const match = columnWidthValue.match(/^([\d.]+)(\w+)$/);
       if (!match) return;
 
       const [, value, unit] = match;
       let widthInPixels = parseFloat(value);
 
-      // Convert rem to pixels if needed
       if (unit === "rem") {
         widthInPixels = remToPx(value);
       }
@@ -128,44 +125,34 @@ export const BaseballTable = ({
     };
 
     return styles;
-  };
+  }, [stickyColumns, columns, remToPx]);
 
-  // Create a useEffect to handle the initial calculation and window resize
-  React.useEffect(() => {
-    const handleResize = () => {
-      // Force a re-render to recalculate sticky column positions
-      setForceUpdate((prev) => !prev);
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // State to force re-render on resize
-  const [forceUpdate, setForceUpdate] = React.useState(false);
-
-  const mergedStyles = React.useMemo(
+  const mergedStyles = useMemo(
     () => ({
       ...customStyles,
       tableWrapper: {
         style: getStickyStyles(),
       },
     }),
-    [forceUpdate, stickyColumns, columns]
+    [getStickyStyles]
   );
 
-  const formattedColumns = columns.map((column, index) => ({
-    ...column,
-    grow: stickyColumns.includes(index) ? 0 : column.grow || 1,
-    width: stickyColumns.includes(index)
-      ? column.width || "9.5rem"
-      : column.width || "auto",
-    style: {
-      ...(column.style || {}),
-      justifyContent: "flex-start",
-      textAlign: "center",
-    },
-  }));
+  const formattedColumns = useMemo(
+    () =>
+      columns.map((column, index) => ({
+        ...column,
+        grow: stickyColumns.includes(index) ? 0 : column.grow || 1,
+        width: stickyColumns.includes(index)
+          ? column.width || "9.5rem"
+          : column.width || "auto",
+        style: {
+          ...(column.style || {}),
+          justifyContent: "flex-start",
+          textAlign: "center",
+        },
+      })),
+    [columns, stickyColumns]
+  );
 
   return (
     <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
