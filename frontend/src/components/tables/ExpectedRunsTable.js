@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useState } from "react";
 import { BaseballTable } from "./BaseballTable";
 
 // Define the base state order map outside the component to avoid dependencies
@@ -14,6 +14,21 @@ const BASE_STATE_ORDER_MAP = {
 };
 
 const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
+  // Add responsive state
+  const [windowWidth, setWindowWidth] = useState(
+    typeof window !== "undefined" ? window.innerWidth : 1200
+  );
+
+  // Add resize listener on mount
+  React.useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Determine if we're in mobile view
+  const isMobile = windowWidth < 768;
+
   // Use useCallback to memoize the function
   const getBaseStateOrder = useCallback((baseState) => {
     // Direct match
@@ -99,67 +114,98 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
       .sort((a, b) => a.baseStateOrder - b.baseStateOrder);
   }, [data, getBaseStateOrder]);
 
-  const columns = [
-    {
-      name: "Year",
-      selector: (row) => row.year,
-      sortable: true,
-      width: "20%",
-    },
-    {
-      name: "Base State",
-      selector: (row) => row.baseState,
-      sortable: true,
-      width: "30%",
-      cell: (row) => (
-        <div className="font-mono text-gray-700">{row.baseState}</div>
-      ),
-      sortFunction: (rowA, rowB) => {
-        return (
-          getBaseStateOrder(rowA.baseState) - getBaseStateOrder(rowB.baseState)
-        );
+  // Responsive columns configuration
+  const columns = useMemo(
+    () => [
+      {
+        name: "Year",
+        selector: (row) => row.year,
+        sortable: true,
+        width: isMobile ? "15%" : "15%",
       },
-    },
-    {
-      name: "0 Outs",
-      selector: (row) => row.outs0,
-      sortable: true,
-      width: "16.6%",
-      cell: (row) => (
-        <div className="font-mono text-black-600 font-medium">{row.outs0}</div>
-      ),
-    },
-    {
-      name: "1 Out",
-      selector: (row) => row.outs1,
-      sortable: true,
-      width: "16.6%",
-      cell: (row) => (
-        <div className="font-mono text-black-600 font-medium">{row.outs1}</div>
-      ),
-    },
-    {
-      name: "2 Outs",
-      selector: (row) => row.outs2,
-      sortable: true,
-      width: "16.6%",
-      cell: (row) => (
-        <div className="font-mono text-black-600 font-medium">{row.outs2}</div>
-      ),
-    },
-  ];
+      {
+        name: "Bases",
+        selector: (row) => row.baseState,
+        sortable: true,
+        width: isMobile ? "25%" : "25%",
+        cell: (row) => (
+          <div
+            className={`font-mono text-gray-700 ${isMobile ? "text-xs" : ""}`}
+          >
+            {row.baseState}
+          </div>
+        ),
+        sortFunction: (rowA, rowB) => {
+          return (
+            getBaseStateOrder(rowA.baseState) -
+            getBaseStateOrder(rowB.baseState)
+          );
+        },
+      },
+      {
+        name: isMobile ? "0" : "0 Outs",
+        selector: (row) => row.outs0,
+        sortable: true,
+        width: isMobile ? "18.3%" : "20%",
+        cell: (row) => (
+          <div
+            className={`font-mono text-black-600 font-medium ${
+              isMobile ? "text-xs" : ""
+            }`}
+          >
+            {row.outs0}
+          </div>
+        ),
+      },
+      {
+        name: isMobile ? "1" : "1 Out",
+        selector: (row) => row.outs1,
+        sortable: true,
+        width: isMobile ? "18.3%" : "20%",
+        cell: (row) => (
+          <div
+            className={`font-mono text-black-600 font-medium ${
+              isMobile ? "text-xs" : ""
+            }`}
+          >
+            {row.outs1}
+          </div>
+        ),
+      },
+      {
+        name: isMobile ? "2" : "2 Outs",
+        selector: (row) => row.outs2,
+        sortable: true,
+        width: isMobile ? "18.3%" : "20%",
+        cell: (row) => (
+          <div
+            className={`font-mono text-black-600 font-medium ${
+              isMobile ? "text-xs" : ""
+            }`}
+          >
+            {row.outs2}
+          </div>
+        ),
+      },
+    ],
+    [getBaseStateOrder, isMobile]
+  );
 
   return (
-    <div>
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+    <div className="w-full overflow-hidden">
+      <div className={`p-2 md:p-4 border-b border-gray-200`}>
+        <div
+          className={`flex flex-col md:flex-row items-start md:items-center md:justify-between ${
+            isMobile ? "space-y-2" : ""
+          }`}
+        >
+          <h2 className="text-sm md:text-lg font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             Run Expectancy Matrix
           </h2>
           <select
             value={selectedYear}
             onChange={(e) => onYearChange(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full md:w-auto px-2 md:px-3 py-1 md:py-2 text-xs md:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {years.map((year) => (
               <option key={year} value={year}>
@@ -169,11 +215,17 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
           </select>
         </div>
       </div>
-      <BaseballTable
-        data={transformedData}
-        columns={columns}
-        filename="run_expectancy.csv"
-      />
+      <div className="w-full overflow-x-auto">
+        <BaseballTable
+          data={transformedData}
+          columns={columns}
+          filename="run_expectancy.csv"
+          responsive={true}
+          dense={isMobile}
+          fixedHeader={true}
+          fixedHeaderScrollHeight={isMobile ? "400px" : "600px"}
+        />
+      </div>
     </div>
   );
 };

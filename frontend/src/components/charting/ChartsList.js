@@ -334,27 +334,6 @@ const ChartsList = ({
     document.body.removeChild(link);
   };
 
-  const truncateText = (text, maxLengthOverride) => {
-    if (!text) return "";
-
-    let maxLength;
-    if (maxLengthOverride) {
-      maxLength = maxLengthOverride;
-    } else if (isXSmall) {
-      maxLength = 10;
-    } else if (isSmall) {
-      maxLength = 15;
-    } else if (isMedium) {
-      maxLength = 20;
-    } else {
-      return text;
-    }
-
-    return text.length > maxLength
-      ? text.substring(0, maxLength) + "..."
-      : text;
-  };
-
   const formatDescription = (row) => {
     if (!row.chartType) return "—";
 
@@ -362,7 +341,7 @@ const ChartsList = ({
       return (
         <div className="space-y-1">
           <span className="px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-800 rounded-full text-md sm:text-xs md-text-sm lg-text-md">
-            {isSmall ? truncateText(row.description) : row.description}
+            {isSmall ? row.description : row.description}
           </span>
         </div>
       );
@@ -374,11 +353,11 @@ const ChartsList = ({
         <div className="space-y-1">
           <span className="px-2 py-0.5 sm:py-1 bg-red-100 text-gray-800 rounded-full text-md md-text-sm lg-text-md">
             {isXSmall ? (
-              <>Bullpen: {truncateText(pitcherName)}</>
+              <>Bullpen: {pitcherName}</>
             ) : isSmall ? (
-              <>Bullpen: {truncateText(pitcherName)}</>
+              <>Bullpen: {pitcherName}</>
             ) : isMedium ? (
-              <>Bullpen: {truncateText(pitcherName)}</>
+              <>Bullpen: {pitcherName}</>
             ) : (
               <>Bullpen: {pitcherName}</>
             )}
@@ -392,15 +371,9 @@ const ChartsList = ({
         <div className="space-y-1">
           <span className="font-medium text-gray-800 text-md md-text-sm lg-text-sm">
             {isXSmall
-              ? `${truncateText(row.awayTeam, 7)} @ ${truncateText(
-                  row.homeTeam,
-                  7
-                )}`
+              ? `${row.awayTeam} @ ${row.homeTeam}`
               : isSmall
-              ? `${truncateText(row.awayTeam, 10)} @ ${truncateText(
-                  row.homeTeam,
-                  10
-                )}`
+              ? `${row.awayTeam} @ ${row.homeTeam}`
               : `${row.awayTeam} @ ${row.homeTeam}`}
           </span>
         </div>
@@ -410,7 +383,7 @@ const ChartsList = ({
     return (
       <div className="space-y-1">
         <span className="font-medium text-gray-800 text-xs sm:text-sm lg-text-md">
-          {isMedium ? truncateText(row.description) : row.description}
+          {isMedium ? row.description : row.description}
         </span>
       </div>
     );
@@ -455,16 +428,18 @@ const ChartsList = ({
     if (isXSmall) {
       return [
         {
-          name: "Info",
-          width: "80%",
-          cell: (row) => (
-            <div className="flex flex-col space-y-1">
-              <div className="text-xs text-gray-500 text-xs text-md-sm text-lg-md">
-                {row.date ? new Date(row.date).toLocaleDateString() : "—"}
-              </div>
-              {formatDescription(row)}
-            </div>
-          ),
+          name: "Date",
+          selector: (row) => row.date || "—",
+          sortable: true,
+          width: "25%",
+          cell: (row) =>
+            row.date ? new Date(row.date).toLocaleDateString() : "—",
+        },
+        {
+          name: "Description",
+          sortable: true,
+          width: "55%",
+          cell: formatDescription,
         },
         {
           name: "Actions",
