@@ -146,7 +146,7 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
         name: isMobile ? "0" : "0 Outs",
         selector: (row) => row.outs0,
         sortable: true,
-        width: isMobile ? "18.3%" : "20%",
+        width: isMobile ? "20%" : "20%",
         cell: (row) => (
           <div
             className={`font-mono text-black-600 font-medium ${
@@ -161,7 +161,7 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
         name: isMobile ? "1" : "1 Out",
         selector: (row) => row.outs1,
         sortable: true,
-        width: isMobile ? "18.3%" : "20%",
+        width: isMobile ? "20%" : "20%",
         cell: (row) => (
           <div
             className={`font-mono text-black-600 font-medium ${
@@ -176,7 +176,7 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
         name: isMobile ? "2" : "2 Outs",
         selector: (row) => row.outs2,
         sortable: true,
-        width: isMobile ? "18.3%" : "20%",
+        width: isMobile ? "20%" : "20%",
         cell: (row) => (
           <div
             className={`font-mono text-black-600 font-medium ${
