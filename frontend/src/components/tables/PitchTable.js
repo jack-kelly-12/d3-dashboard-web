@@ -43,7 +43,6 @@ const PitchTable = ({
     };
   };
 
-  // Create velocity cell component
   const VelocityCell = ({ row }) =>
     editingVelocity === row.id ? (
       <input
@@ -78,7 +77,6 @@ const PitchTable = ({
     </button>
   );
 
-  // Define columns for bullpen view
   const bullpenColumns = useMemo(
     () => [
       {
@@ -145,10 +143,9 @@ const PitchTable = ({
         button: true,
       },
     ],
-    [editingVelocity, velocityValue]
+    []
   );
 
-  // Define columns for game view
   const gameColumns = useMemo(
     () => [
       {
@@ -282,7 +279,7 @@ const PitchTable = ({
         button: true,
       },
     ],
-    [editingVelocity, velocityValue]
+    []
   );
 
   return (
