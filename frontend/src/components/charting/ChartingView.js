@@ -500,7 +500,8 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   Pitch History
                 </h2>
               </div>
-              <div className="overflow-x-auto">
+              {/* Fixed table container with max-width and horizontal scrolling */}
+              <div className="w-full max-w-full">
                 <PitchTable
                   pitches={pitches}
                   onDeletePitch={handleDeletePitch}
@@ -640,13 +641,14 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-800">
                   Pitch History
                 </h2>
               </div>
-              <div className="overflow-x-auto">
+              {/* Fixed table container with max-width and horizontal scrolling */}
+              <div className="w-full max-w-full">
                 <PitchTable
                   pitches={pitches}
                   onDeletePitch={handleDeletePitch}

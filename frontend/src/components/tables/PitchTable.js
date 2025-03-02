@@ -1,5 +1,6 @@
 import { Trash2 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
+import { BaseballTable } from "./BaseballTable";
 
 const PitchTable = ({
   pitches,
@@ -42,213 +43,254 @@ const PitchTable = ({
     };
   };
 
-  if (isBullpen) {
-    return (
-      <div className="relative overflow-x-auto">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs uppercase bg-gray-50 text-gray-500">
-            <tr>
-              <th className="px-3 py-3">Time</th>
-              <th className="px-3 py-3">Pitcher</th>
-              <th className="px-3 py-3">Pitch Type</th>
-              <th className="px-3 py-3">Velo</th>
-              <th className="px-3 py-3">Intended Zone</th>
-              <th className="px-3 py-3">Pitch X</th>
-              <th className="px-3 py-3">Pitch Z</th>
-              <th className="px-3 py-3">Notes</th>
-              <th className="px-3 py-3 w-10"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {pitches.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">
-                  No pitches recorded yet
-                </td>
-              </tr>
-            ) : (
-              pitches.map((pitch) => {
-                const coords = formatCoords(pitch.x, pitch.y);
-                return (
-                  <tr
-                    key={pitch.id}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                  >
-                    <td className="px-3 py-2.5 text-gray-600">
-                      {formatDate(pitch.timestamp)}
-                    </td>
-                    <td className="px-3 py-2.5 text-gray-600">
-                      {pitch.pitcher.name}
-                    </td>
-                    <td className="px-3 py-2.5 font-medium capitalize">
-                      {pitch.type || "—"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {editingVelocity === pitch.id ? (
-                        <input
-                          type="number"
-                          value={velocityValue}
-                          onChange={(e) => setVelocityValue(e.target.value)}
-                          onBlur={() => handleVelocityUpdate(pitch.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter")
-                              handleVelocityUpdate(pitch.id);
-                            if (e.key === "Escape") setEditingVelocity(null);
-                          }}
-                          className="w-16 px-1 py-0.5 border rounded"
-                          autoFocus
-                        />
-                      ) : (
-                        <span
-                          className="font-mono cursor-pointer hover:text-blue-600"
-                          onClick={() => handleVelocityEdit(pitch)}
-                        >
-                          {pitch.velocity || "—"}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 font-medium text-center">
-                      {pitch.intendedZone || "—"}
-                    </td>
-                    <td className="px-3 py-2.5 font-mono">{coords.x}</td>
-                    <td className="px-3 py-2.5 font-mono">{coords.y}</td>
-
-                    <td className="px-3 py-2.5 text-gray-600">
-                      {pitch.note || "—"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <button
-                        onClick={() => onDeletePitch?.(pitch.id)}
-                        className="text-gray-400 hover:text-red-500 transition-colors"
-                        title="Delete pitch"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+  // Create velocity cell component
+  const VelocityCell = ({ row }) =>
+    editingVelocity === row.id ? (
+      <input
+        type="number"
+        value={velocityValue}
+        onChange={(e) => setVelocityValue(e.target.value)}
+        onBlur={() => handleVelocityUpdate(row.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleVelocityUpdate(row.id);
+          if (e.key === "Escape") setEditingVelocity(null);
+        }}
+        className="w-16 px-1 py-0.5 border rounded"
+        autoFocus
+      />
+    ) : (
+      <span
+        className="font-mono cursor-pointer hover:text-blue-600"
+        onClick={() => handleVelocityEdit(row)}
+      >
+        {row.velocity || "—"}
+      </span>
     );
-  }
+
+  // Create action cell component
+  const ActionCell = ({ row }) => (
+    <button
+      onClick={() => onDeletePitch?.(row.id)}
+      className="text-gray-400 hover:text-red-500 transition-colors"
+      title="Delete pitch"
+    >
+      <Trash2 size={16} />
+    </button>
+  );
+
+  // Define columns for bullpen view
+  const bullpenColumns = useMemo(
+    () => [
+      {
+        name: "Time",
+        selector: (row) => formatDate(row.timestamp),
+        sortable: true,
+        width: "9rem",
+      },
+      {
+        name: "Pitcher",
+        selector: (row) => row.pitcher?.name || "—",
+        sortable: true,
+        width: "9rem",
+      },
+      {
+        name: "Pitch Type",
+        selector: (row) => row.type || "—",
+        sortable: true,
+        format: (row) => <span className="capitalize">{row.type || "—"}</span>,
+        width: "7rem",
+      },
+      {
+        name: "Velo",
+        cell: (row) => <VelocityCell row={row} />,
+        sortable: true,
+        width: "5rem",
+      },
+      {
+        name: "Intended Zone",
+        selector: (row) => row.intendedZone || "—",
+        sortable: true,
+        width: "7rem",
+        center: true,
+      },
+      {
+        name: "Pitch X",
+        selector: (row) => formatCoords(row.x, row.y).x,
+        sortable: true,
+        width: "5rem",
+        cell: (row) => (
+          <span className="font-mono">{formatCoords(row.x, row.y).x}</span>
+        ),
+      },
+      {
+        name: "Pitch Z",
+        selector: (row) => formatCoords(row.x, row.y).y,
+        sortable: true,
+        width: "5rem",
+        cell: (row) => (
+          <span className="font-mono">{formatCoords(row.x, row.y).y}</span>
+        ),
+      },
+      {
+        name: "Notes",
+        selector: (row) => row.note || "—",
+        sortable: true,
+        grow: 1,
+        width: "12rem",
+      },
+      {
+        name: "",
+        cell: (row) => <ActionCell row={row} />,
+        width: "3rem",
+        button: true,
+      },
+    ],
+    [editingVelocity, velocityValue]
+  );
+
+  // Define columns for game view
+  const gameColumns = useMemo(
+    () => [
+      {
+        name: "Time",
+        selector: (row) => formatDate(row.timestamp),
+        sortable: true,
+        width: "9rem",
+      },
+      {
+        name: "Pitcher",
+        selector: (row) => row.pitcher?.name || "—",
+        sortable: true,
+        width: "9rem",
+      },
+      {
+        name: "Batter",
+        selector: (row) => row.batter?.name || "—",
+        sortable: true,
+        width: "9rem",
+      },
+      {
+        name: "B. Side",
+        selector: (row) => row.batter?.batHand || "—",
+        format: (row) => (
+          <span className="capitalize">{row.batter?.batHand || "—"}</span>
+        ),
+        sortable: true,
+        width: "5rem",
+      },
+      {
+        name: "P. Hand",
+        selector: (row) => row.pitcher?.pitchHand || "—",
+        format: (row) => (
+          <span className="capitalize">{row.pitcher?.pitchHand || "—"}</span>
+        ),
+        sortable: true,
+        width: "5rem",
+      },
+      {
+        name: "Pitch Type",
+        selector: (row) => row.type || "—",
+        format: (row) => <span className="capitalize">{row.type || "—"}</span>,
+        sortable: true,
+        width: "7rem",
+      },
+      {
+        name: "Velo",
+        cell: (row) => <VelocityCell row={row} />,
+        sortable: true,
+        width: "5rem",
+      },
+      {
+        name: "Result",
+        selector: (row) => row.result || "—",
+        format: (row) => (
+          <span className="capitalize">
+            {row.result?.replace(/_/g, " ") || "—"}
+          </span>
+        ),
+        sortable: true,
+        width: "7rem",
+      },
+      {
+        name: "Pitch X",
+        selector: (row) => formatCoords(row.x, row.y).x,
+        sortable: true,
+        width: "5rem",
+        cell: (row) => (
+          <span className="font-mono">{formatCoords(row.x, row.y).x}</span>
+        ),
+      },
+      {
+        name: "Pitch Z",
+        selector: (row) => formatCoords(row.x, row.y).y,
+        sortable: true,
+        width: "5rem",
+        cell: (row) => (
+          <span className="font-mono">{formatCoords(row.x, row.y).y}</span>
+        ),
+      },
+      {
+        name: "Hit Result",
+        selector: (row) => row.hitDetails?.type || "—",
+        format: (row) => (
+          <span>
+            {row.hitDetails ? row.hitDetails?.type?.replace(/_/g, " ") : "—"}
+          </span>
+        ),
+        sortable: true,
+        width: "7rem",
+      },
+      {
+        name: "Hit X",
+        selector: (row) =>
+          row.hitDetails?.x
+            ? formatCoords(row.hitDetails?.x, row.hitDetails?.y).x
+            : "—",
+        sortable: true,
+        width: "5rem",
+        cell: (row) => (
+          <span className="font-mono">
+            {formatCoords(row.hitDetails?.x, row.hitDetails?.y).x}
+          </span>
+        ),
+      },
+      {
+        name: "Hit Z",
+        selector: (row) =>
+          row.hitDetails?.y
+            ? formatCoords(row.hitDetails?.x, row.hitDetails?.y).y
+            : "—",
+        sortable: true,
+        width: "5rem",
+        cell: (row) => (
+          <span className="font-mono">
+            {formatCoords(row.hitDetails?.x, row.hitDetails?.y).y}
+          </span>
+        ),
+      },
+      {
+        name: "Notes",
+        selector: (row) => row.note || "—",
+        sortable: true,
+        grow: 1,
+        width: "12rem",
+      },
+      {
+        name: "",
+        cell: (row) => <ActionCell row={row} />,
+        width: "3rem",
+        button: true,
+      },
+    ],
+    [editingVelocity, velocityValue]
+  );
 
   return (
-    <div className="relative overflow-x-auto">
-      <table className="w-full text-sm text-left">
-        <thead className="text-xs uppercase bg-gray-50 text-gray-500">
-          <tr>
-            <th className="px-3 py-3">Time</th>
-            <th className="px-3 py-3">Pitcher</th>
-            <th className="px-3 py-3">Batter</th>
-            <th className="px-3 py-3">B. Side</th>
-            <th className="px-3 py-3">P. Hand</th>
-            <th className="px-3 py-3">Pitch Type</th>
-            <th className="px-3 py-3">Velo</th>
-            <th className="px-3 py-3">Result</th>
-            <th className="px-3 py-3">Pitch X</th>
-            <th className="px-3 py-3">Pitch Z</th>
-            <th className="px-7 py-3">Hit Result</th>
-            <th className="px-3 py-3">Hit X</th>
-            <th className="px-3 py-3">Hit Z</th>
-            <th className="px-3 py-3">Notes</th>
-            <th className="px-3 py-3 w-10"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {pitches.length === 0 ? (
-            <tr>
-              <td colSpan={18} className="text-center py-8 text-gray-500">
-                No pitches recorded yet
-              </td>
-            </tr>
-          ) : (
-            pitches.map((pitch) => {
-              const pitchCoords = formatCoords(pitch.x, pitch.y);
-              const hitCoords = formatCoords(
-                pitch.hitDetails?.x,
-                pitch.hitDetails?.y
-              );
-
-              return (
-                <tr
-                  key={pitch.id}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-3 py-2.5 text-gray-600">
-                    {formatDate(pitch.timestamp)}
-                  </td>
-                  <td className="px-3 py-2.5 font-medium">
-                    {pitch.pitcher?.name || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 font-medium">
-                    {pitch.batter?.name || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-gray-600 capitalize">
-                    {pitch.batter?.batHand || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 text-gray-600 capitalize">
-                    {pitch.pitcher?.pitchHand || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 font-medium capitalize">
-                    {pitch.type || "—"}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    {editingVelocity === pitch.id ? (
-                      <input
-                        type="number"
-                        value={velocityValue}
-                        onChange={(e) => setVelocityValue(e.target.value)}
-                        onBlur={() => handleVelocityUpdate(pitch.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleVelocityUpdate(pitch.id);
-                          if (e.key === "Escape") setEditingVelocity(null);
-                        }}
-                        className="w-16 px-1 py-0.5 border rounded"
-                        autoFocus
-                      />
-                    ) : (
-                      <span
-                        className="font-mono cursor-pointer hover:text-blue-600"
-                        onClick={() => handleVelocityEdit(pitch)}
-                      >
-                        {pitch.velocity || "—"}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <span className="capitalize">
-                      {pitch.result?.replace(/_/g, " ") || "—"}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2.5 font-mono">{pitchCoords.x}</td>
-                  <td className="px-3 py-2.5 font-mono">{pitchCoords.y}</td>
-                  <td className="px-3 py-2.5">
-                    {pitch.hitDetails
-                      ? pitch.hitDetails?.type?.replace(/_/g, " ")
-                      : "—"}
-                  </td>
-                  <td className="px-3 py-2.5 font-mono">{hitCoords.x}</td>
-                  <td className="px-3 py-2.5 font-mono">{hitCoords.y}</td>
-                  <td className="px-3 py-2.5">{pitch.note || "—"}</td>
-                  <td className="px-3 py-2.5">
-                    <button
-                      onClick={() => onDeletePitch?.(pitch.id)}
-                      className="text-gray-400 hover:text-red-500 transition-colors"
-                      title="Delete pitch"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </table>
-    </div>
+    <BaseballTable
+      data={pitches}
+      columns={isBullpen ? bullpenColumns : gameColumns}
+      stickyColumns={[]}
+    />
   );
 };
 
