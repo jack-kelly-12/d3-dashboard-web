@@ -121,13 +121,13 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
         name: "Year",
         selector: (row) => row.year,
         sortable: true,
-        width: isMobile ? "15%" : "15%",
+        width: isMobile ? "20%" : "15%",
       },
       {
         name: "Bases",
         selector: (row) => row.baseState,
         sortable: true,
-        width: isMobile ? "25%" : "25%",
+        width: isMobile ? "20%" : "25%",
         cell: (row) => (
           <div
             className={`font-mono text-gray-700 ${isMobile ? "text-xs" : ""}`}
