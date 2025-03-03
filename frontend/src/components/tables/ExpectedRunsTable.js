@@ -1,7 +1,6 @@
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useCallback, useState, useEffect } from "react";
 import { BaseballTable } from "./BaseballTable";
 
-// Define the base state order map outside the component to avoid dependencies
 const BASE_STATE_ORDER_MAP = {
   "_ _ _": 1, // empty bases
   "1 _ _": 2, // runner on first only
@@ -14,29 +13,23 @@ const BASE_STATE_ORDER_MAP = {
 };
 
 const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
-  // Add responsive state
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
 
-  // Add resize listener on mount
-  React.useEffect(() => {
+  useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Determine if we're in mobile view
   const isMobile = windowWidth < 768;
 
-  // Use useCallback to memoize the function
   const getBaseStateOrder = useCallback((baseState) => {
-    // Direct match
     if (BASE_STATE_ORDER_MAP[baseState] !== undefined) {
       return BASE_STATE_ORDER_MAP[baseState];
     }
 
-    // Try to handle different notations
     if (
       baseState === "1B 2B 3B" ||
       (baseState.includes("1B") &&
@@ -98,8 +91,8 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
       return 1; // Empty bases
     }
 
-    return 999; // Unknown state
-  }, []); // Now no dependencies as we're using the constant defined outside
+    return 999;
+  }, []);
 
   const transformedData = useMemo(() => {
     return data
@@ -114,7 +107,6 @@ const ExpectedRunsTable = ({ data, years, selectedYear, onYearChange }) => {
       .sort((a, b) => a.baseStateOrder - b.baseStateOrder);
   }, [data, getBaseStateOrder]);
 
-  // Responsive columns configuration
   const columns = useMemo(
     () => [
       {
