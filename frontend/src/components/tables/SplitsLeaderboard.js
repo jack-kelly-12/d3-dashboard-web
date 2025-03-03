@@ -3,10 +3,10 @@ import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
-import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
+import { columnsSplits } from "../../config/tableColumns";
 
 const SplitsLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -171,117 +171,6 @@ const SplitsLeaderboard = () => {
     });
   }, [data, searchTerm, selectedConference]);
 
-  const columns = useMemo(
-    () => [
-      {
-        name: "#",
-        selector: (row) => row.rank,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Player",
-        selector: (row) => row.Player,
-        sortable: true,
-        width: "150px",
-        cell: (row) =>
-          row.player_id.substring(0, 4) === "d3d-" ? (
-            <Link
-              to={`/player/${row.player_id}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              {row.Player}
-            </Link>
-          ) : (
-            <span className="font-medium">{row.Player}</span>
-          ),
-      },
-      {
-        name: "Team",
-        selector: (row) => row.Team,
-        cell: (row) => row.renderedTeam,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Conference",
-        selector: (row) => row.Conference,
-        cell: (row) => row.renderedConference,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "PA vs RHP",
-        selector: (row) => row["PA_vs RHP"],
-        sortable: true,
-        width: "90px",
-      },
-      {
-        name: "PA vs LHP",
-        selector: (row) => row["PA_vs LHP"],
-        sortable: true,
-        width: "90px",
-      },
-      {
-        name: "BA vs RHP",
-        selector: (row) => row["BA_vs RHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["BA_vs RHP"]?.toFixed(3) || "—",
-      },
-      {
-        name: "BA vs LHP",
-        selector: (row) => row["BA_vs LHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["BA_vs LHP"]?.toFixed(3) || "—",
-      },
-      {
-        name: "OBP vs RHP",
-        selector: (row) => row["OBP_vs RHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["OBP_vs RHP"]?.toFixed(3) || "—",
-      },
-      {
-        name: "OBP vs LHP",
-        selector: (row) => row["OBP_vs LHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["OBP_vs LHP"]?.toFixed(3) || "—",
-      },
-      {
-        name: "SLG vs RHP",
-        selector: (row) => row["SLG_vs RHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["SLG_vs RHP"]?.toFixed(3) || "—",
-      },
-      {
-        name: "SLG vs LHP",
-        selector: (row) => row["SLG_vs LHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["SLG_vs LHP"]?.toFixed(3) || "—",
-      },
-      {
-        name: "wOBA vs RHP",
-        selector: (row) => row["wOBA_vs RHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["wOBA_vs RHP"]?.toFixed(3) || "—",
-      },
-      {
-        name: "wOBA vs LHP",
-        selector: (row) => row["wOBA_vs LHP"],
-        sortable: true,
-        width: "120px",
-        cell: (row) => row["wOBA_vs LHP"]?.toFixed(3) || "—",
-      },
-    ],
-    []
-  );
-
   const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
   const paOptions = useMemo(
     () => [
@@ -427,8 +316,8 @@ const SplitsLeaderboard = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columns}
-            defaultSortField="wOBA_Overall"
+            columns={columnsSplits}
+            defaultSortField="wOBA_vs RHP"
             defaultSortAsc={false}
             stickyColumns={[0, 1]}
           />

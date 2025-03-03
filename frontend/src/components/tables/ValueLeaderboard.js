@@ -3,10 +3,10 @@ import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
-import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import AuthManager from "../../managers/AuthManager";
+import { columnsValue } from "../../config/tableColumns";
 
 const ValueLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -174,144 +174,6 @@ const ValueLeaderboard = () => {
 
   const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
 
-  const columns = useMemo(
-    () => [
-      {
-        name: "#",
-        selector: (row) => row.rank,
-        sortable: true,
-        width: "100px",
-      },
-      {
-        name: "Player",
-        selector: (row) => row.Player,
-        sortable: true,
-        width: "150px",
-        cell: (row) =>
-          row.player_id.substring(0, 4) === "d3d-" ? (
-            <Link
-              to={`/player/${row.player_id}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              {row.Player}
-            </Link>
-          ) : (
-            <span className="font-medium">{row.Player}</span>
-          ),
-      },
-      {
-        name: "Team",
-        selector: (row) => row.Team,
-        cell: (row) => row.renderedTeam,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Conference",
-        selector: (row) => row.Conference,
-        cell: (row) => row.renderedConference,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "Pos",
-        selector: (row) => row.Pos,
-        sortable: true,
-        width: "80px",
-      },
-      {
-        name: "Year",
-        selector: (row) => row.Year,
-        sortable: true,
-        width: "100px",
-      },
-      {
-        name: "PA",
-        selector: (row) => row.PA,
-        sortable: true,
-        width: "80px",
-      },
-      {
-        name: "IP",
-        selector: (row) => row.IP,
-        sortable: true,
-        width: "80px",
-        cell: (row) => row.IP?.toFixed(1) || "—",
-      },
-      {
-        name: "Batting",
-        selector: (row) => row.Batting,
-        sortable: true,
-        width: "100px",
-        cell: (row) => row.Batting?.toFixed(1) || "—",
-      },
-      {
-        name: "Baserunning",
-        selector: (row) => row.Baserunning,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.Baserunning?.toFixed(1) || "—",
-      },
-      {
-        name: "Position",
-        selector: (row) => row.Adjustment,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.Adjustment?.toFixed(1) || "—",
-      },
-      {
-        name: "RE24",
-        selector: (row) => row.REA,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.REA?.toFixed(1) || "—",
-      },
-      {
-        name: "Clutch",
-        selector: (row) => row["Clutch"],
-        sortable: true,
-        width: "80px",
-        cell: (row) => row["Clutch"]?.toFixed(1) || "—",
-      },
-      {
-        name: "bWAR",
-        selector: (row) => row.bWAR,
-        sortable: true,
-        width: "100px",
-        cell: (row) => row.bWAR?.toFixed(1) || "—",
-      },
-      {
-        name: "pWAR",
-        selector: (row) => row.pWAR,
-        sortable: true,
-        width: "100px",
-        cell: (row) => row.pWAR?.toFixed(1) || "—",
-      },
-      {
-        name: "WAR",
-        selector: (row) => row.WAR,
-        sortable: true,
-        width: "80px",
-        cell: (row) => row.WAR?.toFixed(1) || "—",
-      },
-      {
-        name: "WPA/LI",
-        selector: (row) => row["WPA/LI"],
-        sortable: true,
-        width: "80px",
-        cell: (row) => row["WPA/LI"]?.toFixed(1) || "—",
-      },
-      {
-        name: "WPA",
-        selector: (row) => row.WPA,
-        sortable: true,
-        width: "80px",
-        cell: (row) => row.WPA?.toFixed(1) || "—",
-      },
-    ],
-    []
-  );
-
   if (!isAuthReady || isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -433,7 +295,7 @@ const ValueLeaderboard = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columns}
+            columns={columnsValue}
             defaultSortField="WAR"
             defaultSortAsc={false}
             stickyColumns={[0, 1]}

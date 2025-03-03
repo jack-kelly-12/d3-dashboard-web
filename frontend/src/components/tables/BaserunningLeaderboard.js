@@ -3,10 +3,10 @@ import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
-import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
+import { columnsBaserunning } from "../../config/tableColumns";
 
 const BaserunningLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -171,124 +171,7 @@ const BaserunningLeaderboard = () => {
     });
   }, [data, searchTerm, selectedConference]);
 
-  const columns = useMemo(
-    () => [
-      {
-        name: "#",
-        selector: (row) => row.rank,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Player",
-        selector: (row) => row.Player,
-        sortable: true,
-        width: "150px",
-        cell: (row) =>
-          row.player_id.substring(0, 4) === "d3d-" ? (
-            <Link
-              to={`/player/${row.player_id}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              {row.Player}
-            </Link>
-          ) : (
-            <span className="font-medium">{row.Player}</span>
-          ),
-      },
-      {
-        name: "Team",
-        selector: (row) => row.Team,
-        cell: (row) => row.renderedTeam,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Conference",
-        selector: (row) => row.Conference,
-        cell: (row) => row.renderedConference,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "Year",
-        selector: (row) => row.Year,
-        sortable: true,
-        width: "80px",
-      },
-      {
-        name: "SB",
-        selector: (row) => row.SB,
-        sortable: true,
-        width: "70px",
-      },
-      {
-        name: "CS",
-        selector: (row) => row.CS,
-        sortable: true,
-        width: "70px",
-      },
-      {
-        name: "SB%",
-        selector: (row) => row["SB%"],
-        sortable: true,
-        width: "90px",
-        cell: (row) => row["SB%"]?.toFixed(1) + "%" || "—",
-      },
-      {
-        name: "XBT",
-        selector: (row) => row.XBT,
-        sortable: true,
-        width: "70px",
-      },
-      {
-        name: "XBT%",
-        selector: (row) => row.XBT / row.Opportunities,
-        sortable: true,
-        width: "90px",
-        cell: (row) =>
-          row.Opportunities
-            ? (100 * (row.XBT / row.Opportunities)).toFixed(1) + "%"
-            : "—",
-      },
-      {
-        name: "Picked",
-        selector: (row) => row.Picked,
-        sortable: true,
-        width: "90px",
-        cell: (row) => row.Picked || "0",
-      },
-      {
-        name: "wSB",
-        selector: (row) => row.wSB,
-        sortable: true,
-        width: "90px",
-        cell: (row) => row.wSB?.toFixed(1) || "0.0",
-      },
-      {
-        name: "wGDP",
-        selector: (row) => row.wGDP,
-        sortable: true,
-        width: "90px",
-        cell: (row) => row.wGDP?.toFixed(1) || "0.0",
-      },
-      {
-        name: "wTEB",
-        selector: (row) => row.wTEB,
-        sortable: true,
-        width: "90px",
-        cell: (row) => row.wTEB?.toFixed(1) || "0.0",
-      },
-      {
-        name: "BsR",
-        selector: (row) => row.Baserunning,
-        sortable: true,
-        width: "90px",
-        cell: (row) => row.Baserunning?.toFixed(1) || "—",
-      },
-    ],
-    []
-  );
+  const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
 
   if (!isAuthReady || isLoading) {
     return (
@@ -355,7 +238,7 @@ const BaserunningLeaderboard = () => {
                   className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
                     focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  {[2025, 2024, 2023, 2022, 2021].map((year) => (
+                  {yearOptions.map((year) => (
                     <option key={year} value={year}>
                       {year}
                     </option>
@@ -368,30 +251,30 @@ const BaserunningLeaderboard = () => {
                   className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
                     focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  {[2025, 2024, 2023, 2022, 2021].map((year) => (
+                  {yearOptions.map((year) => (
                     <option key={year} value={year}>
                       {year}
                     </option>
                   ))}
                 </select>
               </div>
-            </div>
 
-            {conferences.length > 0 && (
-              <select
-                value={selectedConference}
-                onChange={(e) => setSelectedConference(e.target.value)}
-                className="w-full lg:w-44 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                  focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">All Conferences</option>
-                {conferences.map((conf) => (
-                  <option key={conf} value={conf}>
-                    {conf}
-                  </option>
-                ))}
-              </select>
-            )}
+              {conferences.length > 0 && (
+                <select
+                  value={selectedConference}
+                  onChange={(e) => setSelectedConference(e.target.value)}
+                  className="w-full lg:w-44 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">All Conferences</option>
+                  {conferences.map((conf) => (
+                    <option key={conf} value={conf}>
+                      {conf}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -405,7 +288,7 @@ const BaserunningLeaderboard = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columns}
+            columns={columnsBaserunning}
             defaultSortField="Baserunning"
             defaultSortAsc={false}
             stickyColumns={[0, 1]}

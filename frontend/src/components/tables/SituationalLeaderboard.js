@@ -3,10 +3,10 @@ import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
-import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
+import { columnsSituational } from "../../config/tableColumns";
 
 const SituationalLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -171,142 +171,6 @@ const SituationalLeaderboard = () => {
     });
   }, [data, searchTerm, selectedConference]);
 
-  const columns = useMemo(
-    () => [
-      {
-        name: "#",
-        selector: (row) => row.rank,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Player",
-        selector: (row) => row.Player,
-        sortable: true,
-        width: "150px",
-        cell: (row) =>
-          row.player_id.substring(0, 4) === "d3d-" ? (
-            <Link
-              to={`/player/${row.player_id}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              {row.Player}
-            </Link>
-          ) : (
-            <span className="font-medium">{row.Player}</span>
-          ),
-      },
-      {
-        name: "Team",
-        selector: (row) => row.Team,
-        cell: (row) => row.renderedTeam,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Conference",
-        selector: (row) => row.Conference,
-        cell: (row) => row.renderedConference,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "Year",
-        selector: (row) => row.Season,
-        sortable: true,
-        width: "80px",
-      },
-      {
-        name: "PA",
-        selector: (row) => row.PA_Overall,
-        sortable: true,
-        width: "80px",
-      },
-      {
-        name: "BA",
-        selector: (row) => row.BA_Overall,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Overall?.toFixed(3) || "—",
-      },
-      {
-        name: "wOBA",
-        selector: (row) => row.wOBA_Overall,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
-      },
-      {
-        name: "PA w/ RISP",
-        selector: (row) => row.PA_RISP,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "BA w/ RISP",
-        selector: (row) => row.BA_RISP,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_RISP?.toFixed(3) || "—",
-      },
-      {
-        name: "wOBA w/ RISP",
-        selector: (row) => row.wOBA_RISP,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
-      },
-      {
-        name: "LI+ PA",
-        selector: (row) => row.PA_High_Leverage,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "LI+ BA",
-        selector: (row) => row.BA_High_Leverage,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "LI+ wOBA",
-        selector: (row) => row.wOBA_High_Leverage,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "LI- PA",
-        selector: (row) => row.PA_Low_Leverage,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "LI- BA",
-        selector: (row) => row.BA_Low_Leverage,
-        sortable: true,
-        width: "110px",
-        cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "LI- wOBA",
-        selector: (row) => row.wOBA_Low_Leverage,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
-      },
-      {
-        name: "Clutch",
-        selector: (row) => row.Clutch,
-        sortable: true,
-        width: "120px",
-        cell: (row) => row.Clutch?.toFixed(3) || "—",
-      },
-    ],
-    []
-  );
-
   const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
   const paOptions = useMemo(
     () => [
@@ -352,7 +216,7 @@ const SituationalLeaderboard = () => {
               />
               <input
                 type="text"
-                placeholder="Search"
+                placeholder={"Search team..."}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
                   focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -443,7 +307,7 @@ const SituationalLeaderboard = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columns}
+            columns={columnsSituational}
             defaultSortField="wOBA_Overall"
             defaultSortAsc={false}
             stickyColumns={[0, 1]}

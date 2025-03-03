@@ -3,11 +3,11 @@ import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
-import { Link } from "react-router-dom";
 import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import { roundTo } from "../../utils/mathUtils";
+import { columnsBatted } from "../../config/tableColumns";
 
 const PERCENTAGE_COLUMNS = [
   "oppo_pct",
@@ -199,124 +199,6 @@ const BattedBallLeaderboard = () => {
     });
   }, [data, searchTerm, selectedConference]);
 
-  const columns = useMemo(
-    () => [
-      {
-        name: "#",
-        selector: (row) => row.rank,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Player",
-        selector: (row) => row.Player,
-        sortable: true,
-        width: "150px",
-        cell: (row) =>
-          row.player_id.substring(0, 4) === "d3d-" ? (
-            <Link
-              to={`/player/${row.player_id}`}
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              {row.Player}
-            </Link>
-          ) : (
-            <span className="font-medium">{row.Player}</span>
-          ),
-      },
-      {
-        name: "Team",
-        selector: (row) => row.Team,
-        cell: (row) => row.renderedTeam,
-        sortable: true,
-        width: "60px",
-      },
-      {
-        name: "Conference",
-        selector: (row) => row.Conference,
-        cell: (row) => row.renderedConference,
-        sortable: true,
-        width: "110px",
-      },
-      {
-        name: "Year",
-        selector: (row) => row.Season,
-        sortable: true,
-        width: "80px",
-      },
-      {
-        name: "Count",
-        selector: (row) => row.count,
-        sortable: true,
-        width: "80px",
-      },
-      {
-        name: "Oppo%",
-        selector: (row) => row.oppo_pct,
-        sortable: true,
-        width: "80px",
-        cell: (row) => `${row.oppo_pct}%`,
-      },
-      {
-        name: "Middle%",
-        selector: (row) => row.middle_pct,
-        sortable: true,
-        width: "80px",
-        cell: (row) => `${row.middle_pct}%`,
-      },
-      {
-        name: "Pull%",
-        selector: (row) => row.pull_pct,
-        sortable: true,
-        width: "80px",
-        cell: (row) => `${row.pull_pct}%`,
-      },
-      {
-        name: "GB%",
-        selector: (row) => row.gb_pct,
-        sortable: true,
-        width: "80px",
-        cell: (row) => `${row.gb_pct}%`,
-      },
-      {
-        name: "LD%",
-        selector: (row) => row.ld_pct,
-        sortable: true,
-        width: "80px",
-        cell: (row) => `${row.ld_pct}%`,
-      },
-      {
-        name: "Pop%",
-        selector: (row) => row.pop_pct,
-        sortable: true,
-        width: "80px",
-        cell: (row) => `${row.pop_pct}%`,
-      },
-      {
-        name: "FB%",
-        selector: (row) => row.fb_pct,
-        sortable: true,
-        width: "80px",
-        cell: (row) => `${row.fb_pct}%`,
-      },
-      {
-        name: "Pull Air%",
-        selector: (row) => row.pull_air_pct,
-        sortable: true,
-        width: "120px",
-        cell: (row) => `${row.pull_air_pct}%`,
-      },
-      {
-        name: "Backside GB%",
-        selector: (row) => row.oppo_gb_pct,
-        sortable: true,
-        width: "120px",
-        cell: (row) => `${row.oppo_gb_pct}%`,
-      },
-    ],
-    []
-  );
-
   if (!isAuthReady || isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -443,9 +325,9 @@ const BattedBallLeaderboard = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columns}
+            columns={columnsBatted}
             defaultSortField="count"
-            defaultSortAsc={true}
+            defaultSortAsc={false}
             stickyColumns={[0, 1]}
           />
         </div>

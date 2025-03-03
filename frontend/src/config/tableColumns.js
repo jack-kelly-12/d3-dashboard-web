@@ -131,56 +131,788 @@ export const columnsGuts = [
   },
 ];
 
+export const columnsValue = [
+  {
+    name: "#",
+    selector: (row) => row.rank,
+    sortable: true,
+    width: "2rem",
+    className: "px-3 py-2 text-xs font-medium text-center",
+  },
+  {
+    name: "Player",
+    selector: (row) => row.Player,
+    sortable: true,
+    width: "9.375rem",
+    className: "px-3 py-2 text-xs",
+    cell: (row) =>
+      row.player_id.substring(0, 4) === "d3d-" ? (
+        <Link
+          to={`/player/${row.player_id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+        >
+          {row.Player}
+        </Link>
+      ) : (
+        <span className="text-xs font-medium">{row.Player}</span>
+      ),
+  },
+  {
+    name: "Team",
+    selector: (row) => row.Team,
+    cell: (row) => row.renderedTeam,
+    sortable: true,
+    width: "4rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Conference",
+    selector: (row) => row.Conference,
+    cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Pos",
+    selector: (row) => row.Pos,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "Year",
+    selector: (row) => row.Year,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "PA",
+    selector: (row) => row.PA,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "IP",
+    selector: (row) => row.IP,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.IP?.toFixed(1) || "—",
+  },
+  {
+    name: "Batting",
+    selector: (row) => row.Batting,
+    sortable: true,
+    width: "6.25rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.Batting?.toFixed(1) || "—",
+  },
+  {
+    name: "Baserunning",
+    selector: (row) => row.Baserunning,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.Baserunning?.toFixed(1) || "—",
+  },
+  {
+    name: "Position",
+    selector: (row) => row.Adjustment,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.Adjustment?.toFixed(1) || "—",
+  },
+  {
+    name: "RE24",
+    selector: (row) => row.REA,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.REA?.toFixed(1) || "—",
+  },
+  {
+    name: "Clutch",
+    selector: (row) => row["Clutch"],
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["Clutch"]?.toFixed(1) || "—",
+  },
+  {
+    name: "bWAR",
+    selector: (row) => row.bWAR,
+    sortable: true,
+    width: "6.25rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => <WARCell value={row.bWAR} />,
+  },
+  {
+    name: "pWAR",
+    selector: (row) => row.pWAR,
+    sortable: true,
+    width: "6.25rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => <WARCell value={row.pWAR} />,
+  },
+  {
+    name: "WAR",
+    selector: (row) => row.WAR,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center font-bold",
+    cell: (row) => <WARCell value={row.WAR} bold={true} />,
+  },
+  {
+    name: "WPA/LI",
+    selector: (row) => row["WPA/LI"],
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["WPA/LI"]?.toFixed(1) || "—",
+  },
+  {
+    name: "WPA",
+    selector: (row) => row.WPA,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.WPA?.toFixed(1) || "—",
+  },
+];
+
+export const columnsSituational = [
+  {
+    name: "#",
+    selector: (row) => row.rank,
+    sortable: true,
+    width: "2rem",
+    className: "px-3 py-2 text-xs font-medium text-center",
+  },
+  {
+    name: "Player",
+    selector: (row) => row.Player,
+    sortable: true,
+    width: "9.375rem",
+    className: "px-3 py-2 text-xs",
+    cell: (row) =>
+      row.player_id.substring(0, 4) === "d3d-" ? (
+        <Link
+          to={`/player/${row.player_id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+        >
+          {row.Player}
+        </Link>
+      ) : (
+        <span className="text-xs font-medium">{row.Player}</span>
+      ),
+  },
+  {
+    name: "Team",
+    selector: (row) => row.Team,
+    cell: (row) => row.renderedTeam,
+    sortable: true,
+    width: "4rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Conference",
+    selector: (row) => row.Conference,
+    cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Year",
+    selector: (row) => row.Season,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "PA",
+    selector: (row) => row.PA_Overall,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "BA",
+    selector: (row) => row.BA_Overall,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_Overall?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA",
+    selector: (row) => row.wOBA_Overall,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
+  },
+  {
+    name: "PA w/ RISP",
+    selector: (row) => row.PA_RISP,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "BA w/ RISP",
+    selector: (row) => row.BA_RISP,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_RISP?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA w/ RISP",
+    selector: (row) => row.wOBA_RISP,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
+  },
+  {
+    name: "LI+ PA",
+    selector: (row) => row.PA_High_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "LI+ BA",
+    selector: (row) => row.BA_High_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "LI+ wOBA",
+    selector: (row) => row.wOBA_High_Leverage,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "LI- PA",
+    selector: (row) => row.PA_Low_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "LI- BA",
+    selector: (row) => row.BA_Low_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "LI- wOBA",
+    selector: (row) => row.wOBA_Low_Leverage,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "Clutch",
+    selector: (row) => row.Clutch,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.Clutch?.toFixed(3) || "—",
+  },
+];
+
+export const columnsBaserunning = [
+  {
+    name: "#",
+    selector: (row) => row.rank,
+    sortable: true,
+    width: "2rem",
+    className: "px-3 py-2 text-xs font-medium text-center",
+  },
+  {
+    name: "Player",
+    selector: (row) => row.Player,
+    sortable: true,
+    width: "9.375rem",
+    className: "px-3 py-2 text-xs",
+    cell: (row) =>
+      row.player_id.substring(0, 4) === "d3d-" ? (
+        <Link
+          to={`/player/${row.player_id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+        >
+          {row.Player}
+        </Link>
+      ) : (
+        <span className="text-xs font-medium">{row.Player}</span>
+      ),
+  },
+  {
+    name: "Team",
+    selector: (row) => row.Team,
+    cell: (row) => row.renderedTeam,
+    sortable: true,
+    width: "4rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Conference",
+    selector: (row) => row.Conference,
+    cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Year",
+    selector: (row) => row.Year,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "SB",
+    selector: (row) => row.SB,
+    sortable: true,
+    width: "4.375rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "CS",
+    selector: (row) => row.CS,
+    sortable: true,
+    width: "4.375rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "SB%",
+    selector: (row) => row["SB%"],
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["SB%"]?.toFixed(1) + "%" || "—",
+  },
+  {
+    name: "XBT",
+    selector: (row) => row.XBT,
+    sortable: true,
+    width: "4.375rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "XBT%",
+    selector: (row) => row.XBT / row.Opportunities,
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) =>
+      row.Opportunities
+        ? (100 * (row.XBT / row.Opportunities)).toFixed(1) + "%"
+        : "—",
+  },
+  {
+    name: "Picked",
+    selector: (row) => row.Picked,
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.Picked || "0",
+  },
+  {
+    name: "wSB",
+    selector: (row) => row.wSB,
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wSB?.toFixed(1) || "0.0",
+  },
+  {
+    name: "wGDP",
+    selector: (row) => row.wGDP,
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wGDP?.toFixed(1) || "0.0",
+  },
+  {
+    name: "wTEB",
+    selector: (row) => row.wTEB,
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wTEB?.toFixed(1) || "0.0",
+  },
+  {
+    name: "BsR",
+    selector: (row) => row.Baserunning,
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center font-bold",
+    cell: (row) => row.Baserunning?.toFixed(1) || "—",
+  },
+];
+
+export const columnsBatted = [
+  {
+    name: "#",
+    selector: (row) => row.rank,
+    sortable: true,
+    width: "2rem",
+    className: "px-3 py-2 text-xs font-medium text-center",
+  },
+  {
+    name: "Player",
+    selector: (row) => row.Player,
+    sortable: true,
+    width: "9.375rem",
+    className: "px-3 py-2 text-xs",
+    cell: (row) =>
+      row.player_id.substring(0, 4) === "d3d-" ? (
+        <Link
+          to={`/player/${row.player_id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+        >
+          {row.Player}
+        </Link>
+      ) : (
+        <span className="text-xs font-medium">{row.Player}</span>
+      ),
+  },
+  {
+    name: "Team",
+    selector: (row) => row.Team,
+    cell: (row) => row.renderedTeam,
+    sortable: true,
+    width: "4rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Conference",
+    selector: (row) => row.Conference,
+    cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Year",
+    selector: (row) => row.Season,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "Count",
+    selector: (row) => row.count,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "Oppo%",
+    selector: (row) => row.oppo_pct,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.oppo_pct}%`,
+  },
+  {
+    name: "Middle%",
+    selector: (row) => row.middle_pct,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.middle_pct}%`,
+  },
+  {
+    name: "Pull%",
+    selector: (row) => row.pull_pct,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.pull_pct}%`,
+  },
+  {
+    name: "GB%",
+    selector: (row) => row.gb_pct,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.gb_pct}%`,
+  },
+  {
+    name: "LD%",
+    selector: (row) => row.ld_pct,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.ld_pct}%`,
+  },
+  {
+    name: "Pop%",
+    selector: (row) => row.pop_pct,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.pop_pct}%`,
+  },
+  {
+    name: "FB%",
+    selector: (row) => row.fb_pct,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.fb_pct}%`,
+  },
+  {
+    name: "Pull Air%",
+    selector: (row) => row.pull_air_pct,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.pull_air_pct}%`,
+  },
+  {
+    name: "Backside GB%",
+    selector: (row) => row.oppo_gb_pct,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => `${row.oppo_gb_pct}%`,
+  },
+];
+
+export const columnsSplits = [
+  {
+    name: "#",
+    selector: (row) => row.rank,
+    sortable: true,
+    width: "2rem",
+    className: "px-3 py-2 text-xs font-medium text-center",
+  },
+  {
+    name: "Player",
+    selector: (row) => row.Player,
+    sortable: true,
+    width: "9.375rem",
+    className: "px-3 py-2 text-xs",
+    cell: (row) =>
+      row.player_id.substring(0, 4) === "d3d-" ? (
+        <Link
+          to={`/player/${row.player_id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+        >
+          {row.Player}
+        </Link>
+      ) : (
+        <span className="text-xs font-medium">{row.Player}</span>
+      ),
+  },
+  {
+    name: "Team",
+    selector: (row) => row.Team,
+    cell: (row) => row.renderedTeam,
+    sortable: true,
+    width: "4rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Conference",
+    selector: (row) => row.Conference,
+    cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "PA vs RHP",
+    selector: (row) => row["PA_vs RHP"],
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "PA vs LHP",
+    selector: (row) => row["PA_vs LHP"],
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "BA vs RHP",
+    selector: (row) => row["BA_vs RHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["BA_vs RHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "BA vs LHP",
+    selector: (row) => row["BA_vs LHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["BA_vs LHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "OBP vs RHP",
+    selector: (row) => row["OBP_vs RHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["OBP_vs RHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "OBP vs LHP",
+    selector: (row) => row["OBP_vs LHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["OBP_vs LHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "SLG vs RHP",
+    selector: (row) => row["SLG_vs RHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["SLG_vs RHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "SLG vs LHP",
+    selector: (row) => row["SLG_vs LHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["SLG_vs LHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA vs RHP",
+    selector: (row) => row["wOBA_vs RHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["wOBA_vs RHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA vs LHP",
+    selector: (row) => row["wOBA_vs LHP"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["wOBA_vs LHP"]?.toFixed(3) || "—",
+  },
+];
+
 export const columnsPF = [
   {
     name: "Team",
     selector: (row) => row.team_name,
     sortable: true,
     className: "px-4 py-3 font-medium",
-    width: "180px",
+    width: "10rem",
   },
   {
-    name: "Years",
-    selector: (row) => row.Years,
-    sortable: true,
-    className: "px-4 py-3 text-center",
-    width: "110px",
-  },
-  {
-    name: "PF",
+    name: "Basic",
     selector: (row) => roundTo(row.PF, 0),
     sortable: true,
     className: "px-4 py-3 text-center font-bold",
-    width: "80px",
+    width: "5rem",
     cell: (row) => <PFCell value={row.PF} />,
   },
   {
-    name: "Runs @ Home",
-    selector: (row) => roundTo(row.H, 2),
+    name: "1B",
+    selector: (row) => roundTo(row.PF_singles, 0),
     sortable: true,
-    className: "px-4 py-3 text-center",
-    width: "130px",
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_singles} />,
   },
   {
-    name: "Runs on Road",
-    selector: (row) => roundTo(row.R, 2),
+    name: "2B",
+    selector: (row) => roundTo(row.PF_doubles, 0),
     sortable: true,
-    className: "px-4 py-3 text-center",
-    width: "130px",
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_doubles} />,
   },
   {
-    name: "Home Games",
-    selector: (row) => row.total_home_games,
+    name: "3B",
+    selector: (row) => roundTo(row.PF_triples, 0),
     sortable: true,
-    className: "px-4 py-3 text-center",
-    width: "130px",
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_triples} />,
   },
   {
-    name: "Away Games",
-    selector: (row) => row.total_away_games,
+    name: "HR",
+    selector: (row) => roundTo(row.PF_home_runs, 0),
     sortable: true,
-    className: "px-4 py-3 text-center",
-    width: "130px",
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_home_runs} />,
+  },
+  {
+    name: "BB",
+    selector: (row) => roundTo(row.PF_walks, 0),
+    sortable: true,
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_walks} />,
+  },
+  {
+    name: "SO",
+    selector: (row) => roundTo(row.PF_strikeouts, 0),
+    sortable: true,
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_strikeouts} />,
+  },
+  {
+    name: "IFFB",
+    selector: (row) => roundTo(row.PF_infield_flys, 0),
+    sortable: true,
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_infield_flys} />,
+  },
+  {
+    name: "LD",
+    selector: (row) => roundTo(row.PF_line_drives, 0),
+    sortable: true,
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_line_drives} />,
+  },
+  {
+    name: "GB",
+    selector: (row) => roundTo(row.PF_ground_balls, 0),
+    sortable: true,
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_ground_balls} />,
+  },
+  {
+    name: "FIP",
+    selector: (row) => roundTo(row.PF_FIP, 0),
+    sortable: true,
+    className: "px-4 py-3 text-center font-bold",
+    width: "5rem",
+    cell: (row) => <PFCell value={row.PF_FIP} />,
   },
 ];
 
