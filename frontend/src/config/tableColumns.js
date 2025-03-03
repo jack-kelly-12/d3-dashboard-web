@@ -136,7 +136,7 @@ export const columnsValue = [
     name: "#",
     selector: (row) => row.rank,
     sortable: true,
-    width: "2rem",
+    width: "4rem",
     className: "px-3 py-2 text-xs font-medium text-center",
   },
   {
@@ -289,7 +289,7 @@ export const columnsSituational = [
     name: "#",
     selector: (row) => row.rank,
     sortable: true,
-    width: "2rem",
+    width: "4rem",
     className: "px-3 py-2 text-xs font-medium text-center",
   },
   {
@@ -440,7 +440,7 @@ export const columnsBaserunning = [
     name: "#",
     selector: (row) => row.rank,
     sortable: true,
-    width: "2rem",
+    width: "4rem",
     className: "px-3 py-2 text-xs font-medium text-center",
   },
   {
@@ -571,7 +571,7 @@ export const columnsBatted = [
     name: "#",
     selector: (row) => row.rank,
     sortable: true,
-    width: "2rem",
+    width: "4rem",
     className: "px-3 py-2 text-xs font-medium text-center",
   },
   {
@@ -701,7 +701,7 @@ export const columnsSplits = [
     name: "#",
     selector: (row) => row.rank,
     sortable: true,
-    width: "2rem",
+    width: "4rem",
     className: "px-3 py-2 text-xs font-medium text-center",
   },
   {
