@@ -35,12 +35,15 @@ const PlayerPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("batting");
+  const [selectedDivision, setSelectedDivision] = useState(3);
 
   const fetchPercentiles = useCallback(
-    async (year) => {
+    async (year, division = selectedDivision) => {
       try {
         const percentileResponse = await fetchAPI(
-          `/api/player-percentiles/${decodeURIComponent(playerId)}/${year}`
+          `/api/player-percentiles/${decodeURIComponent(
+            playerId
+          )}/${year}/${division}`
         );
 
         setPercentiles(percentileResponse);
@@ -51,7 +54,7 @@ const PlayerPage = () => {
         console.error("Error fetching percentiles:", err);
       }
     },
-    [playerId, setActiveTab]
+    [playerId, selectedDivision, setActiveTab]
   );
 
   useEffect(() => {
@@ -76,8 +79,29 @@ const PlayerPage = () => {
         );
         const mostRecentSeason = Math.max(maxBattingSeason, maxPitchingSeason);
 
+        let division = 3; // Default
         if (mostRecentSeason > 0) {
-          await fetchPercentiles(mostRecentSeason);
+          const mostRecentBattingStat = enhancedPlayerData.battingStats?.find(
+            (stat) => stat.Season === mostRecentSeason
+          );
+          const mostRecentPitchingStat = enhancedPlayerData.pitchingStats?.find(
+            (stat) => stat.Season === mostRecentSeason
+          );
+
+          if (mostRecentBattingStat && mostRecentBattingStat.Division) {
+            division = mostRecentBattingStat.Division;
+          } else if (
+            mostRecentPitchingStat &&
+            mostRecentPitchingStat.Division
+          ) {
+            division = mostRecentPitchingStat.Division;
+          }
+
+          setSelectedDivision(division);
+        }
+
+        if (mostRecentSeason > 0) {
+          await fetchPercentiles(mostRecentSeason, division);
         }
 
         if (
@@ -107,6 +131,23 @@ const PlayerPage = () => {
     }
 
     return Array.from(years).sort((a, b) => b - a);
+  };
+
+  const getAvailableDivisions = () => {
+    const divisions = new Set();
+
+    if (playerData?.battingStats) {
+      playerData.battingStats.forEach((stat) => {
+        if (stat.Division) divisions.add(stat.Division);
+      });
+    }
+    if (playerData?.pitchingStats) {
+      playerData.pitchingStats.forEach((stat) => {
+        if (stat.Division) divisions.add(stat.Division);
+      });
+    }
+
+    return Array.from(divisions).sort((a, b) => a - b);
   };
 
   const enhancePlayerData = (playerResponse) => {
@@ -190,6 +231,19 @@ const PlayerPage = () => {
     };
   };
 
+  const handleDivisionChange = (division) => {
+    setSelectedDivision(division);
+    // If we have percentiles data, refresh with the new division
+    if (percentiles) {
+      // Get the year from current percentiles
+      const currentYear =
+        percentiles.batting?.season || percentiles.pitching?.season;
+      if (currentYear) {
+        fetchPercentiles(currentYear, division);
+      }
+    }
+  };
+
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState error={error} />;
   if (!playerData) return null;
@@ -212,10 +266,15 @@ const PlayerPage = () => {
                 playerData={{
                   ...playerData,
                   yearsPlayed: getAvailableYears(),
+                  divisionsPlayed: getAvailableDivisions(),
                 }}
                 initialPercentiles={percentiles}
                 activeTab={activeTab}
-                onYearChange={fetchPercentiles}
+                onYearChange={(year) =>
+                  fetchPercentiles(year, selectedDivision)
+                }
+                selectedDivision={selectedDivision}
+                onDivisionChange={handleDivisionChange}
               />
             </div>
           </div>

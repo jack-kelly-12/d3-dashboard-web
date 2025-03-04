@@ -35,31 +35,36 @@ const StatBar = ({
 
   return (
     <div className="relative h-8 mb-3">
-      <div className="flex justify-between items-center text-sm mb-1">
-        <div className="flex items-center gap-3 w-full">
-          <span className="text-gray-600 font-medium min-w-[140px]">
-            {label}
-          </span>
-          <span className="font-mono text-gray-800">
-            {formatValue(value)}
-            {suffix}
-          </span>
-          <div className="flex-1 relative h-2.5 mx-4">
-            <div className="absolute inset-0 bg-gray-100 rounded-full" />
-            <div
-              className={`absolute h-full rounded-full transition-all duration-300 ${getBarColor(
-                percentile
-              )}`}
-              style={{ width: `${percentile}%` }}
-            />
-          </div>
+      <div className="flex items-center text-sm mb-1">
+        {/* Fixed width for the label */}
+        <span className="text-gray-600 font-medium w-32 flex-shrink-0">
+          {label}
+        </span>
+
+        {/* Fixed width for the value */}
+        <span className="font-mono text-gray-800 w-16 flex-shrink-0">
+          {formatValue(value)}
+          {suffix}
+        </span>
+
+        {/* The progress bar with flex-1 to take up remaining space */}
+        <div className="flex-1 relative h-2.5 mx-4">
+          <div className="absolute inset-0 bg-gray-100 rounded-full" />
           <div
-            className={`w-8 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
+            className={`absolute h-full rounded-full transition-all duration-300 ${getBarColor(
               percentile
             )}`}
-          >
-            {percentile || 0}
-          </div>
+            style={{ width: `${percentile}%` }}
+          />
+        </div>
+
+        {/* The percentile badge */}
+        <div
+          className={`w-8 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
+            percentile
+          )}`}
+        >
+          {percentile || 0}
         </div>
       </div>
     </div>

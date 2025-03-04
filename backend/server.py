@@ -398,8 +398,8 @@ def get_expected_runs():
     return jsonify(data)
 
 
-@app.route('/api/player-percentiles/<player_id>/<int:year>', methods=['GET'])
-def get_player_percentiles(player_id, year):
+@app.route('/api/player-percentiles/<str:player_id>/<int:year>/<int:division>', methods=['GET'])
+def get_player_percentiles(player_id, year, division):
     conn = get_db_connection()
     cursor = conn.cursor()
     response = {"batting": None, "pitching": None}
@@ -408,8 +408,8 @@ def get_player_percentiles(player_id, year):
         # Check batting stats
         cursor.execute("""
             SELECT * FROM batting_war
-            WHERE player_id = ? AND Division = 3 AND Season = ?
-        """, (player_id, year))
+            WHERE player_id = ? AND Division = ? AND Season = ?
+        """, (player_id, division, year))
         player = cursor.fetchone()
 
         if player:
@@ -417,9 +417,9 @@ def get_player_percentiles(player_id, year):
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
                        "Baserunning", "Adjustment", WAR, PA, "wRC+", "WPA", "REA"
                 FROM batting_war
-                WHERE PA > 25 AND Division = 3 AND Season = ?
+                WHERE PA > 25 AND Division = ? AND Season = ?
                 ORDER BY PA DESC
-            """, (year,))
+            """, (division, year))
             all_players = cursor.fetchall()
             player_stats = dict(player)
 
@@ -441,22 +441,23 @@ def get_player_percentiles(player_id, year):
                 "qualified": player_stats['PA'] > 25,
                 "paThreshold": 25,
                 "playerPA": player_stats['PA'],
-                "season": year
+                "season": year,
+                "division": division
             }
 
         cursor.execute("""
             SELECT * FROM pitching_war
-            WHERE player_id = ? AND Division = 3 AND Season = ?
-        """, (player_id, year))
+            WHERE player_id = ? AND Division = ? AND Season = ?
+        """, (player_id, division, year))
         player = cursor.fetchone()
 
         if player:
             cursor.execute("""
                 SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9, "pWPA", "pREA", "gmLI"
                 FROM pitching_war
-                WHERE IP > 10 AND Division = 3 AND Season = ?
+                WHERE IP > 10 AND Division = ? AND Season = ?
                 ORDER BY IP DESC
-            """, (year,))
+            """, (division, year))
             all_players = cursor.fetchall()
             player_stats = dict(player)
 
@@ -480,13 +481,14 @@ def get_player_percentiles(player_id, year):
                 "qualified": player_stats['IP'] > 10,
                 "ipThreshold": 10,
                 "playerIP": player_stats['IP'],
-                "season": year
+                "season": year,
+                "division": division
             }
 
         if response["batting"] is None and response["pitching"] is None:
             return jsonify({
                 "inactive": True,
-                "message": f"Player not active in {year} season"
+                "message": f"Player not active in {year} season for division {division}"
             })
 
         return jsonify(response)
@@ -495,7 +497,7 @@ def get_player_percentiles(player_id, year):
         conn.close()
 
 
-@app.route('/api/player/<player_id>', methods=['GET'])
+@app.route('/api/player/<str:player_id>', methods=['GET'])
 def get_player_stats(player_id):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -533,7 +535,7 @@ def get_player_stats(player_id):
                 SELECT p.*, i.prev_team_id, i.conference_id
                 FROM pitching_war p
                 LEFT JOIN ids_for_images i ON p.Team = i.team_name
-                WHERE p.player_id = ? AND Division = 3 AND Season = ?
+                WHERE p.player_id = ? AND Season = ?
             """, (player_id, year))
             pitch_stats = cursor.fetchone()
             if pitch_stats:
@@ -556,7 +558,7 @@ def get_player_stats(player_id):
         cursor.execute("""
             SELECT r.height, r.bats, r.throws, r.hometown, r.high_school, r.position
             FROM rosters r
-            WHERE r.player_id = ? AND Division = 3 AND Year = ?
+            WHERE r.player_id = ? AND Year = ?
         """, (player_id, year))
         player_info = cursor.fetchone()
 
@@ -616,7 +618,7 @@ def search_players():
                 player_name LIKE ? OR
                 player_name LIKE ? OR
                 player_name LIKE ?
-            ) AND Division = 3
+            )
             ORDER BY
                 CASE
                     WHEN LOWER(player_name) = ? THEN 1
