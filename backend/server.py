@@ -398,7 +398,7 @@ def get_expected_runs():
     return jsonify(data)
 
 
-@app.route('/api/player-percentiles/<str:player_id>/<int:year>/<int:division>', methods=['GET'])
+@app.route('/api/player-percentiles/<string:player_id>/<int:year>/<int:division>', methods=['GET'])
 def get_player_percentiles(player_id, year, division):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -497,7 +497,7 @@ def get_player_percentiles(player_id, year, division):
         conn.close()
 
 
-@app.route('/api/player/<str:player_id>', methods=['GET'])
+@app.route('/api/player/<string:player_id>', methods=['GET'])
 def get_player_stats(player_id):
     conn = get_db_connection()
     cursor = conn.cursor()
