@@ -739,6 +739,13 @@ export const columnsSplits = [
     className: "px-2 py-2 text-xs",
   },
   {
+    name: "PA",
+    selector: (row) => row["PA_Overall"],
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
     name: "PA vs RHP",
     selector: (row) => row["PA_vs RHP"],
     sortable: true,
@@ -751,6 +758,14 @@ export const columnsSplits = [
     sortable: true,
     width: "5.625rem",
     className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "BA",
+    selector: (row) => row["BA_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["BA_Overall"]?.toFixed(3) || "—",
   },
   {
     name: "BA vs RHP",
@@ -769,6 +784,14 @@ export const columnsSplits = [
     cell: (row) => row["BA_vs LHP"]?.toFixed(3) || "—",
   },
   {
+    name: "OBP",
+    selector: (row) => row["OBP_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["OBP_Overall"]?.toFixed(3) || "—",
+  },
+  {
     name: "OBP vs RHP",
     selector: (row) => row["OBP_vs RHP"],
     sortable: true,
@@ -785,6 +808,14 @@ export const columnsSplits = [
     cell: (row) => row["OBP_vs LHP"]?.toFixed(3) || "—",
   },
   {
+    name: "SLG",
+    selector: (row) => row["SLG_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["SLG_Overall"]?.toFixed(3) || "—",
+  },
+  {
     name: "SLG vs RHP",
     selector: (row) => row["SLG_vs RHP"],
     sortable: true,
@@ -799,6 +830,14 @@ export const columnsSplits = [
     width: "7.5rem",
     className: "px-3 py-2 text-xs text-center",
     cell: (row) => row["SLG_vs LHP"]?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA",
+    selector: (row) => row["wOBA_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["wOBA_Overall"]?.toFixed(3) || "—",
   },
   {
     name: "wOBA vs RHP",
@@ -1776,6 +1815,167 @@ export const getDataColumns = (dataType) => {
       ];
   }
 };
+
+export const columnsSplitsPitcher = [
+  {
+    name: "#",
+    selector: (row) => row.rank,
+    sortable: true,
+    width: "4rem",
+    className: "px-3 py-2 text-xs font-medium text-center",
+  },
+  {
+    name: "Player",
+    selector: (row) => row.Player,
+    sortable: true,
+    width: "9.375rem",
+    className: "px-3 py-2 text-xs",
+    cell: (row) =>
+      row.player_id.substring(0, 4) === "d3d-" ? (
+        <Link
+          to={`/player/${row.player_id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+        >
+          {row.Player}
+        </Link>
+      ) : (
+        <span className="text-xs font-medium">{row.Player}</span>
+      ),
+  },
+  {
+    name: "Team",
+    selector: (row) => row.Team,
+    cell: (row) => row.renderedTeam,
+    sortable: true,
+    width: "4rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Conference",
+    selector: (row) => row.Conference,
+    cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "BF",
+    selector: (row) => row["PA_Overall"],
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "vs RHH",
+    selector: (row) => row["PA_vs RHH"],
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "vs LHH",
+    selector: (row) => row["PA_vs LHH"],
+    sortable: true,
+    width: "5.625rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "BA",
+    selector: (row) => row["BA_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["BA_Overall"]?.toFixed(3) || "—",
+  },
+  {
+    name: "BA vs RHH",
+    selector: (row) => row["BA_vs RHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["BA_vs RHH"]?.toFixed(3) || "—",
+  },
+  {
+    name: "BA vs LHH",
+    selector: (row) => row["BA_vs LHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["BA_vs LHH"]?.toFixed(3) || "—",
+  },
+  {
+    name: "OBP",
+    selector: (row) => row["OBP_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["OBP_Overall"]?.toFixed(3) || "—",
+  },
+  {
+    name: "OBP vs RHH",
+    selector: (row) => row["OBP_vs RHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["OBP_vs RHH"]?.toFixed(3) || "—",
+  },
+  {
+    name: "OBP vs LHH",
+    selector: (row) => row["OBP_vs LHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["OBP_vs LHH"]?.toFixed(3) || "—",
+  },
+  {
+    name: "SLG",
+    selector: (row) => row["SLG_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["SLG_Overall"]?.toFixed(3) || "—",
+  },
+  {
+    name: "SLG vs RHH",
+    selector: (row) => row["SLG_vs RHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["SLG_vs RHH"]?.toFixed(3) || "—",
+  },
+  {
+    name: "SLG vs LHH",
+    selector: (row) => row["SLG_vs LHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["SLG_vs LHH"]?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA",
+    selector: (row) => row["wOBA_Overall"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["wOBA_Overall"]?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA vs RHH",
+    selector: (row) => row["wOBA_vs RHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["wOBA_vs RHH"]?.toFixed(3) || "—",
+  },
+  {
+    name: "wOBA vs LHH",
+    selector: (row) => row["wOBA_vs LHH"],
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["wOBA_vs LHH"]?.toFixed(3) || "—",
+  },
+];
 
 export const getReportColumns = (onReportSelect) => [
   {

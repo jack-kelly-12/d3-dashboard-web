@@ -1398,6 +1398,96 @@ def get_splits_leaderboard():
         conn.close()
 
 
+@app.route('/api/leaderboards/splits_pitcher', methods=['GET'])
+@require_premium
+def get_splits_pitcher_leaderboard():
+    start_year = request.args.get('start_year', '2025')
+    end_year = request.args.get('end_year', '2025')
+    min_pa = request.args.get('min_pa', '50')
+    division = request.args.get('division', type=int, default=3)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+        min_pa = int(min_pa)
+    except ValueError:
+        return jsonify({"error": "Invalid parameters"}), 400
+
+    if start_year < 2021 or end_year > 2025 or start_year > end_year:
+        return jsonify({"error": "Invalid year range"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    results = []
+
+    try:
+        for year in range(start_year, end_year + 1):
+            query = """
+                WITH splits_query AS (
+                    SELECT DISTINCT
+                        p.Player,
+                        p.Team,
+                        p.Season,
+                        p.Conference,
+                        p.player_id,
+                        i.prev_team_id,
+                        i.conference_id,
+                        s.Division,
+                        -- Overall Stats
+                        s.[PA_Overall] as 'PA_Overall',
+                        s.[BA_Overall] as 'BA_Overall',
+                        s.[OBP_Overall] as 'OBP_Overall',
+                        s.[SLG_Overall] as 'SLG_Overall',
+                        s.[wOBA_Overall] as 'wOBA_Overall',
+                        -- vs RHH Stats
+                        s.[PA_vs RHH] as 'PA_vs RHH',
+                        s.[BA_vs RHH] as 'BA_vs RHH',
+                        s.[OBP_vs RHH] as 'OBP_vs RHH',
+                        s.[SLG_vs RHH] as 'SLG_vs RHH',
+                        s.[wOBA_vs RHH] as 'wOBA_vs RHH',
+                        -- vs LHH Stats
+                        s.[PA_vs LHH] as 'PA_vs LHH',
+                        s.[BA_vs LHH] as 'BA_vs LHH',
+                        s.[OBP_vs LHH] as 'OBP_vs LHH',
+                        s.[SLG_vs LHH] as 'SLG_vs LHH',
+                        s.[wOBA_vs LHH] as 'wOBA_vs LHH'
+                    FROM splits_pitcher s
+                    JOIN pitching_war p
+                        ON s.pitcher_standardized = p.Player
+                        AND s.pitch_team = p.Team
+                        AND s.Year = p.Season
+                        AND s.Division = p.Division
+                    LEFT JOIN ids_for_images i
+                        ON p.Team = i.team_name
+                    WHERE s.[PA_Overall] >= ?
+                        AND p.Division = ?
+                        AND p.Season = ?
+                        AND s.Year = ?
+                    ORDER BY s.[wOBA_Overall] ASC  -- Note: ASC for pitchers (lower is better)
+                )
+                SELECT * FROM splits_query
+            """
+
+            cursor.execute(query, (min_pa, division, year, year))
+            columns = [col[0] for col in cursor.description]
+            year_results = [dict(zip(columns, row))
+                            for row in cursor.fetchall()]
+            results.extend(year_results)
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
+
+
 @app.route('/api/leaderboards/batted_ball', methods=['GET'])
 @require_premium
 def get_batted_ball_leaders():
