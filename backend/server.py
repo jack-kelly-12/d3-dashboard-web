@@ -506,6 +506,7 @@ def get_player_stats(player_id):
         player_found = False
         player_name = None
         current_team = None
+        current_division = None
         current_conference = None
         current_prev_team_id = None
         current_conference_id = None
@@ -527,6 +528,7 @@ def get_player_stats(player_id):
                 if not player_name or year > max(s['Season'] for s in batting_stats):
                     player_name = bat_stats["Player"]
                     current_team = bat_stats["Team"]
+                    current_division = bat_stats['Division']
                     current_conference = bat_stats["Conference"]
                     current_prev_team_id = bat_stats["prev_team_id"]
                     current_conference_id = bat_stats["conference_id"]
@@ -544,6 +546,7 @@ def get_player_stats(player_id):
                 if not player_name or year > max(s['Season'] for s in pitching_stats):
                     player_name = pitch_stats["Player"]
                     current_team = pitch_stats["Team"]
+                    current_division = pitch_stats['Division']
                     current_conference = pitch_stats["Conference"]
                     current_prev_team_id = pitch_stats["prev_team_id"]
                     current_conference_id = pitch_stats["conference_id"]
@@ -567,6 +570,7 @@ def get_player_stats(player_id):
             "playerName": player_name,
             "currentTeam": current_team,
             "conference": current_conference,
+            "division": current_division,
             "prev_team_id": current_prev_team_id,
             "conference_id": current_conference_id,
             "isPitcher": is_pitcher,

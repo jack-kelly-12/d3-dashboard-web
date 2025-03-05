@@ -34,7 +34,8 @@ const PlayerHeader = ({ playerData }) => {
             {playerData.playerName}
           </h1>
           <div className="text-gray-600 flex items-center justify-center gap-2">
-            {playerData.currentTeam} • {playerData.conference} • Division III
+            {playerData.currentTeam} • {playerData.conference} •{" "}
+            {playerData.division}
           </div>
         </div>
 
