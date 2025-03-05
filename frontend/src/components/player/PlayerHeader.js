@@ -21,6 +21,11 @@ const formatSide = (value) => {
   return formatted;
 };
 
+const romanize = (num) => {
+  const map = { 1: "I", 2: "II", 3: "III" };
+  return map[num] || num;
+};
+
 const PlayerHeader = ({ playerData }) => {
   return (
     <div className="h-full flex flex-col bg-white rounded-lg shadow-sm overflow-hidden">
@@ -34,8 +39,8 @@ const PlayerHeader = ({ playerData }) => {
             {playerData.playerName}
           </h1>
           <div className="text-gray-600 flex items-center justify-center gap-2">
-            {playerData.currentTeam} • {playerData.conference} •{" "}
-            {playerData.division}
+            {playerData.currentTeam} • {playerData.conference} • Division{" "}
+            {romanize(playerData.division)}
           </div>
         </div>
 
