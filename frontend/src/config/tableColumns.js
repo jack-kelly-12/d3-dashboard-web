@@ -926,7 +926,7 @@ export const getDataColumns = (dataType) => {
           name: "Player",
           selector: (row) => row.Player,
           sortable: true,
-          width: "7.5rem",
+          width: "9.375rem",
           cell: (row) =>
             row.player_id.substring(0, 4) === "d3d-" ? (
               <Link
@@ -1156,7 +1156,7 @@ export const getDataColumns = (dataType) => {
           name: "Player",
           selector: (row) => row.Player,
           sortable: true,
-          width: "7.5rem",
+          width: "9.375rem",
           cell: (row) =>
             row.player_id.substring(0, 4) === "d3d-" ? (
               <Link
