@@ -60,7 +60,7 @@ const HitInput = ({ currentHit, onChange, onReset, disabled }) => {
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1.5 sm:mb-2">
             Result
           </label>
-          <div className="grid grid-cols-1 xs:grid-cols-2 gap-1 sm:gap-2">
+          <div className="grid grid-cols-3 xs:grid-cols-2 gap-1 sm:gap-2">
             {results.map((result) => (
               <button
                 key={result.value}
