@@ -49,7 +49,8 @@ const LEADERBOARD_TYPES = {
   SPLITS: {
     id: "splits",
     label: "Splits Leaderboard",
-    description: "How hitters do vs. LHP compared to vs. RHP",
+    description:
+      "Comparative statistics for pitchers and hitters in left/right matchup scenarios",
     component: SplitsLeaderboard,
   },
 };
