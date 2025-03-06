@@ -1259,6 +1259,24 @@ export const getDataColumns = (dataType) => {
           width: "6rem",
         },
         {
+          name: "W",
+          selector: (row) => row.W,
+          sortable: true,
+          width: "6rem",
+        },
+        {
+          name: "L",
+          selector: (row) => row.L,
+          sortable: true,
+          width: "6rem",
+        },
+        {
+          name: "SV",
+          selector: (row) => row.SV,
+          sortable: true,
+          width: "6rem",
+        },
+        {
           name: "H",
           selector: (row) => row.H,
           sortable: true,
@@ -1639,6 +1657,12 @@ export const getDataColumns = (dataType) => {
           width: "6rem",
         },
         {
+          name: "G",
+          selector: (row) => row.GS,
+          sortable: true,
+          width: "5rem",
+        },
+        {
           name: "IP",
           selector: (row) => roundTo(row.IP, 1),
           sortable: true,
@@ -1647,6 +1671,24 @@ export const getDataColumns = (dataType) => {
         {
           name: "Pitches",
           selector: (row) => row.Pitches,
+          sortable: true,
+          width: "6rem",
+        },
+        {
+          name: "W",
+          selector: (row) => row.W,
+          sortable: true,
+          width: "6rem",
+        },
+        {
+          name: "L",
+          selector: (row) => row.L,
+          sortable: true,
+          width: "6rem",
+        },
+        {
+          name: "SV",
+          selector: (row) => row.SV,
           sortable: true,
           width: "6rem",
         },
