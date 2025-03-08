@@ -739,6 +739,13 @@ export const columnsSplits = [
     className: "px-2 py-2 text-xs",
   },
   {
+    name: "Year",
+    selector: (row) => row.Season,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
     name: "PA",
     selector: (row) => row["PA_Overall"],
     sortable: true,
@@ -751,6 +758,7 @@ export const columnsSplits = [
     sortable: true,
     width: "5.625rem",
     className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["PA_vs RHP"] || 0,
   },
   {
     name: "PA vs LHP",
@@ -758,6 +766,7 @@ export const columnsSplits = [
     sortable: true,
     width: "5.625rem",
     className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row["PA_vs LHP"] || 0,
   },
   {
     name: "BA",
@@ -1164,6 +1173,12 @@ export const getDataColumns = (dataType) => {
           width: "6rem",
         },
         {
+          name: "RE24",
+          selector: (row) => roundTo(row["REA"], 1),
+          sortable: true,
+          width: "6rem",
+        },
+        {
           name: "WPA",
           selector: (row) => roundTo(row["WPA"], 1),
           sortable: true,
@@ -1420,6 +1435,12 @@ export const getDataColumns = (dataType) => {
           width: "5rem",
         },
         {
+          name: "RE24",
+          selector: (row) => roundTo(row["pREA"], 1),
+          sortable: true,
+          width: "6rem",
+        },
+        {
           name: "WPA",
           selector: (row) => roundTo(row["pWPA"], 1),
           sortable: true,
@@ -1605,6 +1626,12 @@ export const getDataColumns = (dataType) => {
         {
           name: "Base Run",
           selector: (row) => roundTo(row["Baserunning"], 1),
+          sortable: true,
+          width: "6rem",
+        },
+        {
+          name: "RE24",
+          selector: (row) => roundTo(row["REA"], 1),
           sortable: true,
           width: "6rem",
         },
@@ -1830,6 +1857,12 @@ export const getDataColumns = (dataType) => {
           sortFunction: createPercentageSortFn("IR-A%"),
         },
         {
+          name: "RE24",
+          selector: (row) => roundTo(row["pREA"], 1),
+          sortable: true,
+          width: "6rem",
+        },
+        {
           name: "WPA",
           selector: (row) => roundTo(row["pWPA"], 1),
           sortable: true,
@@ -1896,6 +1929,13 @@ export const columnsSplitsPitcher = [
     name: "Conference",
     selector: (row) => row.Conference,
     cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Year",
+    selector: (row) => row.Season,
     sortable: true,
     width: "6.5rem",
     className: "px-2 py-2 text-xs",

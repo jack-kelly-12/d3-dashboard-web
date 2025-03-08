@@ -239,7 +239,7 @@ export const PercentileSection = ({
             title: "Value",
             stats: [
               { key: "WAR", label: "WAR", decimals: 1 },
-              { key: "gmLI", label: "Leverage Index", decimals: 1 },
+              { key: "pWPA/LI", label: "Context Neutral Wins", decimals: 1 },
               { key: "pWPA", label: "WPA", decimals: 1 },
               { key: "pREA", label: "RE24", decimals: 1 },
             ],

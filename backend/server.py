@@ -453,7 +453,7 @@ def get_player_percentiles(player_id, year, division):
 
         if player:
             cursor.execute("""
-                SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9, "pWPA", "pREA", "gmLI"
+                SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9, "pWPA", "pREA", "pWPA/LI"
                 FROM pitching_war
                 WHERE IP > 10 AND Division = ? AND Season = ?
                 ORDER BY IP DESC
@@ -464,7 +464,7 @@ def get_player_percentiles(player_id, year, division):
             percentiles = {}
             reverse_stats = ['ERA', 'FIP', 'xFIP', 'BB%', 'HR/FB', 'RA9']
 
-            for stat in ['ERA', 'FIP', 'xFIP', 'K%', 'BB%', 'K-BB%', 'RA9', 'WAR', 'pREA', 'pWPA', 'gmLI']:
+            for stat in ['ERA', 'FIP', 'xFIP', 'K%', 'BB%', 'K-BB%', 'RA9', 'WAR', 'pREA', 'pWPA', 'pWPA/LI']:
                 values = [p[stat] for p in all_players if p[stat] is not None]
                 player_value = player_stats[stat]
                 if values and player_value is not None:
