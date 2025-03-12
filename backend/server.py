@@ -415,7 +415,7 @@ def get_player_percentiles(player_id, year, division):
         if player:
             cursor.execute("""
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
-                       "Baserunning", "Adjustment", WAR, PA, "wRC+", "WPA", "REA"
+                       "Baserunning", "WPA/LI", WAR, PA, "wRC+", "WPA", "REA"
                 FROM batting_war
                 WHERE PA > 25 AND Division = ? AND Season = ?
                 ORDER BY PA DESC
@@ -425,7 +425,7 @@ def get_player_percentiles(player_id, year, division):
 
             percentiles = {}
             for stat in ['BA', 'OBPct', 'SlgPct', 'wOBA', 'OPS+', 'Batting',
-                         'Baserunning', 'Adjustment', 'WAR', 'wRC+', 'WPA', 'REA']:
+                         'Baserunning', 'WPA/LI', 'WAR', 'wRC+', 'WPA', 'REA']:
                 values = [p[stat] for p in all_players if p[stat] is not None]
                 player_value = player_stats[stat]
                 if values and player_value is not None:

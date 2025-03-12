@@ -199,7 +199,7 @@ export const PercentileSection = ({
             stats: [
               { key: "Baserunning", label: "Baserunning", decimals: 1 },
               { key: "Batting", label: "Batting", decimals: 1 },
-              { key: "Adjustment", label: "Positional", decimals: 1 },
+              { key: "pWPA/LI", label: "WPA/LI", decimals: 1 },
               { key: "WPA", label: "WPA", decimals: 1 },
               { key: "REA", label: "RE24", decimals: 1 },
             ],
@@ -239,7 +239,7 @@ export const PercentileSection = ({
             title: "Value",
             stats: [
               { key: "WAR", label: "WAR", decimals: 1 },
-              { key: "pWPA/LI", label: "Context Neutral Wins", decimals: 1 },
+              { key: "pWPA/LI", label: "WPA/LI", decimals: 1 },
               { key: "pWPA", label: "WPA", decimals: 1 },
               { key: "pREA", label: "RE24", decimals: 1 },
             ],
