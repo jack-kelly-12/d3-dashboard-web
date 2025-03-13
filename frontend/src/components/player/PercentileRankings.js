@@ -180,7 +180,6 @@ export const PercentileSection = ({
 
   if (!currentPercentiles) return null;
 
-  // Rest of the component remains the same...
   const isQualified = currentPercentiles.qualified;
   const threshold =
     activeTab === "batting"
@@ -199,7 +198,7 @@ export const PercentileSection = ({
             stats: [
               { key: "Baserunning", label: "Baserunning", decimals: 1 },
               { key: "Batting", label: "Batting", decimals: 1 },
-              { key: "pWPA/LI", label: "WPA/LI", decimals: 1 },
+              { key: "WPA/LI", label: "WPA/LI", decimals: 1 },
               { key: "WPA", label: "WPA", decimals: 1 },
               { key: "REA", label: "RE24", decimals: 1 },
             ],
@@ -210,8 +209,8 @@ export const PercentileSection = ({
               { key: "wOBA", label: "wOBA", decimals: 3 },
               { key: "OPS+", label: "OPS+", decimals: 0 },
               { key: "wRC+", label: "wRC+", decimals: 0 },
-              { key: "BA", label: "AVG", decimals: 3 },
-              { key: "SlgPct", label: "SLG", decimals: 3 },
+              { key: "K%", label: "K%", decimals: 1 },
+              { key: "BB%", label: "BB%", decimals: 1 },
             ],
           },
         ]

@@ -20,6 +20,7 @@ import InsightsPage from "./pages/InsightsPage.js";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { Navigate, useLocation } from "react-router-dom";
 import { useSubscription } from "./contexts/SubscriptionContext";
+import BaseballSpraychart from "./components/scouting/SprayChart";
 
 export const ProtectedRoute = ({ children, requiresPremium = false }) => {
   const { isLoading, isPremium } = useSubscription();
@@ -59,6 +60,10 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/subscriptions" element={<SubscriptionPlans />} />
               <Route path="/documentation" element={<Documentation />} />
+              <Route
+                path="/baseball-spraychart"
+                element={<BaseballSpraychart />}
+              />
 
               {/* Basic feature routes (require authentication but not premium) */}
               <Route

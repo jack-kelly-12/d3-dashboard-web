@@ -415,7 +415,7 @@ def get_player_percentiles(player_id, year, division):
         if player:
             cursor.execute("""
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
-                       "Baserunning", "WPA/LI", WAR, PA, "wRC+", "WPA", "REA"
+                       "Baserunning", "WPA/LI", WAR, PA, "wRC+", "WPA", "REA", "K%", "BB%"
                 FROM batting_war
                 WHERE PA > 25 AND Division = ? AND Season = ?
                 ORDER BY PA DESC
@@ -425,12 +425,14 @@ def get_player_percentiles(player_id, year, division):
 
             percentiles = {}
             for stat in ['BA', 'OBPct', 'SlgPct', 'wOBA', 'OPS+', 'Batting',
-                         'Baserunning', 'WPA/LI', 'WAR', 'wRC+', 'WPA', 'REA']:
+                         'Baserunning', 'WPA/LI', 'WAR', 'wRC+', 'WPA', 'REA', 'K%', 'BB%']:
                 values = [p[stat] for p in all_players if p[stat] is not None]
+                reverse_stats = ['K%']
                 player_value = player_stats[stat]
                 if values and player_value is not None:
                     values.sort()
-                    index = sum(1 for x in values if x <= player_value)
+                    index = sum(1 for x in values if (
+                        x >= player_value if stat in reverse_stats else x <= player_value))
                     percentile = round((index / len(values)) * 100)
                     percentiles[f"{stat}Percentile"] = percentile
                     percentiles[stat] = player_value
@@ -493,6 +495,132 @@ def get_player_percentiles(player_id, year, division):
 
         return jsonify(response)
 
+    finally:
+        conn.close()
+
+
+@app.route('/api/spraychart-data/<string:player_id>', methods=['GET'])
+@require_premium
+def get_spraychart_data(player_id):
+    year = request.args.get('year', '2025')
+    division = request.args.get('division', 3)
+    try:
+        year = int(year)
+        division = int(division)
+    except ValueError:
+        return jsonify({"error": "Invalid year or division format"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # Get player name and team information
+        cursor.execute("""
+            SELECT r.player_name, r.team_name, r.bats FROM rosters r
+            WHERE r.player_id = ? AND r.year = ? AND r.division = ?
+            LIMIT 1
+        """, (player_id, year, division))
+
+        player_info = cursor.fetchone()
+        if not player_info:
+            return jsonify({"error": "Player not found"}), 404
+
+        player_name = dict(player_info)["player_name"]
+        team_name = dict(player_info)["team_name"]
+        bats = dict(player_info).get("bats", "R")
+
+        # Get pbp data
+        cursor.execute("""
+            SELECT description FROM pbp
+            WHERE batter_id = ? AND year = ? AND division = ?
+        """, (player_id, year, division))
+
+        pbp_data = [dict(row) for row in cursor.fetchall()]
+
+        # Get splits data
+        cursor.execute("""
+            SELECT * FROM splits
+            WHERE batter_id = ? AND Year = ? AND Division = ?
+        """, (player_id, year, division))
+
+        splits_data = cursor.fetchone()
+
+        # Get batted ball data
+        cursor.execute("""
+            SELECT * FROM batted_ball
+            WHERE batter_id = ? AND Year = ? AND Division = ?
+        """, (player_id, year, division))
+
+        batted_ball_data = cursor.fetchone()
+
+        # Dictionary to store hit location counts
+        hit_counts = {
+            "to_lf": 0,
+            "to_cf": 0,
+            "to_rf": 0,
+            "to_lf_hr": 0,
+            "to_cf_hr": 0,
+            "to_rf_hr": 0,
+            "to_3b": 0,
+            "to_ss": 0,
+            "up_middle": 0,
+            "to_2b": 0,
+            "to_1b": 0
+        }
+
+        # Count hits to each location
+        import re
+        for play in pbp_data:
+            description = play.get('description', '').lower()
+
+            # Skip empty descriptions
+            if not description:
+                continue
+
+            # Check for home runs first
+            if 'homered to left' in description or 'homered to lf' in description:
+                hit_counts["to_lf_hr"] += 1
+            elif 'homered to center' in description or 'homered to cf' in description:
+                hit_counts["to_cf_hr"] += 1
+            elif 'homered to right' in description or 'homered to rf' in description:
+                hit_counts["to_rf_hr"] += 1
+            # Check for other hits to left field
+            elif re.search(r'to left|to lf|left field|lf line', description):
+                hit_counts["to_lf"] += 1
+            # Check for other hits to center field
+            elif re.search(r'to center|to cf|center field', description):
+                hit_counts["to_cf"] += 1
+            # Check for other hits to right field
+            elif re.search(r'to right|to rf|right field|rf line', description):
+                hit_counts["to_rf"] += 1
+            # Check for hits to infield positions
+            elif re.search(r'to 3b|to third|third base|3b line', description):
+                hit_counts["to_3b"] += 1
+            elif re.search(r'ss to 2b|to ss|to short|shortstop', description):
+                hit_counts["to_ss"] += 1
+            elif re.search(r'up the middle|to pitcher|to p', description):
+                hit_counts["up_middle"] += 1
+            elif re.search(r'2b to ss|to 2b|to second|second base', description):
+                hit_counts["to_2b"] += 1
+            elif re.search(r'to 1b|to first|first base|1b line', description):
+                hit_counts["to_1b"] += 1
+
+        return jsonify({
+            "counts": hit_counts,
+            "splits_data": dict(splits_data) if splits_data else {},
+            "batted_ball_data": dict(batted_ball_data) if batted_ball_data else {},
+            "player_id": player_id,
+            "player_name": player_name,
+            "team_name": team_name,
+            "bats": bats,
+            "year": year,
+            "division": division
+        })
+
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
 
