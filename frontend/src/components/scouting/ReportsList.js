@@ -222,7 +222,7 @@ const ReportsList = ({
           >
             Spray Charts
           </button>
-          <button
+          {/* <button
             onClick={(e) => {
               e.stopPropagation();
               handleGenerateSpecialReport("bullpen", report);
@@ -241,7 +241,7 @@ const ReportsList = ({
             role="menuitem"
           >
             Matchup Analysis (Coming Soon)
-          </button>
+          </button> */}
         </div>
       </div>,
       document.body

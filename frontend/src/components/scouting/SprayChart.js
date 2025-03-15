@@ -225,8 +225,6 @@ const SprayChart = ({
     svg.attr("width", chartWidth);
     svg.attr("height", chartHeight);
 
-    const scaleFactor = Math.min(chartWidth / 600, 1);
-
     const title = playerData.player_name || playerData.Player || "Player Name";
     const playerInfo = playerData.playerInfo || "-";
     const stats = playerData.stats || {};
