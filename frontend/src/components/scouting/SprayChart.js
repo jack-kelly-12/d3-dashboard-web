@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { fetchAPI } from "../../config/api";
 
-const BaseballSprayChart = ({
+const SprayChart = ({
   width = 600,
   height = 570,
-  playerId = "d3d-7812106",
-  year = 2025,
-  division = 3,
+  playerId,
+  year,
+  division,
 }) => {
   const svgRef = useRef();
   const [playerData, setPlayerData] = useState(null);
@@ -95,7 +95,6 @@ const BaseballSprayChart = ({
         const vsLhpObp = splits.OBP_vs_LHP || 0;
         const vsLhpWoba = splits.wOBA_vs_LHP || 0;
 
-        // Process batted ball data
         const airPct = battedBall.fb_pct
           ? Math.round(
               parseFloat(battedBall.fb_pct || 0) +
@@ -123,7 +122,7 @@ const BaseballSprayChart = ({
           : 0;
 
         const processedData = {
-          player_name: data.player_name || "Player Name",
+          player_name: data.player_name || data.Player || "Player Name",
           playerInfo: playerInfo,
           stats: {
             battingAvg: parseFloat(battingAvg),
@@ -213,21 +212,33 @@ const BaseballSprayChart = ({
   useEffect(() => {
     if (!svgRef.current || !playerData) return;
 
-    const title = playerData.player_name || "Player Name";
-    const playerInfo = playerData.playerInfo || "-";
+    const containerWidth = svgRef.current.parentElement.clientWidth;
+    const containerHeight = Math.min(containerWidth, 570);
 
-    const stats = playerData.stats || {};
-    const outfieldZoneData = playerData.outfieldZones || [];
-    const infieldZoneData = playerData.infieldZones || [];
+    const chartWidth = containerWidth || width;
+    const chartHeight = containerHeight || height;
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
     svg.attr("viewBox", `0 0 ${width} ${height}`);
+    svg.attr("width", chartWidth);
+    svg.attr("height", chartHeight);
 
-    const margin = { top: 60, right: 20, bottom: 120, left: 20 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    const scaleFactor = Math.min(chartWidth / 600, 1);
+
+    const title = playerData.player_name || playerData.Player || "Player Name";
+    const playerInfo = playerData.playerInfo || "-";
+    const stats = playerData.stats || {};
+    const outfieldZoneData = playerData.outfieldZones || [];
+    const infieldZoneData = playerData.infieldZones || [];
+
+    const isSmallScreen = chartWidth < 600;
+    const isTinyScreen = chartWidth < 450;
+
+    const margin = isTinyScreen
+      ? { top: 40, right: 10, bottom: 20, left: 10 }
+      : { top: 60, right: 20, bottom: 120, left: 20 };
 
     svg
       .append("rect")
@@ -239,34 +250,52 @@ const BaseballSprayChart = ({
       .append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
+    const innerWidth = width - margin.left - margin.right;
+    const innerHeight = height - margin.top - margin.bottom;
+
+    const headerHeight = isTinyScreen ? 60 : 80;
     svg
       .append("rect")
       .attr("x", 0)
       .attr("y", 0)
       .attr("width", width)
-      .attr("height", 80)
+      .attr("height", headerHeight)
       .attr("fill", "#E1F5FE")
       .attr("rx", 5)
       .attr("ry", 5);
 
     const header = svg
       .append("g")
-      .attr("transform", `translate(${margin.left}, 20)`);
+      .attr(
+        "transform",
+        `translate(${margin.left}, ${isTinyScreen ? 15 : 20})`
+      );
+
+    const titleFontSize = isTinyScreen
+      ? "14px"
+      : isSmallScreen
+      ? "16px"
+      : "18px";
+    const subtitleFontSize = isTinyScreen
+      ? "10px"
+      : isSmallScreen
+      ? "12px"
+      : "14px";
 
     header
       .append("text")
       .attr("x", 10)
       .attr("y", 15)
       .attr("font-weight", "bold")
-      .attr("font-size", "18px")
+      .attr("font-size", titleFontSize)
       .attr("fill", "#2C3E50")
       .text(title);
 
     header
       .append("text")
       .attr("x", 10)
-      .attr("y", 35)
-      .attr("font-size", "14px")
+      .attr("y", isTinyScreen ? 30 : 35)
+      .attr("font-size", subtitleFontSize)
       .attr("fill", "#2C3E50")
       .text(playerInfo);
 
@@ -319,6 +348,12 @@ const BaseballSprayChart = ({
       const textX = centerX + Math.sin(textAngle) * textRadius;
       const textY = centerY - Math.cos(textAngle) * textRadius;
 
+      const percentageFontSize = isTinyScreen
+        ? "18px"
+        : isSmallScreen
+        ? "22px"
+        : "28px";
+
       field
         .append("text")
         .attr("x", textX)
@@ -326,7 +361,7 @@ const BaseballSprayChart = ({
         .attr("text-anchor", "middle")
         .attr("dominant-baseline", "middle")
         .attr("font-weight", "bold")
-        .attr("font-size", "28px")
+        .attr("font-size", percentageFontSize)
         .attr("fill", "#333")
         .text(`${percentage}%`);
 
@@ -335,28 +370,39 @@ const BaseballSprayChart = ({
       const numberX = centerX + Math.sin(numberAngle) * numberRadius;
       const numberY = centerY - Math.cos(numberAngle) * numberRadius;
 
-      field
-        .append("circle")
-        .attr("cx", numberX)
-        .attr("cy", numberY)
-        .attr("r", 15)
-        .attr("fill", "#E1F5FE")
-        .attr("stroke", "#0D47A1")
-        .attr("stroke-width", 1.5);
+      const circleRadius = isTinyScreen ? 10 : isSmallScreen ? 12 : 15;
 
-      // Get the HR count from the outfieldZoneData
+      if (!isTinyScreen || outfieldZoneData[i]?.hrCount > 0) {
+        field
+          .append("circle")
+          .attr("cx", numberX)
+          .attr("cy", numberY)
+          .attr("r", circleRadius)
+          .attr("fill", "#E1F5FE")
+          .attr("stroke", "#0D47A1")
+          .attr("stroke-width", 1.5);
+      }
+
       const hrCount = outfieldZoneData[i]?.hrCount || 0;
 
-      field
-        .append("text")
-        .attr("x", numberX)
-        .attr("y", numberY)
-        .attr("text-anchor", "middle")
-        .attr("dominant-baseline", "middle")
-        .attr("font-weight", "bold")
-        .attr("font-size", "16px")
-        .attr("fill", "#0D47A1")
-        .text(hrCount);
+      if (!isTinyScreen || hrCount > 0) {
+        const hrFontSize = isTinyScreen
+          ? "12px"
+          : isSmallScreen
+          ? "14px"
+          : "16px";
+
+        field
+          .append("text")
+          .attr("x", numberX)
+          .attr("y", numberY)
+          .attr("text-anchor", "middle")
+          .attr("dominant-baseline", "middle")
+          .attr("font-weight", "bold")
+          .attr("font-size", hrFontSize)
+          .attr("fill", "#0D47A1")
+          .text(hrCount);
+      }
     });
 
     const infieldRadius = arcRadius * 0.55;
@@ -401,7 +447,13 @@ const BaseballSprayChart = ({
       const textX = centerX + Math.sin(textAngle) * textRadius;
       const textY = centerY - Math.cos(textAngle) * textRadius;
 
-      if (percentage > 0) {
+      if (percentage > 0 && (!isTinyScreen || percentage >= 15)) {
+        const infieldFontSize = isTinyScreen
+          ? "8px"
+          : isSmallScreen
+          ? "10px"
+          : "12px";
+
         field
           .append("text")
           .attr("x", textX)
@@ -409,194 +461,280 @@ const BaseballSprayChart = ({
           .attr("text-anchor", "middle")
           .attr("dominant-baseline", "middle")
           .attr("font-weight", "bold")
-          .attr("font-size", "12px")
+          .attr("font-size", infieldFontSize)
           .attr("fill", "#333")
           .text(`${percentage}%`);
       }
     });
 
-    const statsContainer = svg
-      .append("g")
-      .attr("transform", `translate(0, ${height - margin.bottom + 10})`);
+    if (!isTinyScreen) {
+      const statsContainer = svg
+        .append("g")
+        .attr("transform", `translate(0, ${height - margin.bottom + 10})`);
 
-    statsContainer
-      .append("rect")
-      .attr("x", margin.left)
-      .attr("y", -5)
-      .attr("width", innerWidth)
-      .attr("height", 115)
-      .attr("fill", "#E1F5FE")
-      .attr("rx", 8)
-      .attr("ry", 8)
-      .attr("stroke", "#90CAF9")
-      .attr("stroke-width", 1);
-
-    const createTable = (
-      g,
-      x,
-      y,
-      cols,
-      rows,
-      cellWidth,
-      cellHeight,
-      headerColor,
-      borderColor
-    ) => {
-      const tableWidth = cellWidth * cols.length;
-      const tableHeight = cellHeight * (rows.length + 1);
-
-      g.append("rect")
-        .attr("x", x)
-        .attr("y", y)
-        .attr("width", tableWidth)
-        .attr("height", tableHeight)
-        .attr("fill", "#FFFFFF")
-        .attr("stroke", borderColor)
+      statsContainer
+        .append("rect")
+        .attr("x", margin.left)
+        .attr("y", -5)
+        .attr("width", innerWidth)
+        .attr("height", isSmallScreen ? 90 : 115)
+        .attr("fill", "#E1F5FE")
+        .attr("rx", 8)
+        .attr("ry", 8)
+        .attr("stroke", "#90CAF9")
         .attr("stroke-width", 1);
 
-      g.append("rect")
-        .attr("x", x)
-        .attr("y", y)
-        .attr("width", tableWidth)
-        .attr("height", cellHeight)
-        .attr("fill", headerColor)
-        .attr("stroke", borderColor)
-        .attr("stroke-width", 1);
+      const createTable = (
+        g,
+        x,
+        y,
+        cols,
+        rows,
+        cellWidth,
+        cellHeight,
+        headerColor,
+        borderColor
+      ) => {
+        const tableWidth = cellWidth * cols.length;
+        const tableHeight = cellHeight * (rows.length + 1);
 
-      cols.forEach((col, i) => {
-        if (i > 0) {
-          g.append("line")
-            .attr("x1", x + i * cellWidth)
-            .attr("y1", y)
-            .attr("x2", x + i * cellWidth)
-            .attr("y2", y + tableHeight)
-            .attr("stroke", borderColor)
-            .attr("stroke-width", 1);
-        }
-
-        g.append("text")
-          .attr("x", x + i * cellWidth + cellWidth / 2)
-          .attr("y", y + cellHeight / 2)
-          .attr("text-anchor", "middle")
-          .attr("dominant-baseline", "middle")
-          .attr("font-weight", "bold")
-          .attr("font-size", "8px")
-          .attr("fill", "#0D47A1")
-          .text(col);
-      });
-
-      rows.forEach((row, i) => {
-        const rowY = y + (i + 1) * cellHeight;
-
-        g.append("line")
-          .attr("x1", x)
-          .attr("y1", rowY)
-          .attr("x2", x + tableWidth)
-          .attr("y2", rowY)
+        g.append("rect")
+          .attr("x", x)
+          .attr("y", y)
+          .attr("width", tableWidth)
+          .attr("height", tableHeight)
+          .attr("fill", "#FFFFFF")
           .attr("stroke", borderColor)
           .attr("stroke-width", 1);
 
-        row.forEach((cell, j) => {
+        g.append("rect")
+          .attr("x", x)
+          .attr("y", y)
+          .attr("width", tableWidth)
+          .attr("height", cellHeight)
+          .attr("fill", headerColor)
+          .attr("stroke", borderColor)
+          .attr("stroke-width", 1);
+
+        cols.forEach((col, i) => {
+          if (i > 0) {
+            g.append("line")
+              .attr("x1", x + i * cellWidth)
+              .attr("y1", y)
+              .attr("x2", x + i * cellWidth)
+              .attr("y2", y + tableHeight)
+              .attr("stroke", borderColor)
+              .attr("stroke-width", 1);
+          }
+
           g.append("text")
-            .attr("x", x + j * cellWidth + cellWidth / 2)
-            .attr("y", rowY + cellHeight / 2)
+            .attr("x", x + i * cellWidth + cellWidth / 2)
+            .attr("y", y + cellHeight / 2)
             .attr("text-anchor", "middle")
             .attr("dominant-baseline", "middle")
-            .attr("font-size", "10px")
-            .attr("fill", "#333")
-            .text(cell);
+            .attr("font-weight", "bold")
+            .attr("font-size", "8px")
+            .attr("fill", "#0D47A1")
+            .text(col);
         });
-      });
 
-      return tableWidth;
+        rows.forEach((row, i) => {
+          const rowY = y + (i + 1) * cellHeight;
+
+          g.append("line")
+            .attr("x1", x)
+            .attr("y1", rowY)
+            .attr("x2", x + tableWidth)
+            .attr("y2", rowY)
+            .attr("stroke", borderColor)
+            .attr("stroke-width", 1);
+
+          row.forEach((cell, j) => {
+            g.append("text")
+              .attr("x", x + j * cellWidth + cellWidth / 2)
+              .attr("y", rowY + cellHeight / 2)
+              .attr("text-anchor", "middle")
+              .attr("dominant-baseline", "middle")
+              .attr("font-size", "10px")
+              .attr("fill", "#333")
+              .text(cell);
+          });
+        });
+
+        return tableWidth;
+      };
+
+      if (isSmallScreen) {
+        const smallCellWidth = 32;
+        const smallCellHeight = 18;
+
+        const batsTable = statsContainer
+          .append("g")
+          .attr("transform", `translate(${margin.left + 10}, 5)`);
+
+        const batsCols = ["Air", "Gnd", "Pull", "Oppo", "Mid"];
+
+        const batsRows = [
+          [
+            `${stats.batted?.air || 0}%`,
+            `${stats.batted?.ground || 0}%`,
+            `${stats.batted?.pull || 0}%`,
+            `${stats.batted?.oppo || 0}%`,
+            `${stats.batted?.middle || 0}%`,
+          ],
+        ];
+
+        createTable(
+          batsTable,
+          0,
+          0,
+          batsCols,
+          batsRows,
+          smallCellWidth,
+          smallCellHeight,
+          "#BBDEFB",
+          "#90CAF9"
+        );
+
+        const statsTable = statsContainer
+          .append("g")
+          .attr(
+            "transform",
+            `translate(${margin.left + 10}, ${smallCellHeight * 2})`
+          );
+
+        const statCols = ["", "BA", "OBP"];
+        const statRows = [
+          [
+            "All",
+            `.${((stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+            `.${((stats.onBasePercentage || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+          ],
+          [
+            "RHP",
+            `.${((stats.vsRHP?.battingAvg || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.vsRHP?.onBasePercentage || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+          ],
+        ];
+
+        createTable(
+          statsTable,
+          0,
+          0,
+          statCols,
+          statRows,
+          40,
+          smallCellHeight,
+          "#BBDEFB",
+          "#90CAF9"
+        );
+      } else {
+        const leftStats = statsContainer
+          .append("g")
+          .attr("transform", `translate(${margin.left + 25}, 30)`);
+
+        const leftCols = [
+          "Air%",
+          "Ground%",
+          "Pull%",
+          "Middle%",
+          "Oppo%",
+          "Pull Air%",
+          "Back. GB%",
+        ];
+
+        const leftRows = [
+          [
+            `${stats.batted?.air || 0}%`,
+            `${stats.batted?.ground || 0}%`,
+            `${stats.batted?.pull || 0}%`,
+            `${stats.batted?.middle || 0}%`,
+            `${stats.batted?.oppo || 0}%`,
+            `${stats.batted?.pullAir || 0}%`,
+            `${stats.batted?.backspinGroundball || 0}%`,
+          ],
+        ];
+
+        createTable(
+          leftStats,
+          0,
+          0,
+          leftCols,
+          leftRows,
+          45,
+          25,
+          "#BBDEFB",
+          "#90CAF9"
+        );
+
+        const rightStats = statsContainer
+          .append("g")
+          .attr("transform", `translate(${width - margin.right - 200}, 10)`);
+
+        const rightCols = ["", "BA", "OBP", "wOBA"];
+        const rightRows = [
+          [
+            "Overall",
+            `.${((stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+            `.${((stats.onBasePercentage || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+          ],
+          [
+            "vs RHP",
+            `.${((stats.vsRHP?.battingAvg || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.vsRHP?.onBasePercentage || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.vsRHP?.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+          ],
+          [
+            "vs LHP",
+            `.${((stats.vsLHP?.battingAvg || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.vsLHP?.onBasePercentage || 0) * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.vsLHP?.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+          ],
+        ];
+
+        createTable(
+          rightStats,
+          0,
+          0,
+          rightCols,
+          rightRows,
+          45,
+          22,
+          "#BBDEFB",
+          "#90CAF9"
+        );
+      }
+    }
+  }, [playerData, width, height]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (svgRef.current && playerData) {
+        const forceUpdate = {};
+        setPlayerData({ ...playerData, ...forceUpdate });
+      }
     };
 
-    const leftStats = statsContainer
-      .append("g")
-      .attr("transform", `translate(${margin.left + 25}, 30)`);
-
-    const leftCols = [
-      "Air%",
-      "Ground%",
-      "Pull%",
-      "Middle%",
-      "Oppo%",
-      "Pull Air%",
-      "Back. GB%",
-    ];
-
-    const leftRows = [
-      [
-        `${stats.batted?.air || 0}%`,
-        `${stats.batted?.ground || 0}%`,
-        `${stats.batted?.pull || 0}%`,
-        `${stats.batted?.middle || 0}%`,
-        `${stats.batted?.oppo || 0}%`,
-        `${stats.batted?.pullAir || 0}%`,
-        `${stats.batted?.backspinGroundball || 0}%`,
-      ],
-    ];
-
-    createTable(
-      leftStats,
-      0,
-      0,
-      leftCols,
-      leftRows,
-      45,
-      25,
-      "#BBDEFB",
-      "#90CAF9"
-    );
-
-    const rightStats = statsContainer
-      .append("g")
-      .attr("transform", `translate(${width - margin.right - 200}, 10)`);
-
-    const rightCols = ["", "BA", "OBP", "wOBA"];
-    const rightRows = [
-      [
-        "Overall",
-        `.${((stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}`,
-        `.${((stats.onBasePercentage || 0) * 1000)
-          .toFixed(0)
-          .padStart(3, "0")}`,
-        `.${((stats.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
-      ],
-      [
-        "vs RHP",
-        `.${((stats.vsRHP?.battingAvg || 0) * 1000)
-          .toFixed(0)
-          .padStart(3, "0")}`,
-        `.${((stats.vsRHP?.onBasePercentage || 0) * 1000)
-          .toFixed(0)
-          .padStart(3, "0")}`,
-        `.${((stats.vsRHP?.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
-      ],
-      [
-        "vs LHP",
-        `.${((stats.vsLHP?.battingAvg || 0) * 1000)
-          .toFixed(0)
-          .padStart(3, "0")}`,
-        `.${((stats.vsLHP?.onBasePercentage || 0) * 1000)
-          .toFixed(0)
-          .padStart(3, "0")}`,
-        `.${((stats.vsLHP?.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
-      ],
-    ];
-
-    createTable(
-      rightStats,
-      0,
-      0,
-      rightCols,
-      rightRows,
-      45,
-      22,
-      "#BBDEFB",
-      "#90CAF9"
-    );
-  }, [playerData, width, height]);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [playerData]);
 
   if (loading) {
     return (
@@ -619,7 +757,7 @@ const BaseballSprayChart = ({
 
   return (
     <div
-      className="w-full h-full"
+      className="w-full"
       style={{
         maxWidth: "800px",
         margin: "0 auto",
@@ -632,11 +770,14 @@ const BaseballSprayChart = ({
     >
       <svg
         ref={svgRef}
-        className="w-full h-full"
-        style={{ display: "block", aspectRatio: "1 / 1" }}
+        width="100%"
+        height="auto"
+        preserveAspectRatio="xMidYMid meet"
+        className="spray-chart"
+        style={{ display: "block", maxHeight: "570px" }}
       />
     </div>
   );
 };
 
-export default BaseballSprayChart;
+export default SprayChart;

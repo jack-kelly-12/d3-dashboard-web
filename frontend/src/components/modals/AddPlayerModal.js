@@ -83,10 +83,16 @@ const AddPlayerModal = ({
   };
 
   const handleSubmit = () => {
+    const selectedPlayerData =
+      !isNewPlayer && selectedPlayer
+        ? availablePlayers.find((p) => p.name === selectedPlayer)
+        : null;
+
     const newPlayer = {
       id: playerFormData.id || Date.now(),
       name: playerFormData.name,
       position: playerFormData.position,
+      playerId: selectedPlayerData?.playerId || null, // Add the playerId here
       keyStats: {
         avg: playerFormData.keyStats.avg || ".000",
         obp: playerFormData.keyStats.obp || ".000",

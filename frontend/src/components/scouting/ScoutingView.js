@@ -79,6 +79,7 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
       const transformedData = uniqueData.map((player) => ({
         name: player.Player,
         position: player.Pos || "",
+        playerId: player.player_id,
         keyStats: {
           avg: player.BA?.toFixed(3) || "",
           obp: player.OBP?.toFixed(3) || "",
@@ -115,6 +116,7 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
 
       const transformedData = uniqueData.map((player) => ({
         name: player.Player,
+        playerId: player.player_id,
         keyStats: {
           era: player.ERA?.toFixed(2) || "",
           fip: player.FIP?.toFixed(2) || "",

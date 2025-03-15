@@ -3,6 +3,7 @@ import {
   collection,
   addDoc,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   deleteDoc,
@@ -35,6 +36,38 @@ class ScoutingReportManager {
       return { id: docRef.id, ...report };
     } catch (error) {
       console.error("Error creating report:", error);
+      throw error;
+    }
+  }
+
+  async getReportById(reportId) {
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const userId = AuthManager.getCurrentUser()?.uid;
+      if (!userId) throw new Error("User must be authenticated");
+
+      const reportRef = doc(this.reportsRef, reportId);
+      const reportSnap = await getDoc(reportRef);
+
+      if (!reportSnap.exists()) {
+        throw new Error("Report not found");
+      }
+
+      const reportData = reportSnap.data();
+
+      // Verify the user has permission to access this report
+      if (reportData.userId !== userId) {
+        throw new Error("Unauthorized access to report");
+      }
+
+      return {
+        id: reportId,
+        ...reportData,
+        division: reportData.division || 3,
+        year: reportData.year || 2024,
+      };
+    } catch (error) {
+      console.error("Error getting report:", error);
       throw error;
     }
   }

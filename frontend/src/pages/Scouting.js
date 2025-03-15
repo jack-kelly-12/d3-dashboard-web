@@ -124,13 +124,13 @@ const ScoutingReport = () => {
 
     const loadingToast = toast.loading("Loading players...");
     try {
-      console.log(year);
       const data = await fetchAPI(
         `/players-hit/${teamName}?division=${division}&year=${year}`
       );
       const transformedData = data.map((player) => ({
         name: player.Player,
         position: player.Pos || "",
+        playerId: player.player_id,
         keyStats: {
           avg: player.BA?.toFixed(3) || "",
           obp: player.OBP?.toFixed(3) || "",

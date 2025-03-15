@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
-import { Plus, Trash2, FileDown, Eye } from "lucide-react";
+import { Plus, Trash2, FileDown, Eye, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 import ReportPDF from "./ReportPDF";
 import { pdf } from "@react-pdf/renderer";
 import InfoBanner from "../data/InfoBanner";
 import { useMediaQuery } from "react-responsive";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 
 const ReportsList = ({
   reports,
@@ -13,9 +15,51 @@ const ReportsList = ({
   onReportSelect,
   onDeleteReport,
 }) => {
+  const navigate = useNavigate();
   const isXSmall = useMediaQuery({ maxWidth: 480 });
   const isSmall = useMediaQuery({ maxWidth: 640 });
   const isMedium = useMediaQuery({ maxWidth: 768 });
+
+  const [openDropdownId, setOpenDropdownId] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
+
+  const buttonRefs = useRef({});
+
+  useEffect(() => {
+    if (!openDropdownId) return;
+
+    const handleClickOutside = (event) => {
+      const buttonElement = buttonRefs.current[openDropdownId];
+      if (
+        buttonElement &&
+        !buttonElement.contains(event.target) &&
+        !event.target.closest(".reports-dropdown-menu")
+      ) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openDropdownId]);
+
+  useEffect(() => {
+    if (openDropdownId && buttonRefs.current[openDropdownId]) {
+      const buttonRect =
+        buttonRefs.current[openDropdownId].getBoundingClientRect();
+      setDropdownPosition({
+        top: buttonRect.bottom + window.scrollY,
+        left: buttonRect.right - 180 + window.scrollX, // 180px is dropdown width
+        width: 180,
+      });
+    }
+  }, [openDropdownId]);
 
   const handleDeleteConfirmation = (report) => {
     toast(
@@ -68,6 +112,25 @@ const ReportsList = ({
     }
   };
 
+  const handleGenerateSpecialReport = (reportType, report) => {
+    setOpenDropdownId(null);
+
+    if (reportType === "spraychart") {
+      console.log(report);
+      navigate(`/reports/${report.id}/spraycharts`);
+    } else {
+      const reportTypeMap = {
+        bullpen: "Bullpen Report",
+        matchups: "Matchup Analysis",
+      };
+
+      toast.success(
+        `Generating ${reportTypeMap[reportType]} for ${report.teamName}`
+      );
+      console.log(`Generate ${reportType} for team ${report.teamName}`);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "—";
     const date = new Date(dateString);
@@ -93,6 +156,7 @@ const ReportsList = ({
     hoverColor,
     onClick,
     tooltip,
+    reportId,
     showDropShadow = false,
   }) => {
     const baseClasses = `
@@ -114,8 +178,16 @@ const ReportsList = ({
 
     const iconSize = isXSmall ? 14 : isSmall ? 16 : 18;
 
+    // Save button reference for dropdown positioning
+    const setButtonRef = (element) => {
+      if (reportId && element) {
+        buttonRefs.current[reportId] = element;
+      }
+    };
+
     return (
       <button
+        ref={setButtonRef}
         onClick={onClick}
         className={`${baseClasses} ${sizeClasses} ${colorClasses}`}
         title={tooltip}
@@ -125,9 +197,85 @@ const ReportsList = ({
     );
   };
 
+  // Dropdown Portal Component
+  const DropdownPortal = ({ report }) => {
+    if (!openDropdownId || openDropdownId !== report.id) return null;
+
+    return createPortal(
+      <div
+        className="reports-dropdown-menu fixed bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5"
+        style={{
+          top: `${dropdownPosition.top}px`,
+          left: `${dropdownPosition.left}px`,
+          width: `${dropdownPosition.width}px`,
+          zIndex: 9999,
+        }}
+      >
+        <div className="py-1" role="menu">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGenerateSpecialReport("spraychart", report);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 w-full text-left"
+            role="menuitem"
+          >
+            Spray Charts
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGenerateSpecialReport("bullpen", report);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 w-full text-left"
+            role="menuitem"
+          >
+            Bullpen Report (Coming Soon)
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGenerateSpecialReport("matchups", report);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 w-full text-left"
+            role="menuitem"
+          >
+            Matchup Analysis (Coming Soon)
+          </button>
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const ReportTypesButton = ({ report }) => {
+    const isOpen = openDropdownId === report.id;
+
+    return (
+      <>
+        <ActionButton
+          reportId={report.id}
+          icon={FileText}
+          color={
+            isOpen ? "text-white bg-purple-600" : "text-purple-600 bg-purple-50"
+          }
+          hoverColor={isOpen ? "bg-purple-700" : "bg-purple-100"}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpenDropdownId(isOpen ? null : report.id);
+          }}
+          tooltip="Generate Reports"
+        />
+        <DropdownPortal report={report} />
+      </>
+    );
+  };
+
   const ActionMenu = ({ row }) => {
     return (
       <div className="flex items-center gap-2 justify-end">
+        <ReportTypesButton report={row} />
+
         <ActionButton
           icon={Eye}
           color="text-blue-600 bg-blue-50"
@@ -207,7 +355,6 @@ const ReportsList = ({
           width: "30%",
           cell: (row) => formatDate(row.dateCreated),
         },
-
         {
           name: "",
           width: "30%",
@@ -247,7 +394,7 @@ const ReportsList = ({
         },
         {
           name: "",
-          width: "25%",
+          width: "30%",
           cell: (row) => <ActionMenu row={row} />,
         },
       ];
@@ -270,7 +417,7 @@ const ReportsList = ({
       },
       {
         name: "Roster",
-        width: "30%",
+        width: "25%",
         cell: (row) => (
           <div className="flex space-x-3">
             <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium">
@@ -284,7 +431,7 @@ const ReportsList = ({
       },
       {
         name: "",
-        width: "20%",
+        width: "30%",
         cell: (row) => <ActionMenu row={row} />,
       },
     ];

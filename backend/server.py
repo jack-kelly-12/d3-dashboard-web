@@ -299,6 +299,7 @@ def get_team_players(team_name):
 
         cursor.execute("""
             SELECT Player,
+                   player_id,
                    Pos,
                    BA,
                    OBPct as OBP,
@@ -351,6 +352,7 @@ def get_team_pitchers(team_name):
 
     cursor.execute("""
         SELECT Player,
+               player_id,
                ERA,
                FIP,
                "K%",
