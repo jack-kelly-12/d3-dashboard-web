@@ -501,50 +501,85 @@ def get_player_percentiles(player_id, year, division):
         conn.close()
 
 
-@app.route('/api/spraychart-data/<string:player_id>', methods=['GET'])
+@app.route('/api/spraychart-data/<player_id>', methods=['GET'])
 @require_premium
 def get_spraychart_data(player_id):
-    year = request.args.get('year', '2025')
-    division = request.args.get('division', 3)
+    """
+    Retrieve spray chart data for a specific player.
+
+    Args:
+        player_id: The unique identifier for the player
+
+    Query Parameters:
+        year: The season year (default: 2025)
+        division: The division level (default: 3)
+
+    Returns:
+        JSON containing hit location data, player info, and related statistics
+    """
+    # Parse and validate query parameters
     try:
-        year = int(year)
-        division = int(division)
+        year = int(request.args.get('year', '2025'))
+        division = int(request.args.get('division', '3'))
     except ValueError:
         return jsonify({"error": "Invalid year or division format"}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    # Field pattern constants for better readability and maintainability
+    FIELD_PATTERNS = {
+        "to_lf": [r'to left', r'to lf', r'left field', r'lf line'],
+        "to_cf": [r'to center', r'to cf', r'center field'],
+        "to_rf": [r'to right', r'to rf', r'right field', r'rf line'],
+        "to_lf_hr": [r'homered to left', r'homered to lf', r'homers to lf', r'homers to left',],
+        "to_cf_hr": [r'homered to center', r'homered to cf', r'homers to cf', r'homers to center',],
+        "to_rf_hr": [r'homered to right', r'homered to rf', r'homers to rf', r'homers to right',],
+        "to_3b": [r'to 3b', r'to third', r'third base', r'3b line'],
+        "to_ss": [r'ss to 2b', r'to ss', r'to short', r'shortstop'],
+        "up_middle": [r'up the middle', r'to pitcher', r'to p'],
+        "to_2b": [r'2b to ss', r'to 2b', r'to second', r'second base'],
+        "to_1b": [r'to 1b', r'to first', r'first base', r'1b line']
+    }
 
+    # Initialize hit location counters
+    hit_counts = {location: 0 for location in FIELD_PATTERNS.keys()}
+
+    conn = None
     try:
-        # Get player name and team information
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get player info
         cursor.execute("""
-            SELECT r.player_name, r.team_name, r.bats FROM rosters r
+            SELECT r.player_name, r.team_name, r.bats 
+            FROM rosters r
             WHERE r.player_id = ? AND r.year = ? AND r.division = ?
             LIMIT 1
         """, (player_id, year, division))
 
         player_info = cursor.fetchone()
         if not player_info:
-            return jsonify({"error": "Player not found"}), 404
+            return jsonify({"error": f"Player not found for ID {player_id} in year {year}, division {division}"}), 404
 
-        player_name = dict(player_info)["player_name"]
-        team_name = dict(player_info)["team_name"]
-        bats = dict(player_info).get("bats", "R")
+        player_info_dict = dict(player_info)
+        player_name = player_info_dict["player_name"]
+        team_name = player_info_dict["team_name"]
+        bats = player_info_dict.get("bats", "R")
 
-        # Get pbp data
+        # Get play-by-play data - use a more efficient approach to fetch all at once
         cursor.execute("""
-            SELECT description FROM pbp
+            SELECT description 
+            FROM pbp
             WHERE batter_id = ? AND year = ? AND division = ?
         """, (player_id, year, division))
 
-        pbp_data = [dict(row) for row in cursor.fetchall()]
+        # Convert to a list of dictionaries to make data access more consistent
+        pbp_data = [{"description": row["description"]}
+                    for row in cursor.fetchall()]
 
         # Get splits data
         cursor.execute("""
             SELECT * FROM splits
             WHERE batter_id = ? AND Year = ? AND Division = ?
         """, (player_id, year, division))
-
         splits_data = cursor.fetchone()
 
         # Get batted ball data
@@ -552,62 +587,41 @@ def get_spraychart_data(player_id):
             SELECT * FROM batted_ball
             WHERE batter_id = ? AND Year = ? AND Division = ?
         """, (player_id, year, division))
-
         batted_ball_data = cursor.fetchone()
 
-        # Dictionary to store hit location counts
-        hit_counts = {
-            "to_lf": 0,
-            "to_cf": 0,
-            "to_rf": 0,
-            "to_lf_hr": 0,
-            "to_cf_hr": 0,
-            "to_rf_hr": 0,
-            "to_3b": 0,
-            "to_ss": 0,
-            "up_middle": 0,
-            "to_2b": 0,
-            "to_1b": 0
-        }
-
-        # Count hits to each location
+        # Compile regex patterns once outside the loop for better performance
         import re
+        compiled_patterns = {}
+        for location, patterns in FIELD_PATTERNS.items():
+            compiled_patterns[location] = [
+                re.compile(pattern) for pattern in patterns]
+
+        # Process each play to categorize hits
         for play in pbp_data:
-            description = play.get('description', '').lower()
+            description = play['description'].lower(
+            ) if play and 'description' in play else ''
 
             # Skip empty descriptions
             if not description:
                 continue
 
-            # Check for home runs first
-            if 'homered to left' in description or 'homered to lf' in description:
-                hit_counts["to_lf_hr"] += 1
-            elif 'homered to center' in description or 'homered to cf' in description:
-                hit_counts["to_cf_hr"] += 1
-            elif 'homered to right' in description or 'homered to rf' in description:
-                hit_counts["to_rf_hr"] += 1
-            # Check for other hits to left field
-            elif re.search(r'to left|to lf|left field|lf line', description):
-                hit_counts["to_lf"] += 1
-            # Check for other hits to center field
-            elif re.search(r'to center|to cf|center field', description):
-                hit_counts["to_cf"] += 1
-            # Check for other hits to right field
-            elif re.search(r'to right|to rf|right field|rf line', description):
-                hit_counts["to_rf"] += 1
-            # Check for hits to infield positions
-            elif re.search(r'to 3b|to third|third base|3b line', description):
-                hit_counts["to_3b"] += 1
-            elif re.search(r'ss to 2b|to ss|to short|shortstop', description):
-                hit_counts["to_ss"] += 1
-            elif re.search(r'up the middle|to pitcher|to p', description):
-                hit_counts["up_middle"] += 1
-            elif re.search(r'2b to ss|to 2b|to second|second base', description):
-                hit_counts["to_2b"] += 1
-            elif re.search(r'to 1b|to first|first base|1b line', description):
-                hit_counts["to_1b"] += 1
+            # Process each location
+            for location, patterns in compiled_patterns.items():
+                # Special handling for home runs to avoid double-counting
+                if "_hr" in location and any(pattern.search(description) for pattern in patterns):
+                    hit_counts[location] += 1
+                    break
 
-        return jsonify({
+            # Only process non-HR hits if we didn't already count this as a HR
+            if not any(pattern.search(description) for location, patterns in compiled_patterns.items()
+                       if "_hr" in location for pattern in patterns):
+                for location, patterns in compiled_patterns.items():
+                    if "_hr" not in location and any(pattern.search(description) for pattern in patterns):
+                        hit_counts[location] += 1
+                        break
+
+        # Prepare response data
+        response_data = {
             "counts": hit_counts,
             "splits_data": dict(splits_data) if splits_data else {},
             "batted_ball_data": dict(batted_ball_data) if batted_ball_data else {},
@@ -617,14 +631,17 @@ def get_spraychart_data(player_id):
             "bats": bats,
             "year": year,
             "division": division
-        })
+        }
+
+        return jsonify(response_data)
 
     except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        return jsonify({"error": str(e)}), 500
+        import logging
+        logging.error(f"Error in get_spraychart_data: {str(e)}", exc_info=True)
+        return jsonify({"error": "An internal server error occurred"}), 500
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 @app.route('/api/player/<string:player_id>', methods=['GET'])

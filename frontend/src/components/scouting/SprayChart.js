@@ -445,7 +445,7 @@ const SprayChart = ({
       const textX = centerX + Math.sin(textAngle) * textRadius;
       const textY = centerY - Math.cos(textAngle) * textRadius;
 
-      if (percentage > 0 && (!isTinyScreen || percentage >= 15)) {
+      if (percentage > 0) {
         const infieldFontSize = isTinyScreen
           ? "8px"
           : isSmallScreen

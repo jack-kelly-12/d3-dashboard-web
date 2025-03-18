@@ -197,7 +197,6 @@ const ReportsList = ({
     );
   };
 
-  // Dropdown Portal Component
   const DropdownPortal = ({ report }) => {
     if (!openDropdownId || openDropdownId !== report.id) return null;
 
