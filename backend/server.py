@@ -504,27 +504,12 @@ def get_player_percentiles(player_id, year, division):
 @app.route('/api/spraychart-data/<player_id>', methods=['GET'])
 @require_premium
 def get_spraychart_data(player_id):
-    """
-    Retrieve spray chart data for a specific player.
-
-    Args:
-        player_id: The unique identifier for the player
-
-    Query Parameters:
-        year: The season year (default: 2025)
-        division: The division level (default: 3)
-
-    Returns:
-        JSON containing hit location data, player info, and related statistics
-    """
-    # Parse and validate query parameters
     try:
         year = int(request.args.get('year', '2025'))
         division = int(request.args.get('division', '3'))
     except ValueError:
         return jsonify({"error": "Invalid year or division format"}), 400
 
-    # Field pattern constants for better readability and maintainability
     FIELD_PATTERNS = {
         "to_lf": [r'to left', r'to lf', r'left field', r'lf line'],
         "to_cf": [r'to center', r'to cf', r'center field'],
@@ -539,7 +524,6 @@ def get_spraychart_data(player_id):
         "to_1b": [r'to 1b', r'to first', r'first base', r'1b line']
     }
 
-    # Initialize hit location counters
     hit_counts = {location: 0 for location in FIELD_PATTERNS.keys()}
 
     conn = None
@@ -547,7 +531,6 @@ def get_spraychart_data(player_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Get player info
         cursor.execute("""
             SELECT r.player_name, r.team_name, r.bats 
             FROM rosters r

@@ -87,13 +87,13 @@ const SprayChart = ({
         const onBasePercentage = splits.OBP_Overall || 0;
         const wOBA = splits.wOBA_Overall || 0;
 
-        const vspRhpBa = splits.BA_vs_RHP || 0;
-        const vsRhpObp = splits.OBP_vs_RHP || 0;
-        const vsRhpWoba = splits.wOBA_vs_RHP || 0;
+        const vspRhpBa = splits["BA_vs RHP"] || 0;
+        const vsRhpObp = splits["OBP_vs RHP"] || 0;
+        const vsRhpWoba = splits["wOBA_vs RHP"] || 0;
 
-        const vsLhpBa = splits.BA_vs_LHP || 0;
-        const vsLhpObp = splits.OBP_vs_LHP || 0;
-        const vsLhpWoba = splits.wOBA_vs_LHP || 0;
+        const vsLhpBa = splits["BA_vs LHP"] || 0;
+        const vsLhpObp = splits["OBP_vs LHP"] || 0;
+        const vsLhpWoba = splits["wOBA_vs LHP"] || 0;
 
         const airPct = battedBall.fb_pct
           ? Math.round(

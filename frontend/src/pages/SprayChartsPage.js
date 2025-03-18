@@ -7,6 +7,213 @@ import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { createRoot } from "react-dom/client";
 
+function getSVGString(svgNode) {
+  svgNode.setAttribute("xlink", "http://www.w3.org/1999/xlink");
+
+  const styleNode = document.createElement("style");
+  styleNode.textContent = `
+    text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      shape-rendering: geometricPrecision;
+      text-rendering: optimizeLegibility;
+    }
+  `;
+  svgNode.appendChild(styleNode);
+
+  // Get CSS styles
+  var cssStyleText = getCSSStyles(svgNode);
+  appendCSS(cssStyleText, svgNode);
+
+  // Serialize SVG
+  var serializer = new XMLSerializer();
+  var svgString = serializer.serializeToString(svgNode);
+  svgString = svgString.replace(/(\w+)?:?xlink=/g, "xmlns:xlink="); // Fix root xlink without namespace
+  svgString = svgString.replace(/NS\d+:href/g, "xlink:href"); // Safari NS namespace fix
+
+  return svgString;
+}
+
+function getCSSStyles(parentElement) {
+  var selectorTextArr = [];
+
+  if (parentElement.id) selectorTextArr.push("#" + parentElement.id);
+  for (var c = 0; c < parentElement.classList.length; c++)
+    if (!contains("." + parentElement.classList[c], selectorTextArr))
+      selectorTextArr.push("." + parentElement.classList[c]);
+
+  var nodes = parentElement.getElementsByTagName("*");
+  for (var i = 0; i < nodes.length; i++) {
+    var id = nodes[i].id;
+    if (id && !contains("#" + id, selectorTextArr))
+      selectorTextArr.push("#" + id);
+
+    var classes = nodes[i].classList;
+    for (var c = 0; c < classes.length; c++)
+      if (!contains("." + classes[c], selectorTextArr))
+        selectorTextArr.push("." + classes[c]);
+  }
+
+  var extractedCSSText = "";
+  for (var i = 0; i < document.styleSheets.length; i++) {
+    var s = document.styleSheets[i];
+
+    try {
+      if (!s.cssRules) continue;
+    } catch (e) {
+      if (e.name !== "SecurityError") throw e;
+      continue;
+    }
+
+    var cssRules = s.cssRules;
+    for (var r = 0; r < cssRules.length; r++) {
+      if (contains(cssRules[r].selectorText, selectorTextArr))
+        extractedCSSText += cssRules[r].cssText;
+    }
+  }
+
+  return extractedCSSText;
+
+  function contains(str, arr) {
+    return arr.indexOf(str) === -1 ? false : true;
+  }
+}
+
+function appendCSS(cssText, element) {
+  var styleElement = document.createElement("style");
+  styleElement.setAttribute("type", "text/css");
+  styleElement.innerHTML = cssText;
+  var refNode = element.hasChildNodes() ? element.children[0] : null;
+  element.insertBefore(styleElement, refNode);
+}
+
+function svgToImage(svgString, width, height, callback) {
+  var imgsrc =
+    "data:image/svg+xml;base64," +
+    btoa(unescape(encodeURIComponent(svgString)));
+
+  var canvas = document.createElement("canvas");
+  canvas.width = width * 2; // 2x resolution
+  canvas.height = height * 2; // 2x resolution
+
+  var context = canvas.getContext("2d");
+  context.scale(2, 2);
+
+  var image = new Image();
+  image.onload = function () {
+    context.fillStyle = "white";
+    context.fillRect(0, 0, width, height);
+
+    context.textRendering = "optimizeLegibility";
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+
+    context.drawImage(image, 0, 0, width, height);
+
+    canvas.toBlob(
+      function (blob) {
+        if (callback) callback(blob);
+      },
+      "image/jpeg",
+      0.98
+    );
+  };
+
+  image.src = imgsrc;
+}
+
+export const exportSingleSprayChart = async (
+  player,
+  reportYear = 2024,
+  division = 3
+) => {
+  try {
+    const tempDiv = document.createElement("div");
+    tempDiv.style.position = "absolute";
+    tempDiv.style.left = "-9999px";
+    tempDiv.style.width = "800px";
+    tempDiv.style.height = "500px";
+    document.body.appendChild(tempDiv);
+
+    return new Promise((resolve, reject) => {
+      const root = createRoot(tempDiv);
+
+      root.render(
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      );
+
+      setTimeout(() => {
+        root.render(
+          <SprayChart
+            width={800}
+            height={500}
+            playerId={player.playerId}
+            year={reportYear}
+            division={division}
+          />
+        );
+
+        let attempts = 0;
+        const maxAttempts = 20;
+        const checkInterval = 500;
+
+        const checkForSVG = () => {
+          attempts++;
+          const svgElement = tempDiv.querySelector("svg");
+
+          if (svgElement && svgElement.querySelector("path")) {
+            try {
+              const clonedSvg = svgElement.cloneNode(true);
+              clonedSvg.setAttribute("width", "800");
+              clonedSvg.setAttribute("height", "500");
+              clonedSvg.setAttribute("viewBox", "0 0 800 500");
+
+              if (clonedSvg.getAttribute("height") === "auto") {
+                clonedSvg.setAttribute("height", "500");
+              }
+
+              const svgString = getSVGString(clonedSvg);
+
+              svgToImage(svgString, 800, 500, (blob) => {
+                if (blob) {
+                  const safeFileName = player.name
+                    .replace(/[^a-z0-9]/gi, "_")
+                    .toLowerCase();
+                  saveAs(blob, `${safeFileName}_spray_chart.jpg`);
+                  resolve(blob);
+                } else {
+                  reject(new Error("Failed to create image blob"));
+                }
+
+                root.unmount();
+                document.body.removeChild(tempDiv);
+              });
+            } catch (error) {
+              root.unmount();
+              document.body.removeChild(tempDiv);
+              reject(error);
+            }
+          } else if (attempts >= maxAttempts) {
+            root.unmount();
+            document.body.removeChild(tempDiv);
+            reject(
+              new Error(
+                `Could not render spray chart for player: ${player.name}`
+              )
+            );
+          } else {
+            setTimeout(checkForSVG, checkInterval);
+          }
+        };
+
+        setTimeout(checkForSVG, 1000);
+      }, 100);
+    });
+  } catch (error) {
+    console.error("Error exporting spray chart:", error);
+    throw error;
+  }
+};
+
 export const exportAllSprayCharts = async (report) => {
   try {
     const batters = report?.positionPlayers || [];
@@ -16,108 +223,22 @@ export const exportAllSprayCharts = async (report) => {
 
     const zip = new JSZip();
 
-    const { default: SprayChart } = await import(
-      "../components/scouting/SprayChart"
-    );
-
-    for (let i = 0; i < batters.length; i++) {
-      const batter = batters[i];
-
-      try {
-        const tempDiv = document.createElement("div");
-        tempDiv.style.position = "absolute";
-        tempDiv.style.left = "-9999px";
-        tempDiv.style.width = "800px";
-        tempDiv.style.height = "800px";
-        tempDiv.style.overflow = "hidden";
-        document.body.appendChild(tempDiv);
-
-        tempDiv.setAttribute("data-player-id", batter.playerId);
-
-        const root = createRoot(tempDiv);
-        root.render(
-          <SprayChart
-            width={800}
-            height={800}
-            playerId={batter.playerId}
-            year={report.year || 2024}
-            division={report.division || 3}
-          />
-        );
-
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        const svgElement = tempDiv.querySelector("svg");
-
-        if (!svgElement) {
-          console.warn(`Could not find SVG for player: ${batter.name}`);
-          document.body.removeChild(tempDiv);
-          continue;
-        }
-
-        svgElement.setAttribute("width", "800");
-        svgElement.setAttribute("height", "800");
-        svgElement.setAttribute("length", "800");
-        svgElement.setAttribute("viewBox", "0 0 800 800");
-        svgElement.style.maxHeight = "800px";
-
-        if (svgElement.getAttribute("height") === "auto") {
-          svgElement.setAttribute("height", "800");
-        }
-
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], {
-          type: "image/svg+xml;charset=utf-8",
-        });
-        const url = URL.createObjectURL(svgBlob);
-
-        const img = new Image();
-
-        await new Promise((resolve, reject) => {
-          img.onload = () => {
-            const canvas = document.createElement("canvas");
-            canvas.width = 800;
-            canvas.height = 800;
-            const ctx = canvas.getContext("2d");
-
-            ctx.fillStyle = "white";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-            canvas.toBlob(
-              (blob) => {
-                if (blob) {
-                  const safeFileName = batter.name
-                    .replace(/[^a-z0-9]/gi, "_")
-                    .toLowerCase();
-
-                  zip.file(`${safeFileName}_spray_chart.jpg`, blob);
-                  resolve();
-                } else {
-                  reject(new Error("Failed to create image blob"));
-                }
-              },
-              "image/jpeg",
-              0.95
-            );
-          };
-
-          img.onerror = () => {
-            console.error("Failed to load SVG");
-            reject(new Error("Failed to load SVG"));
-          };
-
-          img.src = url;
-        });
-
-        URL.revokeObjectURL(url);
-        root.unmount();
-        document.body.removeChild(tempDiv);
-      } catch (playerError) {
-        console.error(`Error processing player ${batter.name}:`, playerError);
-      }
+    for (const batter of batters) {
+      await exportBatterToZip(
+        batter,
+        zip,
+        report.year || 2024,
+        report.division || 3
+      );
     }
 
-    const zipBlob = await zip.generateAsync({ type: "blob" });
+    const zipBlob = await zip.generateAsync({
+      type: "blob",
+      compression: "DEFLATE",
+      compressionOptions: {
+        level: 6,
+      },
+    });
 
     const teamName = report.teamName
       ? report.teamName.replace(/[^a-z0-9]/gi, "_").toLowerCase()
@@ -126,110 +247,96 @@ export const exportAllSprayCharts = async (report) => {
     const fileName = `${teamName}_spray_charts_${year}.zip`;
 
     saveAs(zipBlob, fileName);
+    console.log(
+      `Successfully exported ${batters.length} spray charts to ${fileName}`
+    );
   } catch (error) {
     console.error("Error exporting spray charts:", error);
+    throw error;
   }
 };
 
-export const exportSingleSprayChart = async (
-  player,
-  reportYear = 2024,
-  division = 3
-) => {
-  try {
-    const { default: SprayChart } = await import(
-      "../components/scouting/SprayChart"
-    );
+const exportBatterToZip = async (batter, zip, year, division) => {
+  const tempDiv = document.createElement("div");
+  tempDiv.style.position = "absolute";
+  tempDiv.style.left = "-9999px";
+  tempDiv.style.width = "800px";
+  tempDiv.style.height = "500px";
+  document.body.appendChild(tempDiv);
 
-    const tempDiv = document.createElement("div");
-    tempDiv.style.position = "absolute";
-    tempDiv.style.left = "-9999px";
-    tempDiv.style.width = "800px";
-    tempDiv.style.height = "800px";
-    tempDiv.style.overflow = "hidden";
-    document.body.appendChild(tempDiv);
-
-    tempDiv.setAttribute("data-player-id", player.playerId);
+  return new Promise((resolve) => {
     const root = createRoot(tempDiv);
+
     root.render(
-      <SprayChart
-        width={800}
-        height={800}
-        playerId={player.playerId}
-        year={reportYear}
-        division={division}
-      />
+      <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
     );
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    setTimeout(() => {
+      root.render(
+        <SprayChart
+          width={800}
+          height={500}
+          playerId={batter.playerId}
+          year={year}
+          division={division}
+        />
+      );
 
-    const svgElement = tempDiv.querySelector("svg");
+      let attempts = 0;
+      const maxAttempts = 20;
+      const checkInterval = 500;
 
-    if (!svgElement) {
-      console.warn(`Could not find SVG for player: ${player.name}`);
-      root.unmount();
-      document.body.removeChild(tempDiv);
-      return;
-    }
+      const checkForSVG = () => {
+        attempts++;
+        try {
+          const svgElement = tempDiv.querySelector("svg");
 
-    // Match the exact attributes from the working function
-    svgElement.setAttribute("width", "800");
-    svgElement.setAttribute("height", "800");
-    svgElement.setAttribute("length", "800");
-    svgElement.setAttribute("viewBox", "0 0 800 800");
-    svgElement.style.maxHeight = "800px";
+          if (svgElement && svgElement.querySelector("path")) {
+            const clonedSvg = svgElement.cloneNode(true);
+            clonedSvg.setAttribute("width", "800");
+            clonedSvg.setAttribute("height", "500");
+            clonedSvg.setAttribute("viewBox", "0 0 800 500");
 
-    // Fix any invalid attributes that might cause rendering issues
-    if (svgElement.getAttribute("height") === "auto") {
-      svgElement.setAttribute("height", "800");
-    }
+            if (clonedSvg.getAttribute("height") === "auto") {
+              clonedSvg.setAttribute("height", "500");
+            }
 
-    const svgData = new XMLSerializer().serializeToString(svgElement);
-    const svgBlob = new Blob([svgData], {
-      type: "image/svg+xml;charset=utf-8",
-    });
-    const url = URL.createObjectURL(svgBlob);
+            const svgString = getSVGString(clonedSvg);
 
-    const img = new Image();
+            svgToImage(svgString, 800, 500, (blob) => {
+              if (blob) {
+                const safeFileName = batter.name
+                  .replace(/[^a-z0-9]/gi, "_")
+                  .toLowerCase();
+                zip.file(`${safeFileName}_spray_chart.jpg`, blob);
+                console.log(`Successfully added ${batter.name} to zip`);
+              }
 
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 800;
-      canvas.height = 800;
-      const ctx = canvas.getContext("2d");
-
-      ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const safeFileName = player.name
-              .replace(/[^a-z0-9]/gi, "_")
-              .toLowerCase();
-            saveAs(blob, `${safeFileName}_spray_chart.jpg`);
+              root.unmount();
+              document.body.removeChild(tempDiv);
+              resolve();
+            });
+          } else if (attempts >= maxAttempts) {
+            console.warn(
+              `Could not render spray chart for player: ${batter.name} after ${maxAttempts} attempts`
+            );
+            root.unmount();
+            document.body.removeChild(tempDiv);
+            resolve(); // Skip this player but continue with others
+          } else {
+            setTimeout(checkForSVG, checkInterval);
           }
+        } catch (error) {
+          console.warn(`Error processing player ${batter.name}:`, error);
           root.unmount();
           document.body.removeChild(tempDiv);
-          URL.revokeObjectURL(url);
-        },
-        "image/jpeg",
-        0.95
-      );
-    };
+          resolve();
+        }
+      };
 
-    img.onerror = () => {
-      console.error("Failed to load SVG");
-      root.unmount();
-      document.body.removeChild(tempDiv);
-      URL.revokeObjectURL(url);
-    };
-
-    img.src = url;
-  } catch (error) {
-    console.error("Error exporting spray chart:", error);
-  }
+      setTimeout(checkForSVG, 1000);
+    }, 100);
+  });
 };
 
 const SprayChartsPage = () => {
@@ -238,6 +345,8 @@ const SprayChartsPage = () => {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [chartsReady, setChartsReady] = useState(false);
+  const [chartsLoading, setChartsLoading] = useState(true);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -257,8 +366,56 @@ const SprayChartsPage = () => {
     }
   }, [reportId]);
 
+  // Add a new useEffect to check if all charts are ready
+  useEffect(() => {
+    if (!report || loading) return;
+
+    const batters = report.positionPlayers || [];
+    if (batters.length === 0) {
+      setChartsReady(true);
+      setChartsLoading(false);
+      return;
+    }
+
+    setChartsLoading(true);
+
+    // Wait for initial render, then check charts
+    const checkChartsInterval = setInterval(() => {
+      const allChartsRendered = batters.every((batter) => {
+        const container = document.querySelector(
+          `[data-player-id="${batter.playerId}"]`
+        );
+        if (!container) return false;
+
+        const svg = container.querySelector("svg");
+        const hasData = svg && svg.querySelector("path");
+
+        return !!hasData;
+      });
+
+      if (allChartsRendered) {
+        setChartsReady(true);
+        setChartsLoading(false);
+        clearInterval(checkChartsInterval);
+      }
+    }, 500);
+
+    // Timeout after 15 seconds to prevent infinite loading
+    const timeout = setTimeout(() => {
+      clearInterval(checkChartsInterval);
+      setChartsLoading(false);
+      // Even if not all charts are ready, we'll allow export after timeout
+      setChartsReady(true);
+    }, 15000);
+
+    return () => {
+      clearInterval(checkChartsInterval);
+      clearTimeout(timeout);
+    };
+  }, [report, loading]);
+
   const handleExportAll = async () => {
-    if (exporting) return;
+    if (exporting || !chartsReady) return;
 
     try {
       setExporting(true);
@@ -271,11 +428,15 @@ const SprayChartsPage = () => {
   };
 
   const handleExportSingle = async (player) => {
-    if (exporting) return;
+    if (exporting || !chartsReady) return;
 
     try {
       setExporting(true);
-      await exportSingleSprayChart(player);
+      await exportSingleSprayChart(
+        player,
+        report.year || 2024,
+        report.division || 3
+      );
     } catch (error) {
       console.error("Error in export:", error);
     } finally {
@@ -317,11 +478,11 @@ const SprayChartsPage = () => {
   }
 
   const batters = report.positionPlayers || [];
+  const isExportDisabled = exporting || batters.length === 0 || chartsLoading;
 
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
       <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-2">
             <button
@@ -341,15 +502,20 @@ const SprayChartsPage = () => {
           </div>
           <button
             onClick={handleExportAll}
-            disabled={exporting || batters.length === 0}
+            disabled={isExportDisabled}
             className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-sm ${
-              exporting || batters.length === 0
+              isExportDisabled
                 ? "bg-gray-400 cursor-not-allowed"
                 : "bg-blue-600 hover:bg-blue-700"
             } text-white rounded-lg transition-colors shadow-sm`}
           >
-            <Printer size={16} />
-            {exporting ? "Exporting..." : "Export All"}
+            {loading
+              ? "Loading charts..."
+              : exporting
+              ? "Exporting..."
+              : chartsLoading
+              ? "Charts loading..."
+              : "Export All"}
           </button>
         </div>
 
@@ -374,7 +540,6 @@ const SprayChartsPage = () => {
                 key={batter.id}
                 className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white"
               >
-                {/* Spray Chart Visualization */}
                 <div
                   className="aspect-square bg-white"
                   data-player-id={batter.playerId}
@@ -388,30 +553,16 @@ const SprayChartsPage = () => {
                   />
                 </div>
 
-                {/* Batter info */}
                 <div className="p-4 border-t border-gray-100">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <h3 className="font-bold text-gray-800">{batter.name}</h3>
                       <div className="text-sm text-gray-500 flex items-center gap-2">
                         <span>{batter.position}</span>
-                        {batter.bats && (
-                          <>
-                            <span className="text-gray-300">•</span>
-                            <span>Bats: {batter.bats}</span>
-                          </>
-                        )}
-                        {batter.jersey && (
-                          <>
-                            <span className="text-gray-300">•</span>
-                            <span>#{batter.jersey}</span>
-                          </>
-                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Stats preview - Use actual player stats if available */}
                   <div className="grid grid-cols-3 gap-2 mt-3 mb-4 text-center">
                     <div className="bg-gray-50 p-2 rounded">
                       <div className="text-lg font-semibold text-gray-700">
@@ -433,18 +584,21 @@ const SprayChartsPage = () => {
                     </div>
                   </div>
 
-                  {/* Export button */}
                   <button
                     onClick={() => handleExportSingle(batter)}
-                    disabled={exporting}
+                    disabled={isExportDisabled}
                     className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-sm ${
-                      exporting
+                      isExportDisabled
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     } rounded-lg transition-colors`}
                   >
                     <FileDown size={16} />
-                    {exporting ? "Exporting..." : "Export Spray Chart"}
+                    {exporting
+                      ? "Exporting..."
+                      : chartsLoading
+                      ? "Chart loading..."
+                      : "Export Spray Chart"}
                   </button>
                 </div>
               </div>
