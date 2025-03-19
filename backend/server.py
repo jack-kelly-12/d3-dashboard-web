@@ -524,78 +524,57 @@ def get_spraychart_data(player_id):
         "to_1b": [r'to 1b', r'to first', r'first base', r'1b line']
     }
 
+    import re
+    compiled_patterns = {}
+    for location, patterns in FIELD_PATTERNS.items():
+        compiled_patterns[location] = [
+            re.compile(pattern) for pattern in patterns]
+
     hit_counts = {location: 0 for location in FIELD_PATTERNS.keys()}
 
     conn = None
     try:
         conn = get_db_connection()
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+
         cursor = conn.cursor()
 
-        cursor.execute("""
+        conn.execute("BEGIN TRANSACTION;")
+
+        player_info_result = cursor.execute("""
             SELECT r.player_name, r.team_name, r.bats 
             FROM rosters r
             WHERE r.player_id = ? AND r.year = ? AND r.division = ?
             LIMIT 1
-        """, (player_id, year, division))
+        """, (player_id, year, division)).fetchone()
 
-        player_info = cursor.fetchone()
-        if not player_info:
+        if not player_info_result:
             return jsonify({"error": f"Player not found for ID {player_id} in year {year}, division {division}"}), 404
 
-        player_info_dict = dict(player_info)
+        player_info_dict = dict(player_info_result)
         player_name = player_info_dict["player_name"]
         team_name = player_info_dict["team_name"]
         bats = player_info_dict.get("bats", "R")
 
-        # Get play-by-play data - use a more efficient approach to fetch all at once
-        cursor.execute("""
+        pbp_results = cursor.execute("""
             SELECT description 
             FROM pbp
             WHERE batter_id = ? AND year = ? AND division = ?
-        """, (player_id, year, division))
+        """, (player_id, year, division)).fetchall()
 
-        # Convert to a list of dictionaries to make data access more consistent
-        pbp_data = [{"description": row["description"]}
-                    for row in cursor.fetchall()]
-
-        # Get splits data
-        cursor.execute("""
-            SELECT * FROM splits
-            WHERE batter_id = ? AND Year = ? AND Division = ?
-        """, (player_id, year, division))
-        splits_data = cursor.fetchone()
-
-        # Get batted ball data
-        cursor.execute("""
-            SELECT * FROM batted_ball
-            WHERE batter_id = ? AND Year = ? AND Division = ?
-        """, (player_id, year, division))
-        batted_ball_data = cursor.fetchone()
-
-        # Compile regex patterns once outside the loop for better performance
-        import re
-        compiled_patterns = {}
-        for location, patterns in FIELD_PATTERNS.items():
-            compiled_patterns[location] = [
-                re.compile(pattern) for pattern in patterns]
-
-        # Process each play to categorize hits
-        for play in pbp_data:
+        for play in pbp_results:
             description = play['description'].lower(
             ) if play and 'description' in play else ''
 
-            # Skip empty descriptions
             if not description:
                 continue
 
-            # Process each location
             for location, patterns in compiled_patterns.items():
-                # Special handling for home runs to avoid double-counting
                 if "_hr" in location and any(pattern.search(description) for pattern in patterns):
                     hit_counts[location] += 1
                     break
 
-            # Only process non-HR hits if we didn't already count this as a HR
             if not any(pattern.search(description) for location, patterns in compiled_patterns.items()
                        if "_hr" in location for pattern in patterns):
                 for location, patterns in compiled_patterns.items():
@@ -603,7 +582,18 @@ def get_spraychart_data(player_id):
                         hit_counts[location] += 1
                         break
 
-        # Prepare response data
+        splits_data = cursor.execute("""
+            SELECT * FROM splits
+            WHERE batter_id = ? AND Year = ? AND Division = ?
+        """, (player_id, year, division)).fetchone()
+
+        batted_ball_data = cursor.execute("""
+            SELECT * FROM batted_ball
+            WHERE batter_id = ? AND Year = ? AND Division = ?
+        """, (player_id, year, division)).fetchone()
+
+        conn.execute("COMMIT;")
+
         response_data = {
             "counts": hit_counts,
             "splits_data": dict(splits_data) if splits_data else {},
@@ -621,6 +611,8 @@ def get_spraychart_data(player_id):
     except Exception as e:
         import logging
         logging.error(f"Error in get_spraychart_data: {str(e)}", exc_info=True)
+        if conn:
+            conn.execute("ROLLBACK;")
         return jsonify({"error": "An internal server error occurred"}), 500
     finally:
         if conn:
