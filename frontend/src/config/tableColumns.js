@@ -358,7 +358,7 @@ export const columnsSituational = [
   },
   {
     name: "PA w/ RISP",
-    selector: (row) => row.PA_RISP,
+    selector: (row) => row.PA_RISP || 0,
     sortable: true,
     width: "6.875rem",
     className: "px-3 py-2 text-xs text-center",
@@ -381,7 +381,7 @@ export const columnsSituational = [
   },
   {
     name: "LI+ PA",
-    selector: (row) => row.PA_High_Leverage,
+    selector: (row) => row.PA_High_Leverage || 0,
     sortable: true,
     width: "6.875rem",
     className: "px-3 py-2 text-xs text-center",
@@ -404,7 +404,7 @@ export const columnsSituational = [
   },
   {
     name: "LI- PA",
-    selector: (row) => row.PA_Low_Leverage,
+    selector: (row) => row.PA_Low_Leverage || 0,
     sortable: true,
     width: "6.875rem",
     className: "px-3 py-2 text-xs text-center",
@@ -486,7 +486,7 @@ export const columnsSituationalPitcher = [
   },
   {
     name: "BF",
-    selector: (row) => row.PA_Overall,
+    selector: (row) => row.PA_Overall || 0,
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
@@ -509,7 +509,7 @@ export const columnsSituationalPitcher = [
   },
   {
     name: "BF w/ RISP",
-    selector: (row) => row.PA_RISP,
+    selector: (row) => row.PA_RISP || 0,
     sortable: true,
     width: "6.875rem",
     className: "px-3 py-2 text-xs text-center",
@@ -532,7 +532,7 @@ export const columnsSituationalPitcher = [
   },
   {
     name: "LI+ BF",
-    selector: (row) => row.PA_High_Leverage,
+    selector: (row) => row.PA_High_Leverage || 0,
     sortable: true,
     width: "6.875rem",
     className: "px-3 py-2 text-xs text-center",
@@ -555,7 +555,7 @@ export const columnsSituationalPitcher = [
   },
   {
     name: "LI- BF",
-    selector: (row) => row.PA_Low_Leverage,
+    selector: (row) => row.PA_Low_Leverage || 0,
     sortable: true,
     width: "6.875rem",
     className: "px-3 py-2 text-xs text-center",
