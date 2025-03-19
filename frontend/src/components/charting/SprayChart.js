@@ -134,11 +134,9 @@ const SprayChart = ({
         .attr("opacity", isPreview ? 0.6 : 1);
     };
 
-    // Draw existing and preview hits
     hits.forEach((hit) => drawHit(hit));
     if (previewHit) drawHit(previewHit, true);
 
-    // Handle mouse interactions
     svg.on("mousemove", (event) => {
       const [x, y] = d3.pointer(event, g.node());
 

@@ -643,8 +643,9 @@ def get_player_stats(player_id):
         is_pitcher = False
         batting_stats = []
         pitching_stats = []
+        player_info = None  # Initialize player_info to None
 
-        for year in range(2021, 2026):
+        for year in range(2025, 2020, -1):  # Start from most recent year and go backwards
             cursor.execute(f"""
                 SELECT b.*, i.prev_team_id, i.conference_id
                 FROM batting_war b
@@ -655,7 +656,7 @@ def get_player_stats(player_id):
             if bat_stats:
                 player_found = True
                 batting_stats.append(dict(bat_stats))
-                if not player_name or year > max(s['Season'] for s in batting_stats):
+                if not player_name or year > max(s.get('Season', 0) for s in batting_stats if 'Season' in s):
                     player_name = bat_stats["Player"]
                     current_team = bat_stats["Team"]
                     current_division = bat_stats['Division']
@@ -673,7 +674,7 @@ def get_player_stats(player_id):
             if pitch_stats:
                 player_found = True
                 pitching_stats.append(dict(pitch_stats))
-                if not player_name or year > max(s['Season'] for s in pitching_stats):
+                if not player_name or year > max(s.get('Season', 0) for s in pitching_stats if 'Season' in s):
                     player_name = pitch_stats["Player"]
                     current_team = pitch_stats["Team"]
                     current_division = pitch_stats['Division']
@@ -682,18 +683,26 @@ def get_player_stats(player_id):
                     current_conference_id = pitch_stats["conference_id"]
                     is_pitcher = True
 
+            # Try to get player info for each year, stop once we find it
+            if player_info is None:
+                cursor.execute("""
+                    SELECT r.height, r.bats, r.throws, r.hometown, r.high_school, r.position
+                    FROM rosters r
+                    WHERE r.player_id = ? AND Year = ?
+                """, (player_id, year))
+                year_player_info = cursor.fetchone()
+                if year_player_info:
+                    player_info = dict(year_player_info)
+
         if not player_found:
             return jsonify({"error": "Player not found"}), 404
 
-        is_active = any(stat['Season'] ==
-                        2025 for stat in batting_stats + pitching_stats)
+        # Sort the statistics by year for better presentation
+        batting_stats.sort(key=lambda x: x['Season'], reverse=True)
+        pitching_stats.sort(key=lambda x: x['Season'], reverse=True)
 
-        cursor.execute("""
-            SELECT r.height, r.bats, r.throws, r.hometown, r.high_school, r.position
-            FROM rosters r
-            WHERE r.player_id = ? AND Year = ?
-        """, (player_id, year))
-        player_info = cursor.fetchone()
+        is_active = any(stat.get('Season') ==
+                        2025 for stat in batting_stats + pitching_stats)
 
         return jsonify({
             "playerId": player_id,
@@ -736,9 +745,8 @@ def search_players():
 
     try:
         exact_term = query.lower()
-        starts_with_term = f"{query}%"
-        contains_term = f"%{query}%"
-        word_boundary_term = f"% {query}%"
+        starts_with_term = f"{query.lower()}%"
+        contains_term = f"%{query.lower()}%"
 
         cursor.execute("""
             SELECT DISTINCT
@@ -747,33 +755,27 @@ def search_players():
                 team_name as team,
                 conference as conference
             FROM rosters
-            WHERE (
-                player_id.substr(0, 4) = "d3d-" AND
-                player_name LIKE ? OR
-                player_name LIKE ? OR
-                player_name LIKE ? OR
-                player_name LIKE ?
-            )
+            WHERE player_id LIKE 'd3d-%'
+              AND (
+                  LOWER(player_name) = ? 
+                  OR LOWER(player_name) LIKE ? 
+                  OR LOWER(player_name) LIKE ?
+              )
             ORDER BY
                 CASE
                     WHEN LOWER(player_name) = ? THEN 1
                     WHEN LOWER(player_name) LIKE ? THEN 2
-                    WHEN LOWER(player_name) LIKE ? THEN 3
-                    WHEN LOWER(player_name) LIKE ? THEN 4
-                    ELSE 5
+                    ELSE 3
                 END,
                 LENGTH(player_name),
                 player_name
             LIMIT 5
         """, (
-            contains_term,
+            exact_term,
             starts_with_term,
-            word_boundary_term,
             contains_term,
             exact_term,
-            starts_with_term.lower(),
-            word_boundary_term.lower(),
-            contains_term.lower()
+            starts_with_term
         ))
 
         results = [dict(row) for row in cursor.fetchall()]

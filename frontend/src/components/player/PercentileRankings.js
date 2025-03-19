@@ -294,8 +294,10 @@ export const PercentileSection = ({
             )}
           </div>
 
-          <div className="flex items-center">
-            {!isPlaying && (
+          <div className="flex items-center h-9">
+            {" "}
+            {/* Fixed height container */}
+            {!isPlaying ? (
               <button
                 onClick={playAnimation}
                 className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors text-sm"
@@ -304,6 +306,12 @@ export const PercentileSection = ({
                 <Play className="w-3.5 h-3.5" />
                 <span>Play Career</span>
               </button>
+            ) : (
+              <div className="flex items-center justify-center gap-1 px-3 py-1.5 text-transparent text-sm">
+                {/* Invisible placeholder to maintain layout */}
+                <span className="w-3.5 h-3.5"></span>
+                <span>Play Career</span>
+              </div>
             )}
           </div>
         </div>
