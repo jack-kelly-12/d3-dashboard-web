@@ -748,6 +748,7 @@ def search_players():
                 conference as conference
             FROM rosters
             WHERE (
+                player_id.substr(0, 4) = "d3d-" AND
                 player_name LIKE ? OR
                 player_name LIKE ? OR
                 player_name LIKE ? OR
