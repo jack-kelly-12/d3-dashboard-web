@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FileDown, ArrowLeft, Printer } from "lucide-react";
+import { FileDown, ArrowLeft } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import ScoutingReportManager from "../managers/ScoutingReportsManager";
 import SprayChart from "../components/scouting/SprayChart";
@@ -20,15 +20,13 @@ function getSVGString(svgNode) {
   `;
   svgNode.appendChild(styleNode);
 
-  // Get CSS styles
   var cssStyleText = getCSSStyles(svgNode);
   appendCSS(cssStyleText, svgNode);
 
-  // Serialize SVG
   var serializer = new XMLSerializer();
   var svgString = serializer.serializeToString(svgNode);
-  svgString = svgString.replace(/(\w+)?:?xlink=/g, "xmlns:xlink="); // Fix root xlink without namespace
-  svgString = svgString.replace(/NS\d+:href/g, "xlink:href"); // Safari NS namespace fix
+  svgString = svgString.replace(/(\w+)?:?xlink=/g, "xmlns:xlink=");
+  svgString = svgString.replace(/NS\d+:href/g, "xlink:href");
 
   return svgString;
 }
@@ -48,13 +46,13 @@ function getCSSStyles(parentElement) {
       selectorTextArr.push("#" + id);
 
     var classes = nodes[i].classList;
-    for (var c = 0; c < classes.length; c++)
+    for (c = 0; c < classes.length; c++)
       if (!contains("." + classes[c], selectorTextArr))
         selectorTextArr.push("." + classes[c]);
   }
 
   var extractedCSSText = "";
-  for (var i = 0; i < document.styleSheets.length; i++) {
+  for (i = 0; i < document.styleSheets.length; i++) {
     var s = document.styleSheets[i];
 
     try {
