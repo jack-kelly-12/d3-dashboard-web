@@ -34,37 +34,41 @@ const StatBar = ({
   };
 
   return (
-    <div className="relative h-8 mb-3">
-      <div className="flex items-center text-sm mb-1">
-        {/* Fixed width for the label */}
-        <span className="text-gray-600 font-medium w-32 flex-shrink-0">
-          {label}
-        </span>
+    <div className="relative mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center text-sm mb-1">
+        <div className="flex justify-between items-center mb-1 sm:mb-0">
+          {/* Label */}
+          <span className="text-gray-600 font-medium sm:w-24 md:w-32 flex-shrink-0">
+            {label}
+          </span>
 
-        {/* Fixed width for the value */}
-        <span className="font-mono text-gray-800 w-16 flex-shrink-0">
-          {formatValue(value)}
-          {suffix}
-        </span>
-
-        {/* The progress bar with flex-1 to take up remaining space */}
-        <div className="flex-1 relative h-2.5 mx-4">
-          <div className="absolute inset-0 bg-gray-100 rounded-full" />
-          <div
-            className={`absolute h-full rounded-full transition-all duration-300 ${getBarColor(
-              percentile
-            )}`}
-            style={{ width: `${percentile}%` }}
-          />
+          {/* Value */}
+          <span className="font-mono text-gray-800 sm:w-16 flex-shrink-0 sm:ml-2">
+            {formatValue(value)}
+            {suffix}
+          </span>
         </div>
 
-        {/* The percentile badge */}
-        <div
-          className={`w-8 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
-            percentile
-          )}`}
-        >
-          {percentile || 0}
+        {/* Progress bar and percentile badge in a flex container */}
+        <div className="flex items-center w-full mt-1 sm:mt-0">
+          <div className="flex-1 relative h-2.5 mx-2">
+            <div className="absolute inset-0 bg-gray-100 rounded-full" />
+            <div
+              className={`absolute h-full rounded-full transition-all duration-300 ${getBarColor(
+                percentile
+              )}`}
+              style={{ width: `${percentile}%` }}
+            />
+          </div>
+
+          {/* Percentile badge */}
+          <div
+            className={`w-8 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
+              percentile
+            )}`}
+          >
+            {percentile || 0}
+          </div>
         </div>
       </div>
     </div>
@@ -99,11 +103,9 @@ export const PercentileSection = ({
   activeTab,
   onYearChange,
 }) => {
-  // Get the most recent year from the available years
   const availableYears = playerData?.yearsPlayed || [];
   const sortedYears = [...availableYears].sort((a, b) => Number(b) - Number(a)); // Sort descending
 
-  // Initialize with the most recent year
   const [selectedYear, setSelectedYear] = useState(
     sortedYears[0]?.toString() || ""
   );
@@ -246,73 +248,75 @@ export const PercentileSection = ({
         ];
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col items-center mb-6">
-        <div className="flex items-center gap-3 mb-4 relative">
-          <h2 className="text-2xl font-bold text-gray-900">
-            {selectedYear} Percentile Rankings
-            <button
-              onClick={() => setYearDropdownOpen(!isYearDropdownOpen)}
-              className="ml-2 text-blue-600 hover:text-blue-700 text-lg"
-            >
-              ▾
-            </button>
-          </h2>
-
-          <div className="flex items-center gap-2">
-            {isPlaying ? (
-              <></>
-            ) : (
+    <div className="p-3 sm:p-6">
+      <div className="flex flex-col gap-3 mb-4 sm:mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 relative">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <span className="mr-1">{selectedYear} Percentile Rankings</span>
               <button
-                onClick={playAnimation}
-                className="flex items-center gap-2 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors text-sm"
+                onClick={() => setYearDropdownOpen(!isYearDropdownOpen)}
+                className="text-blue-600 hover:text-blue-700 text-lg"
+                aria-label="Select year"
               >
-                <Play className="w-4 h-4" />
-                <span>Play Career</span>
+                ▾
               </button>
+            </h2>
+
+            {isLoading && (
+              <div className="ml-1">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              </div>
             )}
-          </div>
 
-          {isLoading && (
-            <div className="ml-2">
-              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
-
-          {isYearDropdownOpen && (
-            <div
-              ref={dropdownRef}
-              className="absolute mt-8 bg-white border border-gray-200 rounded-md shadow-lg z-50"
-            >
-              <div className="py-1">
-                {sortedYears.map((year) => (
-                  <button
-                    key={year}
-                    className={`w-full px-4 py-2 text-left hover:bg-gray-50 
+            {isYearDropdownOpen && (
+              <div
+                ref={dropdownRef}
+                className="absolute bg-white border border-gray-200 rounded-md shadow-lg z-50 w-40 top-full mt-1 left-0"
+              >
+                <div className="py-1 max-h-60 overflow-auto">
+                  {sortedYears.map((year) => (
+                    <button
+                      key={year}
+                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 
                       ${
                         selectedYear === year.toString()
                           ? "bg-blue-50 text-blue-700"
                           : "text-gray-700"
                       }`}
-                    onClick={() => handleYearChange(year)}
-                  >
-                    {year}
-                  </button>
-                ))}
+                      onClick={() => handleYearChange(year)}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          <div className="flex items-center">
+            {!isPlaying && (
+              <button
+                onClick={playAnimation}
+                className="flex items-center justify-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-colors text-sm"
+                disabled={isPlaying}
+              >
+                <Play className="w-3.5 h-3.5" />
+                <span>Play Career</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {!isQualified && (
-          <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            Below qualification threshold ({appearances}/{threshold}{" "}
+          <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full self-start">
+            Below threshold ({appearances}/{threshold}{" "}
             {activeTab === "batting" ? "PA" : "IP"})
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-8">
+      <div className="grid grid-cols-1 gap-6">
         {categories.map((category) => (
           <CategorySection
             key={category.title}
