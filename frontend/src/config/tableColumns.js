@@ -435,6 +435,157 @@ export const columnsSituational = [
   },
 ];
 
+export const columnsSituationalPitcher = [
+  {
+    name: "#",
+    selector: (row) => row.rank,
+    sortable: true,
+    width: "4rem",
+    className: "px-3 py-2 text-xs font-medium text-center",
+  },
+  {
+    name: "Player",
+    selector: (row) => row.Player,
+    sortable: true,
+    width: "9.375rem",
+    className: "px-3 py-2 text-xs",
+    cell: (row) =>
+      row.player_id.substring(0, 4) === "d3d-" ? (
+        <Link
+          to={`/player/${row.player_id}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+        >
+          {row.Player}
+        </Link>
+      ) : (
+        <span className="text-xs font-medium">{row.Player}</span>
+      ),
+  },
+  {
+    name: "Team",
+    selector: (row) => row.Team,
+    cell: (row) => row.renderedTeam,
+    sortable: true,
+    width: "4rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Conference",
+    selector: (row) => row.Conference,
+    cell: (row) => row.renderedConference,
+    sortable: true,
+    width: "6.5rem",
+    className: "px-2 py-2 text-xs",
+  },
+  {
+    name: "Year",
+    selector: (row) => row.Season,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "BF",
+    selector: (row) => row.PA_Overall,
+    sortable: true,
+    width: "5rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "o-BA",
+    selector: (row) => row.BA_Overall,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_Overall?.toFixed(3) || "—",
+  },
+  {
+    name: "o-wOBA",
+    selector: (row) => row.wOBA_Overall,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
+  },
+  {
+    name: "BF w/ RISP",
+    selector: (row) => row.PA_RISP,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "o-BA w/ RISP",
+    selector: (row) => row.BA_RISP,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_RISP?.toFixed(3) || "—",
+  },
+  {
+    name: "o-wOBA w/ RISP",
+    selector: (row) => row.wOBA_RISP,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
+  },
+  {
+    name: "LI+ BF",
+    selector: (row) => row.PA_High_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "LI+ o-BA",
+    selector: (row) => row.BA_High_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "LI+ o-wOBA",
+    selector: (row) => row.wOBA_High_Leverage,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "LI- BF",
+    selector: (row) => row.PA_Low_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+  },
+  {
+    name: "LI- o-BA",
+    selector: (row) => row.BA_Low_Leverage,
+    sortable: true,
+    width: "6.875rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "LI- o-wOBA",
+    selector: (row) => row.wOBA_Low_Leverage,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
+  },
+  {
+    name: "Clutch",
+    selector: (row) => row.Clutch,
+    sortable: true,
+    width: "7.5rem",
+    className: "px-3 py-2 text-xs text-center",
+    cell: (row) => row.Clutch?.toFixed(3) || "—",
+  },
+];
+
 export const columnsBaserunning = [
   {
     name: "#",

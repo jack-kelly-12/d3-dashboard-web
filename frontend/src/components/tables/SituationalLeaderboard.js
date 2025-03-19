@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
-import { Search } from "lucide-react";
+import { Search, Users, User } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
-import { columnsSituational } from "../../config/tableColumns";
+import {
+  columnsSituational,
+  columnsSituationalPitcher,
+} from "../../config/tableColumns";
 
 const SituationalLeaderboard = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -17,10 +20,11 @@ const SituationalLeaderboard = () => {
   const [startYear, setStartYear] = useState(2025);
   const [endYear, setEndYear] = useState(2025);
   const [selectedConference, setSelectedConference] = useState("");
-  const [minPA, setMinPA] = useState(50);
+  const [minCount, setMinCount] = useState(50);
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
   const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [viewType, setViewType] = useState("batters");
 
   const fetchConferences = useCallback(async () => {
     if (!isAuthReady) return;
@@ -106,8 +110,16 @@ const SituationalLeaderboard = () => {
     setIsLoading(true);
     setError(null);
     try {
+      const endpoint =
+        viewType === "batters"
+          ? `/api/leaderboards/situational`
+          : `/api/leaderboards/situational_pitcher`;
+
+      // Use the appropriate parameter name based on view type
+      const countParam = viewType === "batters" ? "min_pa" : "min_bf";
+
       const rawData = await fetchAPI(
-        `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&min_pa=${minPA}&division=${division}`
+        `${endpoint}?start_year=${startYear}&end_year=${endYear}&${countParam}=${minCount}&division=${division}`
       );
 
       const transformedData = rawData.map((row, index) => ({
@@ -145,7 +157,7 @@ const SituationalLeaderboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, endYear, minPA, division, isAuthReady]);
+  }, [startYear, endYear, minCount, division, isAuthReady, viewType]);
 
   useEffect(() => {
     fetchData();
@@ -162,8 +174,8 @@ const SituationalLeaderboard = () => {
   const filteredData = useMemo(() => {
     return data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
-      const nameMatch = player.Player.toLowerCase().includes(searchStr);
-      const teamMatch = player.Team.toLowerCase().includes(searchStr);
+      const nameMatch = player.Player?.toLowerCase().includes(searchStr);
+      const teamMatch = player.Team?.toLowerCase().includes(searchStr);
       const conferenceMatch = selectedConference
         ? player.Conference === selectedConference
         : true;
@@ -172,16 +184,33 @@ const SituationalLeaderboard = () => {
   }, [data, searchTerm, selectedConference]);
 
   const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
-  const paOptions = useMemo(
+  const countOptions = useMemo(
     () => [
-      { value: 1, label: "Min 1 PA" },
-      { value: 25, label: "Min 25 PA" },
-      { value: 50, label: "Min 50 PA" },
-      { value: 100, label: "Min 100 PA" },
-      { value: 150, label: "Min 150 PA" },
+      { value: 1, label: viewType === "batters" ? "Min 1 PA" : "Min 1 BF" },
+      { value: 25, label: viewType === "batters" ? "Min 25 PA" : "Min 25 BF" },
+      { value: 50, label: viewType === "batters" ? "Min 50 PA" : "Min 50 BF" },
+      {
+        value: 100,
+        label: viewType === "batters" ? "Min 100 PA" : "Min 100 BF",
+      },
+      {
+        value: 150,
+        label: viewType === "batters" ? "Min 150 PA" : "Min 150 BF",
+      },
     ],
-    []
+    [viewType]
   );
+
+  const columns =
+    viewType === "batters" ? columnsSituational : columnsSituationalPitcher;
+  const defaultSortField = "PA_Overall";
+  const defaultSortAsc = viewType === "pitchers";
+
+  const handleViewTypeChange = (newViewType) => {
+    setViewType(newViewType);
+    setData([]);
+    setIsLoading(true);
+  };
 
   if (!isAuthReady || isLoading) {
     return (
@@ -191,24 +220,62 @@ const SituationalLeaderboard = () => {
     );
   }
 
+  const explanationText =
+    viewType === "batters"
+      ? "This leaderboard helps evaluate how batters perform in different game situations, with emphasis on moments that can significantly impact the outcome of games."
+      : "This leaderboard helps evaluate how pitchers perform in different game situations, with emphasis on moments that can significantly impact the outcome of games.";
+
   return (
     <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
       {/* Explanation Banner */}
       <div className="bg-white border-l-4 border-blue-500 rounded-lg p-4 lg:p-6 mb-6">
         <h3 className="text-xs lg:text-base font-semibold text-blue-800 mb-2">
-          What is the Situational Leaderboard?
+          What is the{" "}
+          {viewType === "batters" ? "Situational" : "Pitcher Situational"}{" "}
+          Leaderboard?
         </h3>
         <p className="text-xs lg:text-sm text-gray-700 leading-relaxed">
-          This leaderboard helps evaluate how players perform in different game
-          situations, with emphasis on moments that can significantly impact the
-          outcome of games.
+          {explanationText}
         </p>
       </div>
 
       {/* Controls */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
         <div className="p-4 space-y-4">
-          <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          {/* Toggle View Type and Search */}
+          <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-2">
+            {/* Toggle buttons */}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-600 font-medium">View:</span>
+              <div className="inline-flex bg-gray-100 rounded-md" role="group">
+                <button
+                  type="button"
+                  onClick={() => handleViewTypeChange("batters")}
+                  className={`px-4 py-2 text-sm font-medium rounded-l-md flex items-center ${
+                    viewType === "batters"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <User size={16} className="mr-1.5" />
+                  Batters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleViewTypeChange("pitchers")}
+                  className={`px-4 py-2 text-sm font-medium rounded-r-md flex items-center ${
+                    viewType === "pitchers"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <Users size={16} className="mr-1.5" />
+                  Pitchers
+                </button>
+              </div>
+            </div>
+
+            {/* Search */}
             <div className="w-full lg:w-64 relative">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -216,84 +283,84 @@ const SituationalLeaderboard = () => {
               />
               <input
                 type="text"
-                placeholder={"Search team..."}
+                placeholder="Search by name or team"
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                  focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
+          </div>
 
-            <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
-              {isPremiumUser && (
-                <select
-                  value={division}
-                  onChange={(e) => setDivision(Number(e.target.value))}
-                  className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                    focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value={1}>Division 1</option>
-                  <option value={2}>Division 2</option>
-                  <option value={3}>Division 3</option>
-                </select>
-              )}
-
-              <div className="flex items-center gap-2 w-full lg:w-auto">
-                <select
-                  value={startYear}
-                  onChange={(e) => setStartYear(Number(e.target.value))}
-                  className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                    focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-xs lg:text-sm text-gray-500">to</span>
-                <select
-                  value={endYear}
-                  onChange={(e) => setEndYear(Number(e.target.value))}
-                  className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                    focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {yearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
+            {isPremiumUser && (
               <select
-                value={minPA}
-                onChange={(e) => setMinPA(Number(e.target.value))}
-                className="w-full lg:w-36 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                  focus:outline-none focus:ring-1 focus:ring-blue-500"
+                value={division}
+                onChange={(e) => setDivision(Number(e.target.value))}
+                className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
               >
-                {paOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                <option value={1}>Division 1</option>
+                <option value={2}>Division 2</option>
+                <option value={3}>Division 3</option>
+              </select>
+            )}
+
+            <div className="flex items-center gap-2 w-full lg:w-auto">
+              <select
+                value={startYear}
+                onChange={(e) => setStartYear(Number(e.target.value))}
+                className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
                   </option>
                 ))}
               </select>
-
-              {conferences.length > 0 && (
-                <select
-                  value={selectedConference}
-                  onChange={(e) => setSelectedConference(e.target.value)}
-                  className="w-full lg:w-44 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+              <span className="text-xs lg:text-sm text-gray-500">to</span>
+              <select
+                value={endYear}
+                onChange={(e) => setEndYear(Number(e.target.value))}
+                className="w-full lg:w-24 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
                     focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <option value="">All Conferences</option>
-                  {conferences.map((conf) => (
-                    <option key={conf} value={conf}>
-                      {conf}
-                    </option>
-                  ))}
-                </select>
-              )}
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
             </div>
+
+            <select
+              value={minCount}
+              onChange={(e) => setMinCount(Number(e.target.value))}
+              className="w-full lg:w-36 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                  focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {countOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+
+            {conferences.length > 0 && (
+              <select
+                value={selectedConference}
+                onChange={(e) => setSelectedConference(e.target.value)}
+                className="w-full lg:w-44 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                    focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">All Conferences</option>
+                {conferences.map((conf) => (
+                  <option key={conf} value={conf}>
+                    {conf}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
       </div>
@@ -307,9 +374,9 @@ const SituationalLeaderboard = () => {
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columnsSituational}
-            defaultSortField="wOBA_Overall"
-            defaultSortAsc={false}
+            columns={columns}
+            defaultSortField={defaultSortField}
+            defaultSortAsc={defaultSortAsc}
             stickyColumns={[0, 1]}
           />
         </div>

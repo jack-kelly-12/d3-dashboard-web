@@ -76,6 +76,8 @@ export const BaseballTable = ({
   filename,
   searchComponent,
   stickyColumns = [],
+  defaultSortField,
+  defaultSortAsc = false,
 }) => {
   const remToPx = useCallback((rem) => {
     const baseFontSize = parseFloat(
@@ -190,6 +192,8 @@ export const BaseballTable = ({
           }
           fixedHeader
           dense
+          defaultSortFieldId={defaultSortField}
+          defaultSortAsc={defaultSortAsc}
         />
       </div>
     </div>

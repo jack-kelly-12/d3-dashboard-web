@@ -1438,6 +1438,98 @@ def get_situational_leaderboard():
         conn.close()
 
 
+@app.route('/api/leaderboards/situational_pitcher', methods=['GET'])
+@require_premium
+def get_situational_pitcher_leaderboard():
+    start_year = request.args.get('start_year', '2025')
+    end_year = request.args.get('end_year', '2025')
+    min_pa = request.args.get('min_pa', '50')
+    division = request.args.get('division', type=int, default=3)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+
+    try:
+        start_year = int(start_year)
+        end_year = int(end_year)
+        min_pa = int(min_pa)
+    except ValueError:
+        return jsonify({"error": "Invalid parameters"}), 400
+
+    if start_year < 2021 or end_year > 2025 or start_year > end_year:
+        return jsonify({"error": "Invalid year range"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    results = []
+
+    try:
+        for year in range(start_year, end_year + 1):
+            query = """
+                WITH situational_query AS (
+                    SELECT DISTINCT
+                        p.Player,
+                        p.Team,
+                        p.Season,
+                        p.Conference,
+                        p.player_id,
+                        i.prev_team_id,
+                        i.conference_id,
+                        s.Division,
+                        s.wOBA_Overall,
+                        s.wOBA_RISP,
+                        s.wOBA_High_Leverage,
+                        s.wOBA_Low_Leverage,
+                        s.PA_Overall,
+                        s.PA_RISP,
+                        s.PA_High_Leverage,
+                        s.PA_Low_Leverage,
+                        s.BA_Overall,
+                        s.BA_High_Leverage,
+                        s.BA_Low_Leverage,
+                        s.BA_RISP,
+                        s.RE24_Overall,
+                        s.RE24_High_Leverage,
+                        s.RE24_Low_Leverage,
+                        s.RE24_RISP,
+                        p.Clutch,
+                        p.pWPA,
+                        p.[pWPA/LI],
+                        p.pREA
+                    FROM situational_pitcher s
+                    JOIN pitching_war p
+                        ON s.pitcher_standardized = p.Player
+                        AND s.pitch_team = p.Team
+                        AND s.year = p.Season
+                        AND s.division = p.Division
+                    LEFT JOIN ids_for_images i
+                        ON p.Team = i.team_name
+                    WHERE s.PA_Overall >= ?
+                        AND p.Division = ?
+                        AND p.Season = ?
+                        AND s.year = ?
+                    ORDER BY s.wOBA_Overall ASC
+                )
+                SELECT * FROM situational_query
+            """
+
+            cursor.execute(query, (min_pa, division, year, year))
+            columns = [col[0] for col in cursor.description]
+            year_results = [dict(zip(columns, row))
+                            for row in cursor.fetchall()]
+            results.extend(year_results)
+
+        return jsonify(results)
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+
+    finally:
+        conn.close()
+
+
 @app.route('/api/leaderboards/splits', methods=['GET'])
 @require_premium
 def get_splits_leaderboard():
