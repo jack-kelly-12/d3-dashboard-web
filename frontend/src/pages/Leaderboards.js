@@ -31,7 +31,7 @@ const LEADERBOARD_TYPES = {
     id: "situational",
     label: "Situational Leaderboard",
     description:
-      "How hitters do w/ RISP vs. high leverage situations vs. low leverage vs. all together",
+      "How players perform in various game situations (e.g. RISP, high/low leverage, etc.)",
     component: SituationalLeaderboard,
   },
   BASERUNNING: {
