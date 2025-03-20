@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { DragDropContext } from "react-beautiful-dnd";
-import { UserPlus, Users, ChevronLeft } from "lucide-react";
+import { UserPlus, Users, ArrowLeft } from "lucide-react";
 import toast from "react-hot-toast";
 import PlayersTable from "../tables/PlayersTable";
 import AddPlayerModal from "../modals/AddPlayerModal";
@@ -308,16 +308,13 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="container mx-auto px-2 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
         <div className="bg-white p-3 sm:p-4 md:p-6 rounded-lg shadow-sm border border-gray-200">
-          <button
-            onClick={onBack}
-            className="flex items-center gap-1 sm:gap-2 text-gray-600 hover:text-blue-600 transition-colors text-sm sm:text-base"
-          >
-            <ChevronLeft size={isSmall ? 16 : 18} />
-            <span>{isXSmall ? "Back" : "Back to Reports"}</span>
-          </button>
-
-          {/* Report Header */}
-          <div className="mt-4 sm:mt-6">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onBack}
+              className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ArrowLeft size={20} />
+            </button>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
                 Scouting Report
