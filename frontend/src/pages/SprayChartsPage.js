@@ -479,7 +479,7 @@ const SprayChartsPage = () => {
   const isExportDisabled = exporting || batters.length === 0 || chartsLoading;
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
+    <div className="container bg-gradient-to-b from-blue-50 to-white mx-auto px-2 sm:px-4 py-4 sm:py-6">
       <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <div className="flex items-center gap-2">
