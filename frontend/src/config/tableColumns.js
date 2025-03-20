@@ -526,7 +526,7 @@ export const columnsSituationalPitcher = [
     name: "o-wOBA w/ RISP",
     selector: (row) => row.wOBA_RISP,
     sortable: true,
-    width: "7.5rem",
+    width: "7.75rem",
     className: "px-3 py-2 text-xs text-center",
     cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
   },
