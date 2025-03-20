@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
-import { Plus, Trash2, FileDown, Eye, FileText } from "lucide-react";
+import { Plus, Trash2, FileDown, Edit, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 import ReportPDF from "./ReportPDF";
 import { pdf } from "@react-pdf/renderer";
@@ -276,7 +276,7 @@ const ReportsList = ({
         <ReportTypesButton report={row} />
 
         <ActionButton
-          icon={Eye}
+          icon={Edit}
           color="text-blue-600 bg-blue-50"
           hoverColor="bg-blue-100"
           onClick={(e) => {
