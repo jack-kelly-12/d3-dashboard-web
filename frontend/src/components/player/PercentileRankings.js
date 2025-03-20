@@ -253,7 +253,9 @@ export const PercentileSection = ({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 relative">
             <h2 className="text-xl font-bold text-gray-900 flex items-center">
-              <span className="mr-1">{selectedYear} Percentile Rankings</span>
+              <span className="mr-1 text-xl">
+                {selectedYear} Percentile Rankings
+              </span>
               <button
                 onClick={() => setYearDropdownOpen(!isYearDropdownOpen)}
                 className="text-blue-600 hover:text-blue-700 text-lg"
@@ -304,10 +306,9 @@ export const PercentileSection = ({
                 disabled={isPlaying}
               >
                 <Play className="w-3.5 h-3.5" />
-                <span>Play Career</span>
               </button>
             ) : (
-              <div className="flex items-center justify-center gap-1 px-3 py-1.5 text-transparent text-sm">
+              <div className="flex items-center justify-center gap-1 px-3 py-1.5 text-transparent text-xs">
                 {/* Invisible placeholder to maintain layout */}
                 <span className="w-3.5 h-3.5"></span>
                 <span>Play Career</span>

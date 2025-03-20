@@ -10,7 +10,6 @@ import TeamLogo from "../components/data/TeamLogo";
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 via-white to-white">
     <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" />
-    <p className="text-gray-600 font-medium">Loading player stats...</p>
   </div>
 );
 
@@ -31,14 +30,15 @@ const ErrorState = ({ error }) => (
 const PlayerPage = () => {
   const { playerId } = useParams();
   const [playerData, setPlayerData] = useState(null);
-  const [percentiles, setPercentiles] = useState(null);
+  const [battingPercentiles, setBattingPercentiles] = useState(null);
+  const [pitchingPercentiles, setPitchingPercentiles] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("batting");
   const [selectedDivision, setSelectedDivision] = useState(3);
 
   const fetchPercentiles = useCallback(
-    async (year, division = selectedDivision) => {
+    async (year, division = selectedDivision, type = null) => {
       try {
         const percentileResponse = await fetchAPI(
           `/api/player-percentiles/${decodeURIComponent(
@@ -46,15 +46,40 @@ const PlayerPage = () => {
           )}/${year}/${division}`
         );
 
-        setPercentiles(percentileResponse);
-        if (!percentileResponse.batting && percentileResponse.pitching) {
+        // If we're requesting a specific type, only update that type
+        if (type === "batting") {
+          setBattingPercentiles({
+            batting: percentileResponse.batting,
+            pitching: null,
+          });
+        } else if (type === "pitching") {
+          setPitchingPercentiles({
+            batting: null,
+            pitching: percentileResponse.pitching,
+          });
+        } else {
+          // Update both if available
+          if (percentileResponse.batting) {
+            setBattingPercentiles(percentileResponse);
+          }
+          if (percentileResponse.pitching) {
+            setPitchingPercentiles(percentileResponse);
+          }
+        }
+
+        // Set initial active tab if we don't have batting data
+        if (
+          !percentileResponse.batting &&
+          percentileResponse.pitching &&
+          activeTab === "batting"
+        ) {
           setActiveTab("pitching");
         }
       } catch (err) {
         console.error("Error fetching percentiles:", err);
       }
     },
-    [playerId, selectedDivision, setActiveTab]
+    [playerId, selectedDivision, activeTab]
   );
 
   useEffect(() => {
@@ -67,6 +92,7 @@ const PlayerPage = () => {
         const enhancedPlayerData = enhancePlayerData(playerResponse);
         setPlayerData(enhancedPlayerData);
 
+        // Get the most recent seasons for both batting and pitching
         const maxBattingSeason = Math.max(
           ...(enhancedPlayerData.battingStats?.map((stat) => stat.Season) || [
             0,
@@ -77,15 +103,17 @@ const PlayerPage = () => {
             0,
           ])
         );
-        const mostRecentSeason = Math.max(maxBattingSeason, maxPitchingSeason);
 
+        // Get division from the most recent stats
         let division = 3; // Default
-        if (mostRecentSeason > 0) {
+
+        // Find the most recent division for either batting or pitching
+        if (maxBattingSeason > 0 || maxPitchingSeason > 0) {
           const mostRecentBattingStat = enhancedPlayerData.battingStats?.find(
-            (stat) => stat.Season === mostRecentSeason
+            (stat) => stat.Season === maxBattingSeason
           );
           const mostRecentPitchingStat = enhancedPlayerData.pitchingStats?.find(
-            (stat) => stat.Season === mostRecentSeason
+            (stat) => stat.Season === maxPitchingSeason
           );
 
           if (mostRecentBattingStat && mostRecentBattingStat.Division) {
@@ -100,10 +128,16 @@ const PlayerPage = () => {
           setSelectedDivision(division);
         }
 
-        if (mostRecentSeason > 0) {
-          await fetchPercentiles(mostRecentSeason, division);
+        // Fetch percentiles for both batting and pitching if available
+        if (maxBattingSeason > 0) {
+          await fetchPercentiles(maxBattingSeason, division, "batting");
         }
 
+        if (maxPitchingSeason > 0) {
+          await fetchPercentiles(maxPitchingSeason, division, "pitching");
+        }
+
+        // Set default tab based on available stats
         if (
           !enhancedPlayerData.battingStats?.length &&
           enhancedPlayerData.pitchingStats?.length
@@ -120,14 +154,19 @@ const PlayerPage = () => {
     fetchData();
   }, [playerId, fetchPercentiles]);
 
-  const getAvailableYears = () => {
+  const getAvailableYears = (type = null) => {
     const years = new Set();
 
-    if (playerData?.battingStats) {
-      playerData.battingStats.forEach((stat) => years.add(stat.Season));
+    if (type === "batting" || type === null) {
+      if (playerData?.battingStats) {
+        playerData.battingStats.forEach((stat) => years.add(stat.Season));
+      }
     }
-    if (playerData?.pitchingStats) {
-      playerData.pitchingStats.forEach((stat) => years.add(stat.Season));
+
+    if (type === "pitching" || type === null) {
+      if (playerData?.pitchingStats) {
+        playerData.pitchingStats.forEach((stat) => years.add(stat.Season));
+      }
     }
 
     return Array.from(years).sort((a, b) => b - a);
@@ -233,14 +272,34 @@ const PlayerPage = () => {
 
   const handleDivisionChange = (division) => {
     setSelectedDivision(division);
-    // If we have percentiles data, refresh with the new division
-    if (percentiles) {
-      // Get the year from current percentiles
-      const currentYear =
-        percentiles.batting?.season || percentiles.pitching?.season;
-      if (currentYear) {
-        fetchPercentiles(currentYear, division);
+
+    // Refresh both batting and pitching percentiles if available
+    if (battingPercentiles?.batting) {
+      // Get the most recent batting year
+      const battingYear = battingPercentiles.batting.season;
+      if (battingYear) {
+        fetchPercentiles(battingYear, division, "batting");
       }
+    }
+
+    if (pitchingPercentiles?.pitching) {
+      // Get the most recent pitching year
+      const pitchingYear = pitchingPercentiles.pitching.season;
+      if (pitchingYear) {
+        fetchPercentiles(pitchingYear, division, "pitching");
+      }
+    }
+  };
+
+  const handleYearChange = async (year, type) => {
+    await fetchPercentiles(year, selectedDivision, type);
+  };
+
+  const getCurrentPercentiles = () => {
+    if (activeTab === "batting") {
+      return battingPercentiles;
+    } else {
+      return pitchingPercentiles;
     }
   };
 
@@ -265,14 +324,12 @@ const PlayerPage = () => {
               <PercentileSection
                 playerData={{
                   ...playerData,
-                  yearsPlayed: getAvailableYears(),
+                  yearsPlayed: getAvailableYears(activeTab),
                   divisionsPlayed: getAvailableDivisions(),
                 }}
-                initialPercentiles={percentiles}
+                initialPercentiles={getCurrentPercentiles()}
                 activeTab={activeTab}
-                onYearChange={(year) =>
-                  fetchPercentiles(year, selectedDivision)
-                }
+                onYearChange={(year) => handleYearChange(year, activeTab)}
                 selectedDivision={selectedDivision}
                 onDivisionChange={handleDivisionChange}
               />
