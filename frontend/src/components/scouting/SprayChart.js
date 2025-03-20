@@ -252,11 +252,12 @@ const SprayChart = ({
     const innerHeight = height - margin.top - margin.bottom;
 
     const headerHeight = isTinyScreen ? 60 : 80;
+
     svg
       .append("rect")
       .attr("x", 0)
       .attr("y", 0)
-      .attr("width", width)
+      .attr("width", width - margin.right - margin.left)
       .attr("height", headerHeight)
       .attr("fill", "#E1F5FE")
       .attr("rx", 5)
