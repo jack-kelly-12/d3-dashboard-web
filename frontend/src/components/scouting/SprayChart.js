@@ -307,20 +307,20 @@ const SprayChart = ({
 
     const arcRadius = Math.min(innerWidth, innerHeight) * 0.65;
 
-    const arcAngles = [
-      { startAngle: -0.785398, endAngle: -0.261799 },
-      { startAngle: -0.261799, endAngle: 0.261799 },
-      { startAngle: 0.261799, endAngle: 0.785398 },
-    ];
+    const outfieldPie = d3
+      .pie()
+      .startAngle(-0.785398)
+      .endAngle(0.785398)
+      .value((d) => 1)
+      .sort(null)
+      .padAngle(0);
 
-    arcAngles.forEach((arc, i) => {
-      const arcPath = d3
-        .arc()
-        .innerRadius(0)
-        .outerRadius(arcRadius)
-        .startAngle(arc.startAngle)
-        .endAngle(arc.endAngle);
+    const outfieldData = [1, 1, 1]; // 3 equal segments
+    const outfieldSlices = outfieldPie(outfieldData);
 
+    const outfieldArc = d3.arc().innerRadius(0).outerRadius(arcRadius);
+
+    outfieldSlices.forEach((slice, i) => {
       const percentage = outfieldZoneData[i]?.percentage || 0;
 
       let fillColor = "#FFE4E1";
@@ -334,14 +334,14 @@ const SprayChart = ({
 
       field
         .append("path")
-        .attr("d", arcPath)
-        .attr("transform", `translate(${centerX},${centerY})`)
+        .attr("d", outfieldArc(slice))
+        .attr("transform", `translate(${centerX}, ${centerY})`)
         .attr("fill", fillColor)
         .attr("stroke", "#000")
         .attr("stroke-width", 1)
         .attr("opacity", 0.9);
 
-      const textAngle = (arc.startAngle + arc.endAngle) / 2;
+      const textAngle = (slice.startAngle + slice.endAngle) / 2;
       const textRadius = arcRadius * 0.7;
       const textX = centerX + Math.sin(textAngle) * textRadius;
       const textY = centerY - Math.cos(textAngle) * textRadius;
@@ -363,7 +363,7 @@ const SprayChart = ({
         .attr("fill", "#333")
         .text(`${percentage}%`);
 
-      const numberAngle = (arc.startAngle + arc.endAngle) / 2;
+      const numberAngle = (slice.startAngle + slice.endAngle) / 2;
       const numberRadius = arcRadius * 1.15;
       const numberX = centerX + Math.sin(numberAngle) * numberRadius;
       const numberY = centerY - Math.cos(numberAngle) * numberRadius;
@@ -405,22 +405,21 @@ const SprayChart = ({
 
     const infieldRadius = arcRadius * 0.55;
 
-    const infieldAngles = [
-      { startAngle: -0.785398, endAngle: -0.471239 },
-      { startAngle: -0.471239, endAngle: -0.15708 },
-      { startAngle: -0.15708, endAngle: 0.15708 },
-      { startAngle: 0.15708, endAngle: 0.471239 },
-      { startAngle: 0.471239, endAngle: 0.785398 },
-    ];
+    // INFIELD ZONES - Using pie slices instead of arcs for precise center alignment
+    const infieldPie = d3
+      .pie()
+      .startAngle(-0.785398)
+      .endAngle(0.785398)
+      .value((d) => 1)
+      .sort(null)
+      .padAngle(0);
 
-    infieldAngles.forEach((arc, i) => {
-      const arcPath = d3
-        .arc()
-        .innerRadius(0)
-        .outerRadius(infieldRadius)
-        .startAngle(arc.startAngle)
-        .endAngle(arc.endAngle);
+    const infieldData = [1, 1, 1, 1, 1]; // 5 equal segments
+    const infieldSlices = infieldPie(infieldData);
 
+    const infieldArc = d3.arc().innerRadius(0).outerRadius(infieldRadius);
+
+    infieldSlices.forEach((slice, i) => {
       const percentage = infieldZoneData[i]?.percentage || 0;
 
       let fillColor = "#FFFFFF";
@@ -434,13 +433,13 @@ const SprayChart = ({
 
       field
         .append("path")
-        .attr("d", arcPath)
+        .attr("d", infieldArc(slice))
         .attr("transform", `translate(${centerX},${centerY})`)
         .attr("fill", fillColor)
         .attr("stroke", "#000")
-        .attr("stroke-width", 1);
+        .attr("stroke-width", 0.5);
 
-      const textAngle = (arc.startAngle + arc.endAngle) / 2;
+      const textAngle = (slice.startAngle + slice.endAngle) / 2;
       const textRadius = infieldRadius * 0.65;
       const textX = centerX + Math.sin(textAngle) * textRadius;
       const textY = centerY - Math.cos(textAngle) * textRadius;
@@ -449,8 +448,8 @@ const SprayChart = ({
         const infieldFontSize = isTinyScreen
           ? "8px"
           : isSmallScreen
-          ? "10px"
-          : "12px";
+          ? "9px"
+          : "11px";
 
         field
           .append("text")
@@ -468,7 +467,7 @@ const SprayChart = ({
     if (!isTinyScreen) {
       const statsContainer = svg
         .append("g")
-        .attr("transform", `translate(0, ${height - margin.bottom + 10})`);
+        .attr("transform", `translate(0, ${height - margin.bottom})`);
 
       statsContainer
         .append("rect")

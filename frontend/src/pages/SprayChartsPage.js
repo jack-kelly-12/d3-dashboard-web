@@ -128,8 +128,8 @@ export const exportSingleSprayChart = async (
     const tempDiv = document.createElement("div");
     tempDiv.style.position = "absolute";
     tempDiv.style.left = "-9999px";
-    tempDiv.style.width = "800px";
-    tempDiv.style.height = "500px";
+    tempDiv.style.width = "700px";
+    tempDiv.style.height = "600px";
     document.body.appendChild(tempDiv);
 
     return new Promise((resolve, reject) => {
@@ -142,8 +142,8 @@ export const exportSingleSprayChart = async (
       setTimeout(() => {
         root.render(
           <SprayChart
-            width={800}
-            height={500}
+            width={700}
+            height={600}
             playerId={player.playerId}
             year={reportYear}
             division={division}
@@ -161,17 +161,17 @@ export const exportSingleSprayChart = async (
           if (svgElement && svgElement.querySelector("path")) {
             try {
               const clonedSvg = svgElement.cloneNode(true);
-              clonedSvg.setAttribute("width", "800");
-              clonedSvg.setAttribute("height", "500");
-              clonedSvg.setAttribute("viewBox", "0 0 800 500");
+              clonedSvg.setAttribute("width", "700");
+              clonedSvg.setAttribute("height", "600");
+              clonedSvg.setAttribute("viewBox", "0 0 700 600");
 
               if (clonedSvg.getAttribute("height") === "auto") {
-                clonedSvg.setAttribute("height", "500");
+                clonedSvg.setAttribute("height", "600");
               }
 
               const svgString = getSVGString(clonedSvg);
 
-              svgToImage(svgString, 800, 500, (blob) => {
+              svgToImage(svgString, 700, 600, (blob) => {
                 if (blob) {
                   const safeFileName = player.name
                     .replace(/[^a-z0-9]/gi, "_")
@@ -203,7 +203,7 @@ export const exportSingleSprayChart = async (
           }
         };
 
-        setTimeout(checkForSVG, 1000);
+        setTimeout(checkForSVG, 700);
       }, 100);
     });
   } catch (error) {
@@ -258,8 +258,8 @@ const exportBatterToZip = async (batter, zip, year, division) => {
   const tempDiv = document.createElement("div");
   tempDiv.style.position = "absolute";
   tempDiv.style.left = "-9999px";
-  tempDiv.style.width = "800px";
-  tempDiv.style.height = "500px";
+  tempDiv.style.width = "700px";
+  tempDiv.style.height = "600px";
   document.body.appendChild(tempDiv);
 
   return new Promise((resolve) => {
@@ -272,8 +272,8 @@ const exportBatterToZip = async (batter, zip, year, division) => {
     setTimeout(() => {
       root.render(
         <SprayChart
-          width={800}
-          height={500}
+          width={700}
+          height={600}
           playerId={batter.playerId}
           year={year}
           division={division}
@@ -291,9 +291,9 @@ const exportBatterToZip = async (batter, zip, year, division) => {
 
           if (svgElement && svgElement.querySelector("path")) {
             const clonedSvg = svgElement.cloneNode(true);
-            clonedSvg.setAttribute("width", "800");
-            clonedSvg.setAttribute("height", "500");
-            clonedSvg.setAttribute("viewBox", "0 0 800 500");
+            clonedSvg.setAttribute("width", "700");
+            clonedSvg.setAttribute("height", "600");
+            clonedSvg.setAttribute("viewBox", "0 0 700 600");
 
             if (clonedSvg.getAttribute("height") === "auto") {
               clonedSvg.setAttribute("height", "500");
@@ -301,7 +301,7 @@ const exportBatterToZip = async (batter, zip, year, division) => {
 
             const svgString = getSVGString(clonedSvg);
 
-            svgToImage(svgString, 800, 500, (blob) => {
+            svgToImage(svgString, 700, 600, (blob) => {
               if (blob) {
                 const safeFileName = batter.name
                   .replace(/[^a-z0-9]/gi, "_")
@@ -332,7 +332,7 @@ const exportBatterToZip = async (batter, zip, year, division) => {
         }
       };
 
-      setTimeout(checkForSVG, 1000);
+      setTimeout(checkForSVG, 700);
     }, 100);
   });
 };
