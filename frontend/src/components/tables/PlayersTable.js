@@ -1,5 +1,5 @@
 import React from "react";
-import { Eye, Trash2, GripVertical } from "lucide-react";
+import { Edit, Trash2, GripVertical } from "lucide-react";
 import { Droppable, Draggable } from "react-beautiful-dnd";
 import { useMediaQuery } from "react-responsive";
 
@@ -198,7 +198,7 @@ const PlayersTable = ({
                           className="p-1 text-blue-600 hover:bg-blue-50 rounded"
                           title="View player"
                         >
-                          <Eye size={16} />
+                          <Edit size={16} />
                         </button>
                         <button
                           onClick={() => onDeletePlayer(player.id)}

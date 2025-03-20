@@ -221,7 +221,7 @@ const SprayChart = ({
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    svg.attr("viewBox", `0 0 ${width} ${height}`);
+    svg.attr("viewBox", `-20 0 ${width + 40} ${height}`);
     svg.attr("width", chartWidth);
     svg.attr("height", chartHeight);
 
@@ -248,7 +248,7 @@ const SprayChart = ({
       .append("g")
       .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-    const innerWidth = width - margin.left - margin.right;
+    const innerWidth = width - margin.left;
     const innerHeight = height - margin.top - margin.bottom;
 
     const headerHeight = isTinyScreen ? 60 : 80;
@@ -257,7 +257,7 @@ const SprayChart = ({
       .append("rect")
       .attr("x", 0)
       .attr("y", 0)
-      .attr("width", width - margin.right - margin.left)
+      .attr("width", isSmallScreen ? width - margin.right : width)
       .attr("height", headerHeight)
       .attr("fill", "#E1F5FE")
       .attr("rx", 5)
@@ -306,20 +306,24 @@ const SprayChart = ({
     const centerX = xScale(0);
     const centerY = yScale(0);
 
-    const arcRadius = Math.min(innerWidth, innerHeight) * 0.65;
+    const arcRadius = Math.min(innerWidth, innerHeight) * 0.7;
 
     const outfieldPie = d3
       .pie()
       .startAngle(-0.785398)
       .endAngle(0.785398)
-      .value((d) => 1)
+      .value(() => 1)
       .sort(null)
       .padAngle(0);
 
-    const outfieldData = [1, 1, 1]; // 3 equal segments
+    const outfieldData = [1, 1, 1];
     const outfieldSlices = outfieldPie(outfieldData);
 
-    const outfieldArc = d3.arc().innerRadius(0).outerRadius(arcRadius);
+    const outfieldArc = d3
+      .arc()
+      .innerRadius(0)
+      .outerRadius(arcRadius)
+      .context(null);
 
     outfieldSlices.forEach((slice, i) => {
       const percentage = outfieldZoneData[i]?.percentage || 0;
@@ -340,7 +344,8 @@ const SprayChart = ({
         .attr("fill", fillColor)
         .attr("stroke", "#000")
         .attr("stroke-width", 1)
-        .attr("opacity", 0.9);
+        .attr("opacity", 0.9)
+        .raise();
 
       const textAngle = (slice.startAngle + slice.endAngle) / 2;
       const textRadius = arcRadius * 0.7;
@@ -406,16 +411,15 @@ const SprayChart = ({
 
     const infieldRadius = arcRadius * 0.55;
 
-    // INFIELD ZONES - Using pie slices instead of arcs for precise center alignment
     const infieldPie = d3
       .pie()
       .startAngle(-0.785398)
       .endAngle(0.785398)
-      .value((d) => 1)
+      .value(() => 1)
       .sort(null)
       .padAngle(0);
 
-    const infieldData = [1, 1, 1, 1, 1]; // 5 equal segments
+    const infieldData = [1, 1, 1, 1, 1];
     const infieldSlices = infieldPie(infieldData);
 
     const infieldArc = d3.arc().innerRadius(0).outerRadius(infieldRadius);
@@ -474,7 +478,7 @@ const SprayChart = ({
         .append("rect")
         .attr("x", margin.left)
         .attr("y", -5)
-        .attr("width", innerWidth)
+        .attr("width", innerWidth - margin.right)
         .attr("height", isSmallScreen ? 90 : 115)
         .attr("fill", "#E1F5FE")
         .attr("rx", 8)
@@ -673,7 +677,7 @@ const SprayChart = ({
 
         const rightStats = statsContainer
           .append("g")
-          .attr("transform", `translate(${width - margin.right - 200}, 10)`);
+          .attr("transform", `translate(${width - 200 - margin.right}, 10)`);
 
         const rightCols = ["", "BA", "OBP", "wOBA"];
         const rightRows = [

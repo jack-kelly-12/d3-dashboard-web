@@ -318,18 +318,13 @@ const ScoutingView = ({ report, onBack, onUpdateReport }) => {
 
           {/* Report Header */}
           <div className="mt-4 sm:mt-6">
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-2 sm:mb-0">
-                {report.teamName}
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+                Scouting Report
               </h1>
-              <div className="flex flex-wrap gap-2">
-                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs sm:text-sm">
-                  {report.division}
-                </span>
-                <span className="px-2 py-1 bg-gray-50 text-gray-700 rounded-full text-xs sm:text-sm">
-                  {report.year || "2024"}
-                </span>
-              </div>
+              <p className="text-sm text-gray-500">
+                {report.teamName} • {report.year || "2024"} Season
+              </p>
             </div>
           </div>
 

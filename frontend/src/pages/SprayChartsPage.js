@@ -320,7 +320,7 @@ const exportBatterToZip = async (batter, zip, year, division) => {
             );
             root.unmount();
             document.body.removeChild(tempDiv);
-            resolve(); // Skip this player but continue with others
+            resolve();
           } else {
             setTimeout(checkForSVG, checkInterval);
           }
