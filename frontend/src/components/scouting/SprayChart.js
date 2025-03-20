@@ -84,14 +84,17 @@ const SprayChart = ({
         } | ${year} | ${team}`;
 
         const battingAvg = splits.BA_Overall || 0;
+        const PA = splits.PA_Overall || 0;
         const onBasePercentage = splits.OBP_Overall || 0;
         const wOBA = splits.wOBA_Overall || 0;
 
         const vspRhpBa = splits["BA_vs RHP"] || 0;
+        const vspRhpPA = splits["PA_vs RHP"] || 0;
         const vsRhpObp = splits["OBP_vs RHP"] || 0;
         const vsRhpWoba = splits["wOBA_vs RHP"] || 0;
 
         const vsLhpBa = splits["BA_vs LHP"] || 0;
+        const vsLhpPA = splits["PA_vs LHP"] || 0;
         const vsLhpObp = splits["OBP_vs LHP"] || 0;
         const vsLhpWoba = splits["wOBA_vs LHP"] || 0;
 
@@ -126,6 +129,7 @@ const SprayChart = ({
           playerInfo: playerInfo,
           stats: {
             battingAvg: parseFloat(battingAvg),
+            PA: parseInt(PA),
             onBasePercentage: parseFloat(onBasePercentage),
             wOBA: parseFloat(wOBA),
             hits: {
@@ -157,6 +161,7 @@ const SprayChart = ({
             },
             vsRHP: {
               battingAvg: parseFloat(vspRhpBa),
+              PA: parseInt(vspRhpPA),
               onBasePercentage: parseFloat(vsRhpObp),
               wOBA: parseFloat(vsRhpWoba),
               strikeouts: 0,
@@ -164,6 +169,7 @@ const SprayChart = ({
             },
             vsLHP: {
               battingAvg: parseFloat(vsLhpBa),
+              PA: parseInt(vsLhpPA),
               onBasePercentage: parseFloat(vsLhpObp),
               wOBA: parseFloat(vsLhpWoba),
               strikeouts: 0,
@@ -297,6 +303,46 @@ const SprayChart = ({
       .attr("font-size", subtitleFontSize)
       .attr("fill", "#2C3E50")
       .text(playerInfo);
+
+    header
+      .append("g")
+      .attr("transform", `translate(${innerWidth - 60}, 0)`) // Position in top right
+      .call((g) => {
+        const gradient = svg
+          .append("defs")
+          .append("linearGradient")
+          .attr("id", "d3-gradient")
+          .attr("x1", "0%")
+          .attr("y1", "0%")
+          .attr("x2", "100%")
+          .attr("y2", "0%");
+
+        gradient
+          .append("stop")
+          .attr("offset", "0%")
+          .attr("stop-color", "#4299e1");
+
+        gradient
+          .append("stop")
+          .attr("offset", "100%")
+          .attr("stop-color", "#5a67d8");
+
+        g.append("rect")
+          .attr("width", 36)
+          .attr("height", 36)
+          .attr("rx", 6)
+          .attr("ry", 6)
+          .attr("fill", "url(#d3-gradient)");
+
+        g.append("text")
+          .attr("x", 18)
+          .attr("y", 24)
+          .attr("text-anchor", "middle")
+          .attr("font-weight", "bold")
+          .attr("font-size", "18px")
+          .attr("fill", "white")
+          .text("D3");
+      });
 
     const xScale = d3.scaleLinear().domain([-550, 550]).range([0, innerWidth]);
     const yScale = d3.scaleLinear().domain([-20, 200]).range([innerHeight, 0]);
@@ -677,12 +723,13 @@ const SprayChart = ({
 
         const rightStats = statsContainer
           .append("g")
-          .attr("transform", `translate(${width - 200 - margin.right}, 10)`);
+          .attr("transform", `translate(${width - 250 - margin.right}, 10)`);
 
-        const rightCols = ["", "BA", "OBP", "wOBA"];
+        const rightCols = ["", "PA", "BA", "OBP", "wOBA"];
         const rightRows = [
           [
             "Overall",
+            `${stats.PA || 0}`,
             `.${((stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}`,
             `.${((stats.onBasePercentage || 0) * 1000)
               .toFixed(0)
@@ -691,6 +738,7 @@ const SprayChart = ({
           ],
           [
             "vs RHP",
+            `${stats.vsRHP?.PA || 0}`,
             `.${((stats.vsRHP?.battingAvg || 0) * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
@@ -701,6 +749,7 @@ const SprayChart = ({
           ],
           [
             "vs LHP",
+            `${stats.vsLHP?.PA || 0}`,
             `.${((stats.vsLHP?.battingAvg || 0) * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
