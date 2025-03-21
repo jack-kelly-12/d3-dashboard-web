@@ -144,7 +144,7 @@ export const columnsValue = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-    className: "px-3 py-2 text-xs",
+
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
@@ -297,7 +297,7 @@ export const columnsSituational = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-    className: "px-3 py-2 text-xs",
+
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
@@ -448,7 +448,7 @@ export const columnsSituationalPitcher = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-    className: "px-3 py-2 text-xs",
+
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
@@ -599,7 +599,7 @@ export const columnsBaserunning = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-    className: "px-3 py-2 text-xs",
+
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
@@ -730,7 +730,7 @@ export const columnsBatted = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-    className: "px-3 py-2 text-xs",
+
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
@@ -860,7 +860,7 @@ export const columnsSplits = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-    className: "px-3 py-2 text-xs",
+
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
@@ -1119,6 +1119,272 @@ export const getDataColumns = (dataType) => {
   switch (dataType) {
     default:
       return [];
+    case "situational":
+      return [
+        {
+          name: "Player",
+          selector: (row) => row.Player,
+          sortable: true,
+          width: "9.375rem",
+          cell: (row) =>
+            row.player_id.substring(0, 4) === "d3d-" ? (
+              <Link
+                to={`/player/${row.player_id}`}
+                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              >
+                {row.Player}
+              </Link>
+            ) : (
+              <span className="font-medium">{row.Player}</span>
+            ),
+        },
+        {
+          name: "Team",
+          selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
+          sortable: true,
+          width: "4rem",
+          className: "px-2 py-2 text-xs",
+        },
+        {
+          name: "Conference",
+          selector: (row) => row.Conference,
+          cell: (row) => row.renderedConference,
+          sortable: true,
+          width: "6.5rem",
+          className: "px-2 py-2 text-xs",
+        },
+        {
+          name: "Year",
+          selector: (row) => row.Season,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "PA",
+          selector: (row) => row.PA_Overall,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "BA",
+          selector: (row) => row.BA_Overall,
+          sortable: true,
+          width: "6.875rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.BA_Overall?.toFixed(3) || "—",
+        },
+        {
+          name: "wOBA",
+          selector: (row) => row.wOBA_Overall,
+          sortable: true,
+          width: "7.5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.wOBA_Overall?.toFixed(3) || "—",
+        },
+        {
+          name: "PA w/ RISP",
+          selector: (row) => row.PA_RISP || 0,
+          sortable: true,
+          width: "6.875rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "BA w/ RISP",
+          selector: (row) => row.BA_RISP,
+          sortable: true,
+          width: "6.875rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.BA_RISP?.toFixed(3) || "—",
+        },
+        {
+          name: "wOBA w/ RISP",
+          selector: (row) => row.wOBA_RISP,
+          sortable: true,
+          width: "7.5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.wOBA_RISP?.toFixed(3) || "—",
+        },
+        {
+          name: "LI+ PA",
+          selector: (row) => row.PA_High_Leverage || 0,
+          sortable: true,
+          width: "6.875rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "LI+ BA",
+          selector: (row) => row.BA_High_Leverage,
+          sortable: true,
+          width: "6.875rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.BA_High_Leverage?.toFixed(3) || "—",
+        },
+        {
+          name: "LI+ wOBA",
+          selector: (row) => row.wOBA_High_Leverage,
+          sortable: true,
+          width: "7.5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.wOBA_High_Leverage?.toFixed(3) || "—",
+        },
+        {
+          name: "LI- PA",
+          selector: (row) => row.PA_Low_Leverage || 0,
+          sortable: true,
+          width: "6.875rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "LI- BA",
+          selector: (row) => row.BA_Low_Leverage,
+          sortable: true,
+          width: "6.875rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.BA_Low_Leverage?.toFixed(3) || "—",
+        },
+        {
+          name: "LI- wOBA",
+          selector: (row) => row.wOBA_Low_Leverage,
+          sortable: true,
+          width: "7.5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.wOBA_Low_Leverage?.toFixed(3) || "—",
+        },
+        {
+          name: "Clutch",
+          selector: (row) => row.Clutch,
+          sortable: true,
+          width: "7.5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.Clutch?.toFixed(3) || "—",
+        },
+      ];
+    case "baserunning":
+      return [
+        {
+          name: "Player",
+          selector: (row) => row.Player,
+          sortable: true,
+          width: "9.375rem",
+          cell: (row) =>
+            row.player_id.substring(0, 4) === "d3d-" ? (
+              <Link
+                to={`/player/${row.player_id}`}
+                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              >
+                {row.Player}
+              </Link>
+            ) : (
+              <span className="font-medium">{row.Player}</span>
+            ),
+        },
+        {
+          name: "Team",
+          selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
+          sortable: true,
+          width: "4rem",
+          className: "px-2 py-2 text-xs",
+        },
+        {
+          name: "Conference",
+          selector: (row) => row.Conference,
+          cell: (row) => row.renderedConference,
+          sortable: true,
+          width: "6.5rem",
+          className: "px-2 py-2 text-xs",
+        },
+        {
+          name: "Year",
+          selector: (row) => row.Year,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "SB",
+          selector: (row) => row.SB,
+          sortable: true,
+          width: "4.375rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "CS",
+          selector: (row) => row.CS,
+          sortable: true,
+          width: "4.375rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "SB%",
+          selector: (row) => row["SB%"],
+          sortable: true,
+          width: "5.625rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row["SB%"]?.toFixed(1) + "%" || "—",
+        },
+        {
+          name: "XBT",
+          selector: (row) => row.XBT,
+          sortable: true,
+          width: "4.375rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "XBT%",
+          selector: (row) => row.XBT / row.Opportunities,
+          sortable: true,
+          width: "5.625rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) =>
+            row.Opportunities
+              ? (100 * (row.XBT / row.Opportunities)).toFixed(1) + "%"
+              : "—",
+        },
+        {
+          name: "Picked",
+          selector: (row) => row.Picked,
+          sortable: true,
+          width: "5.625rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.Picked || "0",
+        },
+        {
+          name: "wSB",
+          selector: (row) => row.wSB,
+          sortable: true,
+          width: "5.625rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.wSB?.toFixed(1) || "0.0",
+        },
+        {
+          name: "wGDP",
+          selector: (row) => row.wGDP,
+          sortable: true,
+          width: "5.625rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.wGDP?.toFixed(1) || "0.0",
+        },
+        {
+          name: "wTEB",
+          selector: (row) => row.wTEB,
+          sortable: true,
+          width: "5.625rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => row.wTEB?.toFixed(1) || "0.0",
+        },
+        {
+          name: "BsR",
+          selector: (row) => row.Baserunning,
+          sortable: true,
+          width: "5.625rem",
+          className: "px-3 py-2 text-xs text-center font-bold",
+          cell: (row) => row.Baserunning?.toFixed(1) || "—",
+        },
+      ];
     case "player_hitting":
       return [
         {
@@ -2055,7 +2321,7 @@ export const columnsSplitsPitcher = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-    className: "px-3 py-2 text-xs",
+
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
