@@ -519,7 +519,7 @@ def get_spraychart_data(player_id):
         "to_rf_hr": [r'homered to right', r'homered to rf', r'homers to rf', r'homers to right'],
         "to_3b": [r'to 3b', r'to third', r'third base', r'3b line', r'by 3b', r'3b to 2b'],
         "to_ss": [r'ss to 2b', r'to ss', r'to short', r'shortstop', r'by ss'],
-        "up_middle": [r'up the middle', r'to pitcher', r'to p', r'to pitcher', r'to catcher'],
+        "up_middle": [r'up the middle', r'to pitcher', r'to p', r'to c', r'by p', r'by c', r'to pitcher', r'to catcher'],
         "to_2b": [r'2b to ss', r'to 2b', r'to second', r'second base', r'by 2b'],
         "to_1b": [r'to 1b', r'to first', r'first base', r'1b line', r'by 1b', r'1b to ss', r'1b to p', r'1b to 2b'],
     }

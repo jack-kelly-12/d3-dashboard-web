@@ -220,7 +220,6 @@ export const PercentileSection = ({
           {
             title: "Pitching",
             stats: [
-              { key: "WAR", label: "WAR", decimals: 1 },
               { key: "ERA", label: "ERA", decimals: 2, reverse: true },
               { key: "FIP", label: "FIP", decimals: 2, reverse: true },
               { key: "xFIP", label: "xFIP", decimals: 2, reverse: true },

@@ -377,7 +377,6 @@ const SprayChartsPage = () => {
 
     setChartsLoading(true);
 
-    // Wait for initial render, then check charts
     const checkChartsInterval = setInterval(() => {
       const allChartsRendered = batters.every((batter) => {
         const container = document.querySelector(
@@ -398,11 +397,9 @@ const SprayChartsPage = () => {
       }
     }, 500);
 
-    // Timeout after 15 seconds to prevent infinite loading
     const timeout = setTimeout(() => {
       clearInterval(checkChartsInterval);
       setChartsLoading(false);
-      // Even if not all charts are ready, we'll allow export after timeout
       setChartsReady(true);
     }, 15000);
 
