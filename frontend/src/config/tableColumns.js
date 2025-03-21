@@ -149,7 +149,7 @@ export const columnsValue = [
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
           to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
         >
           {row.Player}
         </Link>
@@ -302,7 +302,7 @@ export const columnsSituational = [
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
           to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
         >
           {row.Player}
         </Link>
@@ -448,12 +448,11 @@ export const columnsSituationalPitcher = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
           to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
         >
           {row.Player}
         </Link>
@@ -604,7 +603,7 @@ export const columnsBaserunning = [
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
           to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
         >
           {row.Player}
         </Link>
@@ -735,7 +734,7 @@ export const columnsBatted = [
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
           to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
         >
           {row.Player}
         </Link>
@@ -865,7 +864,7 @@ export const columnsSplits = [
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
           to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
         >
           {row.Player}
         </Link>
@@ -2321,12 +2320,11 @@ export const columnsSplitsPitcher = [
     selector: (row) => row.Player,
     sortable: true,
     width: "9.375rem",
-
     cell: (row) =>
       row.player_id.substring(0, 4) === "d3d-" ? (
         <Link
           to={`/player/${row.player_id}`}
-          className="text-blue-600 hover:text-blue-800 hover:underline text-xs font-medium"
+          className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
         >
           {row.Player}
         </Link>
