@@ -511,17 +511,17 @@ def get_spraychart_data(player_id):
         return jsonify({"error": "Invalid year or division format"}), 400
 
     FIELD_PATTERNS = {
-        "to_lf": [r'to left', r'to lf', r'left field', r'lf line'],
-        "to_cf": [r'to center', r'to cf', r'center field'],
-        "to_rf": [r'to right', r'to rf', r'right field', r'rf line'],
-        "to_lf_hr": [r'homered to left', r'homered to lf', r'homers to lf', r'homers to left',],
-        "to_cf_hr": [r'homered to center', r'homered to cf', r'homers to cf', r'homers to center',],
-        "to_rf_hr": [r'homered to right', r'homered to rf', r'homers to rf', r'homers to right',],
-        "to_3b": [r'to 3b', r'to third', r'third base', r'3b line'],
-        "to_ss": [r'ss to 2b', r'to ss', r'to short', r'shortstop'],
-        "up_middle": [r'up the middle', r'to pitcher', r'to p'],
-        "to_2b": [r'2b to ss', r'to 2b', r'to second', r'second base'],
-        "to_1b": [r'to 1b', r'to first', r'first base', r'1b line']
+        "to_lf": [r'to left', r'to lf', r'left field', r'lf line', r'by lf'],
+        "to_cf": [r'to center', r'to cf', r'center field', r'by cf'],
+        "to_rf": [r'to right', r'to rf', r'right field', r'rf line', r'by rf'],
+        "to_lf_hr": [r'homered to left', r'homered to lf', r'homers to lf', r'homers to left'],
+        "to_cf_hr": [r'homered to center', r'homered to cf', r'homers to cf', r'homers to center'],
+        "to_rf_hr": [r'homered to right', r'homered to rf', r'homers to rf', r'homers to right'],
+        "to_3b": [r'to 3b', r'to third', r'third base', r'3b line', r'by 3b', r'3b to 2b'],
+        "to_ss": [r'ss to 2b', r'to ss', r'to short', r'shortstop', r'by ss'],
+        "up_middle": [r'up the middle', r'to pitcher', r'to p', r'to pitcher', r'to catcher'],
+        "to_2b": [r'2b to ss', r'to 2b', r'to second', r'second base', r'by 2b'],
+        "to_1b": [r'to 1b', r'to first', r'first base', r'1b line', r'by 1b', r'1b to ss', r'1b to p', r'1b to 2b'],
     }
 
     hit_counts = {location: 0 for location in FIELD_PATTERNS.keys()}
@@ -547,63 +547,53 @@ def get_spraychart_data(player_id):
         team_name = player_info_dict["team_name"]
         bats = player_info_dict.get("bats", "R")
 
-        # Get play-by-play data - use a more efficient approach to fetch all at once
         cursor.execute("""
             SELECT description 
             FROM pbp
             WHERE batter_id = ? AND year = ? AND division = ?
         """, (player_id, year, division))
 
-        # Convert to a list of dictionaries to make data access more consistent
         pbp_data = [{"description": row["description"]}
                     for row in cursor.fetchall()]
 
-        # Get splits data
         cursor.execute("""
             SELECT * FROM splits
             WHERE batter_id = ? AND Year = ? AND Division = ?
         """, (player_id, year, division))
         splits_data = cursor.fetchone()
 
-        # Get batted ball data
         cursor.execute("""
             SELECT * FROM batted_ball
             WHERE batter_id = ? AND Year = ? AND Division = ?
         """, (player_id, year, division))
         batted_ball_data = cursor.fetchone()
 
-        # Compile regex patterns once outside the loop for better performance
         import re
         compiled_patterns = {}
         for location, patterns in FIELD_PATTERNS.items():
             compiled_patterns[location] = [
-                re.compile(pattern) for pattern in patterns]
+                re.compile(pattern, re.IGNORECASE) for pattern in patterns]  # Added re.IGNORECASE
 
-        # Process each play to categorize hits
         for play in pbp_data:
-            description = play['description'].lower(
-            ) if play and 'description' in play else ''
+            description = play['description'].lower().split(
+                '3a')[0] if play and 'description' in play else ''
 
-            # Skip empty descriptions
             if not description:
                 continue
 
-            # Process each location
+            hr_found = False
             for location, patterns in compiled_patterns.items():
-                # Special handling for home runs to avoid double-counting
                 if "_hr" in location and any(pattern.search(description) for pattern in patterns):
                     hit_counts[location] += 1
+                    hr_found = True
                     break
 
-            # Only process non-HR hits if we didn't already count this as a HR
-            if not any(pattern.search(description) for location, patterns in compiled_patterns.items()
-                       if "_hr" in location for pattern in patterns):
+            if not hr_found:
                 for location, patterns in compiled_patterns.items():
                     if "_hr" not in location and any(pattern.search(description) for pattern in patterns):
                         hit_counts[location] += 1
                         break
 
-        # Prepare response data
         response_data = {
             "counts": hit_counts,
             "splits_data": dict(splits_data) if splits_data else {},
