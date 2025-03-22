@@ -86,14 +86,15 @@ const DateControl = ({
 );
 
 const DivisionSelector = ({ division, onDivisionChange }) => (
-  <div className="flex items-center gap-2 w-full sm:w-auto">
+  <div className="flex items-center gap-2">
     <label className="text-sm font-medium text-gray-700">Division:</label>
     <select
       value={division}
       onChange={(e) => onDivisionChange(Number(e.target.value))}
       className="px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm text-gray-700
         focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-        hover:border-gray-300 transition-colors w-full sm:w-32"
+        hover:border-gray-300 transition-colors"
+      style={{ width: "130px" }}
     >
       {DIVISIONS.map((div) => (
         <option key={div.value} value={div.value}>
@@ -324,21 +325,25 @@ const Scoreboard = () => {
       <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         <InfoBanner dataType="scoreboard" />
 
-        <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <DateControl
-            currentDate={state.currentDate}
-            onDateChange={handleDateChange}
-            onNavigate={handleDateNavigate}
-            displayDate={formatDisplayDate(state.currentDate)}
-            filterDate={filterDate}
-          />
-
-          {isPremiumUser && (
-            <DivisionSelector
-              division={state.division}
-              onDivisionChange={handleDivisionChange}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <DateControl
+              currentDate={state.currentDate}
+              onDateChange={handleDateChange}
+              onNavigate={handleDateNavigate}
+              displayDate={formatDisplayDate(state.currentDate)}
+              filterDate={filterDate}
             />
-          )}
+
+            {isPremiumUser && (
+              <div className="self-start sm:self-auto">
+                <DivisionSelector
+                  division={state.division}
+                  onDivisionChange={handleDivisionChange}
+                />
+              </div>
+            )}
+          </div>
         </div>
 
         {state.error ? (
