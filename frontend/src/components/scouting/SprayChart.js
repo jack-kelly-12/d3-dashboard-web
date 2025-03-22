@@ -98,12 +98,8 @@ const SprayChart = ({
         const vsLhpObp = splits["OBP_vs LHP"] || 0;
         const vsLhpWoba = splits["wOBA_vs LHP"] || 0;
 
-        const airPct = battedBall.fb_pct
-          ? Math.round(
-              parseFloat(battedBall.fb_pct || 0) +
-                parseFloat(battedBall.ld_pct || 0) +
-                parseFloat(battedBall.pop_pct || 0)
-            )
+        const airPct = battedBall.gb_pct
+          ? 1 - Math.round(parseFloat(battedBall.gb_pct))
           : 0;
         const groundPct = battedBall.gb_pct
           ? Math.round(parseFloat(battedBall.gb_pct))

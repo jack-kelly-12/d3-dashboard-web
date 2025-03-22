@@ -116,7 +116,7 @@ function App() {
                 }
               />
               <Route
-                path="/reports/:reportId/spraycharts"
+                path="scouting/reports/:reportId/spraycharts"
                 element={
                   <ProtectedRoute>
                     <SprayChartsPage />

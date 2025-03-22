@@ -197,7 +197,25 @@ const Sidebar = () => {
     }
   };
 
-  const isActiveRoute = (path) => location.pathname === path;
+  // Fixed active route detection to handle URL parameters
+  const isActiveRoute = (path) => {
+    // Handle root path separately
+    if (path === "/" && location.pathname === "/") {
+      return true;
+    }
+
+    // For other paths, check if the current path starts with the route path
+    // But make sure it's a complete segment match to avoid partial matches
+    // e.g. "/scouting" should match "/scouting/123" but not "/scoutingextra"
+    if (path === "/") return false; // Skip the root path in this check
+
+    const currentPath = location.pathname;
+    return (
+      currentPath === path || // Exact match
+      currentPath.startsWith(`${path}/`) || // Path with subpath
+      currentPath.startsWith(`${path}?`) // Path with query params
+    );
+  };
 
   const navigationItems = [
     { icon: Home, path: "/", label: "Home" },

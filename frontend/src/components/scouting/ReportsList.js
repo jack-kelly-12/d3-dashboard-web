@@ -55,7 +55,7 @@ const ReportsList = ({
         buttonRefs.current[openDropdownId].getBoundingClientRect();
       setDropdownPosition({
         top: buttonRect.bottom + window.scrollY,
-        left: buttonRect.right - 180 + window.scrollX, // 180px is dropdown width
+        left: buttonRect.right - 180 + window.scrollX,
         width: 180,
       });
     }
@@ -117,7 +117,7 @@ const ReportsList = ({
 
     if (reportType === "spraychart") {
       console.log(report);
-      navigate(`/reports/${report.id}/spraycharts`);
+      navigate(`/scouting/reports/${report.id}/spraycharts`);
     } else {
       const reportTypeMap = {
         bullpen: "Bullpen Report",
@@ -158,27 +158,69 @@ const ReportsList = ({
     tooltip,
     reportId,
     showDropShadow = false,
+    size = "auto",
   }) => {
     const baseClasses = `
-      flex items-center justify-center 
-      rounded-full transition-all duration-200 
-      ${showDropShadow ? "shadow-sm hover:shadow" : ""}
-    `;
+    flex items-center justify-center 
+    rounded-full transition-all duration-200 
+    ${showDropShadow ? "shadow-sm hover:shadow" : ""}
+  `;
 
-    const sizeClasses = isXSmall
-      ? "w-8 h-8"
-      : isSmall
-      ? "w-9 h-9"
-      : "w-10 h-10";
+    const getSizeClasses = () => {
+      if (size !== "auto") {
+        switch (size) {
+          case "xs":
+            return "w-7 h-7";
+          case "sm":
+            return "w-8 h-8";
+          case "md":
+            return "w-9 h-9";
+          case "lg":
+            return "w-10 h-10";
+          case "xl":
+            return "w-11 h-11";
+          default:
+            return "w-9 h-9";
+        }
+      }
+
+      return isXSmall
+        ? "w-7 h-7 sm:w-8 sm:h-8"
+        : isSmall
+        ? "w-8 h-8 md:w-9 md:h-9"
+        : "w-9 h-9 lg:w-10 lg:h-10";
+    };
+
+    const sizeClasses = getSizeClasses();
 
     const colorClasses = `
-      ${color} hover:${hoverColor} 
-      hover:scale-105 active:scale-95
-    `;
+    ${color} hover:${hoverColor} 
+    hover:scale-105 active:scale-95
+  `;
 
-    const iconSize = isXSmall ? 14 : isSmall ? 16 : 18;
+    const getIconSize = () => {
+      if (size !== "auto") {
+        switch (size) {
+          case "xs":
+            return 12;
+          case "sm":
+            return 14;
+          case "md":
+            return 16;
+          case "lg":
+            return 18;
+          case "xl":
+            return 20;
+          default:
+            return 16;
+        }
+      }
 
-    // Save button reference for dropdown positioning
+      return isXSmall ? 14 : isSmall ? 16 : 18;
+    };
+
+    const iconSize = getIconSize();
+
     const setButtonRef = (element) => {
       if (reportId && element) {
         buttonRefs.current[reportId] = element;
@@ -194,6 +236,49 @@ const ReportsList = ({
       >
         <Icon size={iconSize} />
       </button>
+    );
+  };
+
+  const ActionMenu = ({ row }) => {
+    const gapClass = isXSmall ? "gap-0.3" : isSmall ? "gap-0.75" : "gap-1";
+
+    return (
+      <div className={`flex items-center ${gapClass} justify-end`}>
+        <ReportTypesButton report={row} />
+
+        <ActionButton
+          icon={Edit}
+          color="text-blue-600 bg-blue-50"
+          hoverColor="bg-blue-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            onReportSelect(row);
+          }}
+          tooltip="View Report"
+        />
+
+        <ActionButton
+          icon={FileDown}
+          color="text-emerald-600 bg-emerald-50"
+          hoverColor="bg-emerald-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleExportReport(row);
+          }}
+          tooltip="Export PDF"
+        />
+
+        <ActionButton
+          icon={Trash2}
+          color="text-red-600 bg-red-50"
+          hoverColor="bg-red-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteConfirmation(row);
+          }}
+          tooltip="Delete Report"
+        />
+      </div>
     );
   };
 
@@ -267,47 +352,6 @@ const ReportsList = ({
         />
         <DropdownPortal report={report} />
       </>
-    );
-  };
-
-  const ActionMenu = ({ row }) => {
-    return (
-      <div className="flex items-center gap-2 justify-end">
-        <ReportTypesButton report={row} />
-
-        <ActionButton
-          icon={Edit}
-          color="text-blue-600 bg-blue-50"
-          hoverColor="bg-blue-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            onReportSelect(row);
-          }}
-          tooltip="View Report"
-        />
-
-        <ActionButton
-          icon={FileDown}
-          color="text-emerald-600 bg-emerald-50"
-          hoverColor="bg-emerald-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleExportReport(row);
-          }}
-          tooltip="Export PDF"
-        />
-
-        <ActionButton
-          icon={Trash2}
-          color="text-red-600 bg-red-50"
-          hoverColor="bg-red-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDeleteConfirmation(row);
-          }}
-          tooltip="Delete Report"
-        />
-      </div>
     );
   };
 
