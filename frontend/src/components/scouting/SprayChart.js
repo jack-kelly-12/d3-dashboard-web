@@ -99,7 +99,7 @@ const SprayChart = ({
         const vsLhpWoba = splits["wOBA_vs LHP"] || 0;
 
         const airPct = battedBall.gb_pct
-          ? 1 - Math.round(parseFloat(battedBall.gb_pct))
+          ? 100 - Math.round(parseFloat(battedBall.gb_pct))
           : 0;
         const groundPct = battedBall.gb_pct
           ? Math.round(parseFloat(battedBall.gb_pct))
@@ -233,10 +233,13 @@ const SprayChart = ({
     const outfieldZoneData = playerData.outfieldZones || [];
     const infieldZoneData = playerData.infieldZones || [];
 
-    const isSmallScreen = chartWidth < 600;
-    const isTinyScreen = chartWidth < 450;
+    const isVerySmallScreen = containerWidth <= 700;
+    const isSmallScreen = containerWidth < 600;
+    const isTinyScreen = containerWidth < 600;
 
-    const margin = isTinyScreen
+    const margin = isVerySmallScreen
+      ? { top: 40, right: 10, bottom: 10, left: 10 }
+      : isTinyScreen
       ? { top: 40, right: 10, bottom: 20, left: 10 }
       : { top: 60, right: 20, bottom: 120, left: 20 };
 
@@ -511,7 +514,8 @@ const SprayChart = ({
       }
     });
 
-    if (!isTinyScreen) {
+    // Only show stats container if the screen width is greater than 500px
+    if (!isVerySmallScreen && !isTinyScreen) {
       const statsContainer = svg
         .append("g")
         .attr("transform", `translate(0, ${height - margin.bottom})`);

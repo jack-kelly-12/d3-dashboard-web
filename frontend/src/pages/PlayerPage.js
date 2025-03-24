@@ -6,6 +6,7 @@ import { PercentileSection } from "../components/player/PercentileRankings";
 import StatTable from "../components/player/StatTable";
 import PlayerHeader from "../components/player/PlayerHeader";
 import TeamLogo from "../components/data/TeamLogo";
+import SprayChart from "../components/scouting/SprayChart";
 
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 via-white to-white">
@@ -27,10 +28,8 @@ const ErrorState = memo(({ error }) => (
   </div>
 ));
 
-// Memoized StatTable wrapper to prevent rerenders
 const MemoizedStatTable = memo(StatTable);
 
-// Memoized tab navigation component
 const TabNavigation = memo(
   ({
     activeTab,
@@ -85,20 +84,49 @@ const TabNavigation = memo(
   )
 );
 
-// Memoized content section
-const PlayerContent = memo(({ activeTab, playerData, baserunningStats }) => (
-  <div className="p-6">
-    {activeTab === "batting" && playerData.battingStats?.length > 0 && (
-      <MemoizedStatTable stats={playerData.battingStats} type="batting" />
-    )}
-    {activeTab === "pitching" && playerData.pitchingStats?.length > 0 && (
-      <MemoizedStatTable stats={playerData.pitchingStats} type="pitching" />
-    )}
-    {activeTab === "baserunning" && baserunningStats?.length > 0 && (
-      <MemoizedStatTable stats={baserunningStats} type="baserunning" />
-    )}
-  </div>
-));
+const PlayerContent = memo(
+  ({ activeTab, playerData, baserunningStats, selectedDivision, playerId }) => {
+    const getMostRecentYear = () => {
+      if (activeTab === "batting" && playerData.battingStats?.length > 0) {
+        return playerData.battingStats[0]?.Season || new Date().getFullYear();
+      } else if (activeTab === "baserunning" && baserunningStats?.length > 0) {
+        return baserunningStats[0]?.Year || new Date().getFullYear();
+      }
+      return new Date().getFullYear();
+    };
+
+    const shouldShowSprayChart =
+      activeTab === "batting" &&
+      (playerData.battingStats?.length > 0 || baserunningStats?.length > 0);
+
+    return (
+      <div className="p-6">
+        {activeTab === "batting" && playerData.battingStats?.length > 0 && (
+          <MemoizedStatTable stats={playerData.battingStats} type="batting" />
+        )}
+        {activeTab === "pitching" && playerData.pitchingStats?.length > 0 && (
+          <MemoizedStatTable stats={playerData.pitchingStats} type="pitching" />
+        )}
+        {activeTab === "baserunning" && baserunningStats?.length > 0 && (
+          <MemoizedStatTable stats={baserunningStats} type="baserunning" />
+        )}
+
+        {/* Spray Chart Section */}
+        {shouldShowSprayChart && (
+          <div className="mt-8">
+            <SprayChart
+              playerId={playerId}
+              year={getMostRecentYear()}
+              division={selectedDivision}
+              height={600}
+              width={700}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+);
 
 const PlayerPage = () => {
   const { playerId } = useParams();
@@ -190,7 +218,6 @@ const PlayerPage = () => {
     }
   }, [playerId, selectedDivision]);
 
-  // Memoize the enhanced player data
   const enhancePlayerData = useCallback((playerResponse) => {
     const sortBySeasonDesc = (a, b) => b.Season - a.Season;
 
@@ -272,7 +299,6 @@ const PlayerPage = () => {
     };
   }, []);
 
-  // Prefetch all tab data on initial load
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -294,7 +320,7 @@ const PlayerPage = () => {
           ])
         );
 
-        let division = 3; // Default
+        let division = 3;
 
         if (maxBattingSeason > 0 || maxPitchingSeason > 0) {
           const mostRecentBattingStat = enhancedPlayerData.battingStats?.find(
@@ -316,7 +342,6 @@ const PlayerPage = () => {
           setSelectedDivision(division);
         }
 
-        // Fetch all data upfront to prevent re-renders later
         const fetchPromises = [];
 
         if (maxBattingSeason > 0) {
@@ -335,7 +360,6 @@ const PlayerPage = () => {
 
         await Promise.all(fetchPromises);
 
-        // Set initial active tab based on available data
         if (
           !enhancedPlayerData.battingStats?.length &&
           enhancedPlayerData.pitchingStats?.length
@@ -354,21 +378,18 @@ const PlayerPage = () => {
     fetchData();
   }, [playerId, fetchPercentiles, fetchBaserunningStats, enhancePlayerData]);
 
-  // Only fetch baserunning stats when division changes
   useEffect(() => {
     if (tabsInitialized) {
       fetchBaserunningStats();
     }
   }, [selectedDivision, fetchBaserunningStats, tabsInitialized]);
 
-  // Memoize available years calculation
   const getAvailableYears = useCallback(
     (type = null) => {
       if (!playerData) return [];
 
       const years = new Set();
 
-      // For baserunning tab, we need to use batting years
       if (type === "baserunning") {
         if (playerData?.battingStats) {
           playerData.battingStats.forEach((stat) => years.add(stat.Season));
@@ -388,7 +409,6 @@ const PlayerPage = () => {
     [playerData]
   );
 
-  // Memoize available divisions calculation
   const getAvailableDivisions = useCallback(() => {
     if (!playerData) return [];
 
@@ -438,7 +458,6 @@ const PlayerPage = () => {
 
   const handleYearChange = useCallback(
     async (year, type) => {
-      // Convert baserunning type to batting for fetching percentiles
       const effectiveType = type === "baserunning" ? "batting" : type;
       await fetchPercentiles(year, selectedDivision, effectiveType);
     },
@@ -454,15 +473,12 @@ const PlayerPage = () => {
     return null;
   }, [activeTab, battingPercentiles, pitchingPercentiles]);
 
-  // Handle tab change to sync years properly without causing re-renders
   const handleTabChange = useCallback(
     (newTab) => {
       if (newTab === activeTab) return;
 
       setActiveTab(newTab);
 
-      // When switching to baserunning, ensure we have batting percentiles
-      // But only fetch if needed to prevent re-renders
       if (
         newTab === "baserunning" &&
         playerData?.battingStats?.length > 0 &&
@@ -483,7 +499,6 @@ const PlayerPage = () => {
     ]
   );
 
-  // Memoize player data with years and divisions for PercentileSection
   const enhancedPlayerDataForPercentile = useMemo(() => {
     if (!playerData) return null;
 
@@ -494,7 +509,6 @@ const PlayerPage = () => {
     };
   }, [playerData, getAvailableYears, getAvailableDivisions, activeTab]);
 
-  // Memoize tab state booleans
   const tabState = useMemo(
     () => ({
       hasBattingStats: playerData?.battingStats?.length > 0,
@@ -549,6 +563,8 @@ const PlayerPage = () => {
               activeTab={activeTab}
               playerData={playerData}
               baserunningStats={baserunningStats}
+              selectedDivision={selectedDivision}
+              playerId={playerId}
             />
           </div>
         </div>
