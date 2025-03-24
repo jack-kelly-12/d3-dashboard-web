@@ -233,13 +233,10 @@ const SprayChart = ({
     const outfieldZoneData = playerData.outfieldZones || [];
     const infieldZoneData = playerData.infieldZones || [];
 
-    const isVerySmallScreen = containerWidth <= 500;
-    const isSmallScreen = containerWidth < 500;
-    const isTinyScreen = containerWidth < 500;
+    const isSmallScreen = chartWidth < 600;
+    const isTinyScreen = chartWidth < 450;
 
-    const margin = isVerySmallScreen
-      ? { top: 40, right: 10, bottom: 10, left: 10 }
-      : isTinyScreen
+    const margin = isTinyScreen
       ? { top: 40, right: 10, bottom: 20, left: 10 }
       : { top: 60, right: 20, bottom: 120, left: 20 };
 
@@ -514,8 +511,7 @@ const SprayChart = ({
       }
     });
 
-    // Only show stats container if the screen width is greater than 500px
-    if (!isVerySmallScreen && !isTinyScreen) {
+    if (!isTinyScreen) {
       const statsContainer = svg
         .append("g")
         .attr("transform", `translate(0, ${height - margin.bottom})`);
