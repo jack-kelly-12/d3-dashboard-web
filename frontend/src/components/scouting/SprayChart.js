@@ -233,9 +233,9 @@ const SprayChart = ({
     const outfieldZoneData = playerData.outfieldZones || [];
     const infieldZoneData = playerData.infieldZones || [];
 
-    const isVerySmallScreen = containerWidth <= 700;
-    const isSmallScreen = containerWidth < 600;
-    const isTinyScreen = containerWidth < 600;
+    const isVerySmallScreen = containerWidth <= 500;
+    const isSmallScreen = containerWidth < 500;
+    const isTinyScreen = containerWidth < 500;
 
     const margin = isVerySmallScreen
       ? { top: 40, right: 10, bottom: 10, left: 10 }

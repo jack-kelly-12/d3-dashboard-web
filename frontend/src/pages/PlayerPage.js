@@ -149,7 +149,6 @@ const PlayerPage = () => {
           )}/${year}/${division}`
         );
 
-        // Always treat baserunning as batting for percentiles
         const effectiveType = type === "baserunning" ? "batting" : type;
 
         if (effectiveType === "batting") {
