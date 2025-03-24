@@ -128,7 +128,7 @@ export const exportSingleSprayChart = async (
     const tempDiv = document.createElement("div");
     tempDiv.style.position = "absolute";
     tempDiv.style.left = "-9999px";
-    tempDiv.style.width = "700px";
+    tempDiv.style.width = "800px";
     tempDiv.style.height = "600px";
     document.body.appendChild(tempDiv);
 
@@ -142,7 +142,7 @@ export const exportSingleSprayChart = async (
       setTimeout(() => {
         root.render(
           <SprayChart
-            width={700}
+            width={800}
             height={600}
             playerId={player.playerId}
             year={reportYear}
@@ -161,9 +161,9 @@ export const exportSingleSprayChart = async (
           if (svgElement && svgElement.querySelector("path")) {
             try {
               const clonedSvg = svgElement.cloneNode(true);
-              clonedSvg.setAttribute("width", "700");
+              clonedSvg.setAttribute("width", "800");
               clonedSvg.setAttribute("height", "600");
-              clonedSvg.setAttribute("viewBox", "0 0 700 600");
+              clonedSvg.setAttribute("viewBox", "0 0 800 600");
 
               if (clonedSvg.getAttribute("height") === "auto") {
                 clonedSvg.setAttribute("height", "600");
@@ -171,7 +171,7 @@ export const exportSingleSprayChart = async (
 
               const svgString = getSVGString(clonedSvg);
 
-              svgToImage(svgString, 700, 600, (blob) => {
+              svgToImage(svgString, 800, 600, (blob) => {
                 if (blob) {
                   const safeFileName = player.name
                     .replace(/[^a-z0-9]/gi, "_")
@@ -203,7 +203,7 @@ export const exportSingleSprayChart = async (
           }
         };
 
-        setTimeout(checkForSVG, 700);
+        setTimeout(checkForSVG, 800);
       }, 100);
     });
   } catch (error) {
@@ -258,7 +258,7 @@ const exportBatterToZip = async (batter, zip, year, division) => {
   const tempDiv = document.createElement("div");
   tempDiv.style.position = "absolute";
   tempDiv.style.left = "-9999px";
-  tempDiv.style.width = "700px";
+  tempDiv.style.width = "800px";
   tempDiv.style.height = "600px";
   document.body.appendChild(tempDiv);
 
@@ -272,7 +272,7 @@ const exportBatterToZip = async (batter, zip, year, division) => {
     setTimeout(() => {
       root.render(
         <SprayChart
-          width={700}
+          width={800}
           height={600}
           playerId={batter.playerId}
           year={year}
@@ -291,9 +291,9 @@ const exportBatterToZip = async (batter, zip, year, division) => {
 
           if (svgElement && svgElement.querySelector("path")) {
             const clonedSvg = svgElement.cloneNode(true);
-            clonedSvg.setAttribute("width", "700");
+            clonedSvg.setAttribute("width", "800");
             clonedSvg.setAttribute("height", "600");
-            clonedSvg.setAttribute("viewBox", "0 0 700 600");
+            clonedSvg.setAttribute("viewBox", "0 0 800 600");
 
             if (clonedSvg.getAttribute("height") === "auto") {
               clonedSvg.setAttribute("height", "500");
@@ -301,7 +301,7 @@ const exportBatterToZip = async (batter, zip, year, division) => {
 
             const svgString = getSVGString(clonedSvg);
 
-            svgToImage(svgString, 700, 600, (blob) => {
+            svgToImage(svgString, 800, 600, (blob) => {
               if (blob) {
                 const safeFileName = batter.name
                   .replace(/[^a-z0-9]/gi, "_")
@@ -332,7 +332,7 @@ const exportBatterToZip = async (batter, zip, year, division) => {
         }
       };
 
-      setTimeout(checkForSVG, 700);
+      setTimeout(checkForSVG, 800);
     }, 100);
   });
 };
@@ -463,7 +463,7 @@ const SprayChartsPage = () => {
           </p>
           <button
             onClick={() => navigate("/scouting/reports")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800"
           >
             Back to Reports
           </button>
@@ -484,7 +484,7 @@ const SprayChartsPage = () => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleBackToReports}
-                  className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   <ArrowLeft size={20} />
                 </button>
@@ -503,7 +503,7 @@ const SprayChartsPage = () => {
                 className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-sm ${
                   isExportDisabled
                     ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700"
+                    : "bg-blue-600 hover:bg-blue-800"
                 } text-white rounded-lg transition-colors shadow-sm`}
               >
                 {loading
@@ -522,7 +522,7 @@ const SprayChartsPage = () => {
                   <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
                     <ArrowLeft size={24} />
                   </div>
-                  <p className="text-gray-700 text-lg font-medium">
+                  <p className="text-gray-800 text-lg font-medium">
                     No batters in this report
                   </p>
                   <p className="text-gray-500 mt-2">
@@ -565,19 +565,19 @@ const SprayChartsPage = () => {
 
                       <div className="grid grid-cols-3 gap-2 mt-3 mb-4 text-center">
                         <div className="bg-gray-50 p-2 rounded">
-                          <div className="text-lg font-semibold text-gray-700">
+                          <div className="text-lg font-semibold text-gray-800">
                             {batter.keyStats?.avg || ".---"}
                           </div>
                           <div className="text-xs text-gray-500">AVG</div>
                         </div>
                         <div className="bg-gray-50 p-2 rounded">
-                          <div className="text-lg font-semibold text-gray-700">
+                          <div className="text-lg font-semibold text-gray-800">
                             {batter.keyStats?.obp || ".---"}
                           </div>
                           <div className="text-xs text-gray-500">OBP</div>
                         </div>
                         <div className="bg-gray-50 p-2 rounded">
-                          <div className="text-lg font-semibold text-gray-700">
+                          <div className="text-lg font-semibold text-gray-800">
                             {batter.keyStats?.slg || ".---"}
                           </div>
                           <div className="text-xs text-gray-500">SLG</div>
@@ -590,7 +590,7 @@ const SprayChartsPage = () => {
                         className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-sm ${
                           isExportDisabled
                             ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
                         } rounded-lg transition-colors`}
                       >
                         <FileDown size={16} />
