@@ -778,7 +778,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.oppo_pct}%`,
+    cell: (row) => `${row.oppo_pct}% ` || "-",
   },
   {
     name: "Middle%",
@@ -786,7 +786,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.middle_pct}%`,
+    cell: (row) => `${row.middle_pct}%` || "-",
   },
   {
     name: "Pull%",
@@ -794,7 +794,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.pull_pct}%`,
+    cell: (row) => `${row.pull_pct}%` || "-",
   },
   {
     name: "GB%",
@@ -802,7 +802,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.gb_pct}%`,
+    cell: (row) => `${row.gb_pct}%` || "-",
   },
   {
     name: "LD%",
@@ -810,7 +810,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.ld_pct}%`,
+    cell: (row) => `${row.ld_pct}%` || "-",
   },
   {
     name: "Pop%",
@@ -818,7 +818,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.pop_pct}%`,
+    cell: (row) => `${row.pop_pct}%` || "-",
   },
   {
     name: "FB%",
@@ -826,7 +826,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.fb_pct}%`,
+    cell: (row) => `${row.fb_pct}%` || "-",
   },
   {
     name: "Pull Air%",
@@ -834,7 +834,7 @@ export const columnsBatted = [
     sortable: true,
     width: "7.5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.pull_air_pct}%`,
+    cell: (row) => `${row.pull_air_pct}%` || "-",
   },
   {
     name: "Backside GB%",
@@ -842,7 +842,7 @@ export const columnsBatted = [
     sortable: true,
     width: "7.5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.oppo_gb_pct}%`,
+    cell: (row) => `${row.oppo_gb_pct}%` || "-",
   },
 ];
 
