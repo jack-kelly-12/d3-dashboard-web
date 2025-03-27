@@ -27,53 +27,56 @@ const SprayChart = ({
         const battedBall = data.batted_ball_data || {};
 
         const totalOutfield =
-          (counts.to_lf || 0) +
-          (counts.to_cf || 0) +
-          (counts.to_rf || 0) +
-          (counts.to_lf_hr || 0) +
-          (counts.to_cf_hr || 0) +
-          (counts.to_rf_hr || 0);
+          (counts.to_lf || "-") +
+          (counts.to_cf || "-") +
+          (counts.to_rf || "-") +
+          (counts.to_lf_hr || "-") +
+          (counts.to_cf_hr || "-") +
+          (counts.to_rf_hr || "-");
 
         const leftFieldPct = totalOutfield
           ? Math.round(
-              (((counts.to_lf || 0) + (counts.to_lf_hr || 0)) / totalOutfield) *
+              (((counts.to_lf || "-") + (counts.to_lf_hr || "-")) /
+                totalOutfield) *
                 100
             )
           : 0;
         const centerFieldPct = totalOutfield
           ? Math.round(
-              (((counts.to_cf || 0) + (counts.to_cf_hr || 0)) / totalOutfield) *
+              (((counts.to_cf || "-") + (counts.to_cf_hr || "-")) /
+                totalOutfield) *
                 100
             )
           : 0;
         const rightFieldPct = totalOutfield
           ? Math.round(
-              (((counts.to_rf || 0) + (counts.to_rf_hr || 0)) / totalOutfield) *
+              (((counts.to_rf || "-") + (counts.to_rf_hr || "-")) /
+                totalOutfield) *
                 100
             )
           : 0;
 
         const totalInfield =
-          (counts.to_3b || 0) +
-          (counts.to_ss || 0) +
-          (counts.up_middle || 0) +
-          (counts.to_2b || 0) +
-          (counts.to_1b || 0);
+          (counts.to_3b || "-") +
+          (counts.to_ss || "-") +
+          (counts.up_middle || "-") +
+          (counts.to_2b || "-") +
+          (counts.to_1b || "-");
 
         const thirdBasePct = totalInfield
-          ? Math.round(((counts.to_3b || 0) / totalInfield) * 100)
+          ? Math.round(((counts.to_3b || "-") / totalInfield) * 100)
           : 0;
         const shortstopPct = totalInfield
-          ? Math.round(((counts.to_ss || 0) / totalInfield) * 100)
+          ? Math.round(((counts.to_ss || "-") / totalInfield) * 100)
           : 0;
         const upMiddlePct = totalInfield
-          ? Math.round(((counts.up_middle || 0) / totalInfield) * 100)
+          ? Math.round(((counts.up_middle || "-") / totalInfield) * 100)
           : 0;
         const secondBasePct = totalInfield
-          ? Math.round(((counts.to_2b || 0) / totalInfield) * 100)
+          ? Math.round(((counts.to_2b || "-") / totalInfield) * 100)
           : 0;
         const firstBasePct = totalInfield
-          ? Math.round(((counts.to_1b || 0) / totalInfield) * 100)
+          ? Math.round(((counts.to_1b || "-") / totalInfield) * 100)
           : 0;
 
         const bats = data.bats || battedBall.batter_hand || "-";
@@ -83,20 +86,20 @@ const SprayChart = ({
           bats ? bats.substring(0, 1) : "-"
         } | ${year} | ${team}`;
 
-        const battingAvg = splits.BA_Overall || 0;
-        const PA = splits.PA_Overall || 0;
-        const onBasePercentage = splits.OBP_Overall || 0;
-        const wOBA = splits.wOBA_Overall || 0;
+        const battingAvg = splits.BA_Overall || "-";
+        const PA = splits.PA_Overall || "-";
+        const onBasePercentage = splits.OBP_Overall || "-";
+        const wOBA = splits.wOBA_Overall || "-";
 
-        const vspRhpBa = splits["BA_vs RHP"] || 0;
-        const vspRhpPA = splits["PA_vs RHP"] || 0;
-        const vsRhpObp = splits["OBP_vs RHP"] || 0;
-        const vsRhpWoba = splits["wOBA_vs RHP"] || 0;
+        const vspRhpBa = splits["BA_vs RHP"] || "-";
+        const vspRhpPA = splits["PA_vs RHP"] || "-";
+        const vsRhpObp = splits["OBP_vs RHP"] || "-";
+        const vsRhpWoba = splits["wOBA_vs RHP"] || "-";
 
-        const vsLhpBa = splits["BA_vs LHP"] || 0;
-        const vsLhpPA = splits["PA_vs LHP"] || 0;
-        const vsLhpObp = splits["OBP_vs LHP"] || 0;
-        const vsLhpWoba = splits["wOBA_vs LHP"] || 0;
+        const vsLhpBa = splits["BA_vs LHP"] || "-";
+        const vsLhpPA = splits["PA_vs LHP"] || "-";
+        const vsLhpObp = splits["OBP_vs LHP"] || "-";
+        const vsLhpWoba = splits["wOBA_vs LHP"] || "-";
 
         const airPct = battedBall.gb_pct
           ? 100 - Math.round(parseFloat(battedBall.gb_pct))
@@ -129,17 +132,17 @@ const SprayChart = ({
             onBasePercentage: parseFloat(onBasePercentage),
             wOBA: parseFloat(wOBA),
             hits: {
-              singles: counts.singles || 0,
-              doubles: counts.doubles || 0,
-              triples: counts.triples || 0,
+              singles: counts.singles || "-",
+              doubles: counts.doubles || "-",
+              triples: counts.triples || "-",
               homeRuns:
-                (counts.to_lf_hr || 0) +
-                (counts.to_cf_hr || 0) +
-                (counts.to_rf_hr || 0),
+                (counts.to_lf_hr || "-") +
+                (counts.to_cf_hr || "-") +
+                (counts.to_rf_hr || "-"),
             },
-            fieldOuts: counts.field_outs || 0,
-            groundOuts: counts.ground_outs || 0,
-            lineOuts: counts.line_outs || 0,
+            fieldOuts: counts.field_outs || "-",
+            groundOuts: counts.ground_outs || "-",
+            lineOuts: counts.line_outs || "-",
             batted: {
               air: airPct,
               ground: groundPct,
@@ -150,8 +153,8 @@ const SprayChart = ({
               backspinGroundball: backspinGbPct,
             },
             extraStats: {
-              strikeouts: counts.strikeouts || 0,
-              walks: counts.walks || 0,
+              strikeouts: counts.strikeouts || "-",
+              walks: counts.walks || "-",
               stolenBases: 0,
               caughtStealing: 0,
             },
@@ -176,17 +179,17 @@ const SprayChart = ({
             {
               id: "left-field",
               percentage: leftFieldPct,
-              hrCount: counts.to_lf_hr || 0,
+              hrCount: counts.to_lf_hr || "-",
             },
             {
               id: "center-field",
               percentage: centerFieldPct,
-              hrCount: counts.to_cf_hr || 0,
+              hrCount: counts.to_cf_hr || "-",
             },
             {
               id: "right-field",
               percentage: rightFieldPct,
-              hrCount: counts.to_rf_hr || 0,
+              hrCount: counts.to_rf_hr || "-",
             },
           ],
           infieldZones: [
@@ -368,7 +371,7 @@ const SprayChart = ({
       .context(null);
 
     outfieldSlices.forEach((slice, i) => {
-      const percentage = outfieldZoneData[i]?.percentage || 0;
+      const percentage = outfieldZoneData[i]?.percentage || "-";
 
       let fillColor = "#FFE4E1";
       if (percentage >= 50) {
@@ -429,7 +432,7 @@ const SprayChart = ({
           .attr("stroke-width", 1.5);
       }
 
-      const hrCount = outfieldZoneData[i]?.hrCount || 0;
+      const hrCount = outfieldZoneData[i]?.hrCount || "-";
 
       if (!isTinyScreen || hrCount > 0) {
         const hrFontSize = isTinyScreen
@@ -467,7 +470,7 @@ const SprayChart = ({
     const infieldArc = d3.arc().innerRadius(0).outerRadius(infieldRadius);
 
     infieldSlices.forEach((slice, i) => {
-      const percentage = infieldZoneData[i]?.percentage || 0;
+      const percentage = infieldZoneData[i]?.percentage || "-";
 
       let fillColor = "#FFFFFF";
       if (percentage > 0 && percentage < 25) {
@@ -620,11 +623,11 @@ const SprayChart = ({
 
         const batsRows = [
           [
-            `${stats.batted?.air || 0}%`,
-            `${stats.batted?.ground || 0}%`,
-            `${stats.batted?.pull || 0}%`,
-            `${stats.batted?.oppo || 0}%`,
-            `${stats.batted?.middle || 0}%`,
+            `${stats.batted?.air || "-"}%`,
+            `${stats.batted?.ground || "-"}%`,
+            `${stats.batted?.pull || "-"}%`,
+            `${stats.batted?.oppo || "-"}%`,
+            `${stats.batted?.middle || "-"}%`,
           ],
         ];
 
@@ -651,17 +654,19 @@ const SprayChart = ({
         const statRows = [
           [
             "All",
-            `.${((stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}`,
-            `.${((stats.onBasePercentage || 0) * 1000)
+            `.${((stats.battingAvg || "-") * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.onBasePercentage || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
           ],
           [
             "RHP",
-            `.${((stats.vsRHP?.battingAvg || 0) * 1000)
+            `.${((stats.vsRHP?.battingAvg || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
-            `.${((stats.vsRHP?.onBasePercentage || 0) * 1000)
+            `.${((stats.vsRHP?.onBasePercentage || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
           ],
@@ -695,13 +700,13 @@ const SprayChart = ({
 
         const leftRows = [
           [
-            `${stats.batted?.air || 0}%`,
-            `${stats.batted?.ground || 0}%`,
-            `${stats.batted?.pull || 0}%`,
-            `${stats.batted?.middle || 0}%`,
-            `${stats.batted?.oppo || 0}%`,
-            `${stats.batted?.pullAir || 0}%`,
-            `${stats.batted?.backspinGroundball || 0}%`,
+            `${stats.batted?.air || "-"}%`,
+            `${stats.batted?.ground || "-"}%`,
+            `${stats.batted?.pull || "-"}%`,
+            `${stats.batted?.middle || "-"}%`,
+            `${stats.batted?.oppo || "-"}%`,
+            `${stats.batted?.pullAir || "-"}%`,
+            `${stats.batted?.backspinGroundball || "-"}%`,
           ],
         ];
 
@@ -725,34 +730,40 @@ const SprayChart = ({
         const rightRows = [
           [
             "Overall",
-            `${stats.PA || 0}`,
-            `.${((stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}`,
-            `.${((stats.onBasePercentage || 0) * 1000)
+            `${stats.PA || "-"}`,
+            `.${((stats.battingAvg || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
-            `.${((stats.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+            `.${((stats.onBasePercentage || "-") * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
+            `.${((stats.wOBA || "-") * 1000).toFixed(0).padStart(3, "0")}`,
           ],
           [
             "vs RHP",
-            `${stats.vsRHP?.PA || 0}`,
-            `.${((stats.vsRHP?.battingAvg || 0) * 1000)
+            `${stats.vsRHP?.PA || "-"}`,
+            `.${((stats.vsRHP?.battingAvg || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
-            `.${((stats.vsRHP?.onBasePercentage || 0) * 1000)
+            `.${((stats.vsRHP?.onBasePercentage || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
-            `.${((stats.vsRHP?.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+            `.${((stats.vsRHP?.wOBA || "-") * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
           ],
           [
             "vs LHP",
-            `${stats.vsLHP?.PA || 0}`,
-            `.${((stats.vsLHP?.battingAvg || 0) * 1000)
+            `${stats.vsLHP?.PA || "-"}`,
+            `.${((stats.vsLHP?.battingAvg || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
-            `.${((stats.vsLHP?.onBasePercentage || 0) * 1000)
+            `.${((stats.vsLHP?.onBasePercentage || "-") * 1000)
               .toFixed(0)
               .padStart(3, "0")}`,
-            `.${((stats.vsLHP?.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}`,
+            `.${((stats.vsLHP?.wOBA || "-") * 1000)
+              .toFixed(0)
+              .padStart(3, "0")}`,
           ],
         ];
 
