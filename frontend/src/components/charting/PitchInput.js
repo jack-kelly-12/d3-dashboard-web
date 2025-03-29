@@ -145,6 +145,7 @@ const PITCH_RESULTS = [
   "in_play",
   "walk",
   "hit_by_pitch",
+  "baserunner_out",
 ];
 
 const ZONES_STANDARD = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14];
@@ -239,9 +240,7 @@ const PitchInput = ({
           <button
             type="button"
             onClick={onSubmit}
-            disabled={
-              disabled || !currentPitch.location || !currentPitch.velocity
-            }
+            disabled={disabled}
             className="flex-1 px-3 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-md text-sm
                      hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -281,9 +280,6 @@ const PitchInput = ({
     if (onReset) onReset();
   };
 
-  const isFormEmpty =
-    !currentPitch.velocity && !currentPitch.type && !currentPitch.location;
-
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-3 sm:p-4 shadow-sm">
       <div className="flex justify-between items-center mb-3 sm:mb-4">
@@ -292,7 +288,7 @@ const PitchInput = ({
         </h2>
         <button
           onClick={handleReset}
-          disabled={disabled || isFormEmpty}
+          disabled={disabled}
           className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs sm:text-sm text-gray-600 bg-gray-100 
             rounded-md hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed
             transition-colors"
@@ -383,12 +379,7 @@ const PitchInput = ({
 
         <button
           onClick={onSubmit}
-          disabled={
-            disabled ||
-            !currentPitch.type ||
-            !currentPitch.location ||
-            (!isBullpen && !currentPitch.result)
-          }
+          disabled={disabled || (!isBullpen && !currentPitch.result)}
           className="w-full py-1.5 sm:py-2 px-3 sm:px-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-md 
             hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 
             focus:ring-blue-500 focus:ring-offset-2 

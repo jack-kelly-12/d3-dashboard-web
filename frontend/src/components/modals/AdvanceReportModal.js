@@ -18,6 +18,7 @@ export const ReportTypes = {
     description:
       "Comprehensive analysis of bullpen sessions including pitch metrics and patterns",
     icon: "🎯",
+    showPitcherSelection: false,
   },
   PITCHER_SCOUTING_1: {
     id: "pitcher_scouting_1",
@@ -29,6 +30,7 @@ export const ReportTypes = {
     description:
       "Comprehensive breakdown of pitch metrics and location patterns with left/right handed splits from in-game performance",
     icon: "⚾",
+    showPitcherSelection: true,
   },
   PITCHER_SCOUTING_2: {
     id: "pitcher_scouting_2",
@@ -40,6 +42,7 @@ export const ReportTypes = {
     description:
       "Advanced analysis of pitch sequencing and effectiveness, featuring detailed metrics and preferred pitch combinations by handedness",
     icon: "⚾",
+    showPitcherSelection: true,
   },
   TIMES_THROUGH_ORDER: {
     id: "times_through_order",
@@ -51,6 +54,7 @@ export const ReportTypes = {
     description:
       "Analysis of pitcher effectiveness across multiple times through the batting order",
     icon: "📈",
+    showPitcherSelection: true,
   },
   CATCHER: {
     id: "catcher",
@@ -62,6 +66,7 @@ export const ReportTypes = {
     description:
       "Analysis of catcher framing and pitch framing metrics, including pitch framing rates",
     icon: "🖼️",
+    showPitcherSelection: false,
   },
 };
 
@@ -75,6 +80,22 @@ const getChartDisplayTitle = (chart) => {
 };
 
 const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
+  // Function to reset all state when closing the modal
+  const resetModalState = () => {
+    setSelectedCharts([]);
+    setSelectedPitchers({});
+    setCurrentStep("select-report");
+    setReportType("bullpen");
+    setNameFilter("");
+    setDateRange({ start: "", end: "" });
+    setSelectedGameChart(null);
+  };
+
+  // Enhanced close function that resets state
+  const handleClose = () => {
+    resetModalState();
+    onClose();
+  };
   const [selectedCharts, setSelectedCharts] = useState([]);
   const [selectedPitchers, setSelectedPitchers] = useState({});
   const [currentStep, setCurrentStep] = useState("select-report");
@@ -147,7 +168,11 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
   }, [selectedGameChart, filteredCharts]);
 
   const handleSelectChart = (chart) => {
-    if (["game", "scrimmage"].includes(chart.chartType)) {
+    // Only show pitcher selection for specific report types
+    if (
+      ["game", "scrimmage"].includes(chart.chartType) &&
+      currentReportType.showPitcherSelection
+    ) {
       setSelectedGameChart(chart);
       setCurrentStep("select-pitchers");
       // Reset pitcher selection when selecting a new chart
@@ -187,40 +212,29 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
       return;
     }
 
-    // Instead of creating a new chart for each pitcher,
-    // we'll create a single chart with filtered data
     if (Object.keys(selectedPitchers).length > 0) {
-      // Get selected pitcher names for filtering
       const selectedPitcherNames = Object.values(selectedPitchers).map(
         (pitcher) => pitcher.name
       );
 
-      // Create a single modified chart that includes all selected pitchers
       const modifiedChart = {
         ...originalChart,
-        // We'll still use a uniquely identified chart
         id: `${originalChart.id}_filtered`,
-        // Store the selected pitchers information for reference in the report
         selectedPitchers: Object.values(selectedPitchers),
-        // Filter pitches to only include those from selected pitchers
         pitches: originalChart.pitches.filter(
           (pitch) =>
             pitch.pitcher && selectedPitcherNames.includes(pitch.pitcher.name)
         ),
-        // Flag to indicate this is a filtered chart
         isFilteredChart: true,
       };
 
-      // Update the total pitches count based on the filtered pitches
       modifiedChart.totalPitches = modifiedChart.pitches.length;
 
-      // Only add the chart if it has pitches
       if (modifiedChart.pitches.length > 0) {
         setSelectedCharts([...selectedCharts, modifiedChart]);
       }
     }
 
-    // Reset selection state and return to chart selection
     setSelectedPitchers({});
     setSelectedGameChart(null);
     setCurrentStep("select-report");
@@ -290,7 +304,7 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      onClose();
+      handleClose();
     } catch (error) {
       console.error("Error generating report:", error);
     }
@@ -299,12 +313,18 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl w-full max-w-4xl shadow-xl">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      onClick={handleClose}
+    >
+      <div
+        className="bg-white rounded-2xl w-full max-w-4xl shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-50">
           <h2 className="text-2xl font-bold text-gray-900">Generate Report</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="text-gray-500 hover:text-gray-700"
           >
             <X className="w-6 h-6" />
@@ -369,12 +389,16 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
                       const isGameOrScrimmage = ["game", "scrimmage"].includes(
                         chart.chartType
                       );
-                      // Check if there's a filtered version of this chart selected
                       const isSelected = isGameOrScrimmage
                         ? selectedCharts.some(
                             (c) => c.id === `${chart.id}_filtered`
                           )
                         : selectedCharts.some((c) => c.id === chart.id);
+
+                      // Only show the "Select Pitchers" option for specific report types
+                      const showPitcherSelectionOption =
+                        isGameOrScrimmage &&
+                        currentReportType.showPitcherSelection;
 
                       return (
                         <div
@@ -396,7 +420,7 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
                               {chart.totalPitches} pitches
                             </div>
                           </div>
-                          {isGameOrScrimmage && (
+                          {showPitcherSelectionOption && (
                             <div className="ml-3 flex items-center text-blue-600">
                               <span className="text-sm mr-1">
                                 Select Pitchers
@@ -557,7 +581,7 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
           </div>
           <div className="flex gap-3">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel

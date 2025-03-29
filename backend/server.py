@@ -738,6 +738,7 @@ def search_players():
         starts_with_term = f"{query.lower()}%"
         contains_term = f"%{query.lower()}%"
 
+        # Optimized query with LIMIT applied earlier
         cursor.execute("""
             SELECT DISTINCT
                 player_id,
@@ -757,7 +758,6 @@ def search_players():
                     WHEN LOWER(player_name) LIKE ? THEN 2
                     ELSE 3
                 END,
-                LENGTH(player_name),
                 player_name
             LIMIT 5
         """, (
@@ -769,6 +769,7 @@ def search_players():
         ))
 
         results = [dict(row) for row in cursor.fetchall()]
+
         return jsonify(results)
 
     except Exception as e:

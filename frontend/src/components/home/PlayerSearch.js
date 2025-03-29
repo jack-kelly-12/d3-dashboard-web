@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchAPI } from "../../config/api";
@@ -9,10 +9,31 @@ const PlayerSearch = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const navigate = useNavigate();
+  const debounceTimerRef = useRef(null);
+
+  // Cache for search results
+  const cacheRef = useRef({});
+
+  // Debounced search function
+  const debouncedSearch = useCallback((searchQuery) => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    debounceTimerRef.current = setTimeout(() => {
+      searchPlayers(searchQuery);
+    }, 300); // 300ms debounce delay
+  }, []);
 
   const searchPlayers = async (searchQuery) => {
     if (!searchQuery.trim()) {
       setResults([]);
+      return;
+    }
+
+    // Check if we have cached results
+    if (cacheRef.current[searchQuery]) {
+      setResults(cacheRef.current[searchQuery]);
       return;
     }
 
@@ -21,7 +42,17 @@ const PlayerSearch = () => {
       const data = await fetchAPI(
         `/api/search/players?q=${encodeURIComponent(searchQuery)}`
       );
-      setResults(data.slice(0, 5));
+      const topResults = data.slice(0, 5);
+      setResults(topResults);
+
+      // Cache the results
+      cacheRef.current[searchQuery] = topResults;
+
+      // Limit cache size to prevent memory issues
+      const cacheKeys = Object.keys(cacheRef.current);
+      if (cacheKeys.length > 50) {
+        delete cacheRef.current[cacheKeys[0]];
+      }
     } catch (error) {
       console.error("Error searching players:", error);
       setResults([]);
@@ -37,9 +68,18 @@ const PlayerSearch = () => {
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setSelectedIndex((prev) => Math.max(prev - 1, -1));
-    } else if (e.key === "Enter" && selectedIndex >= 0) {
+    } else if (e.key === "Enter") {
       e.preventDefault();
-      navigate(`/player/${results[selectedIndex].playerId}`);
+      if (selectedIndex >= 0) {
+        navigate(
+          `/player/${
+            results[selectedIndex].player_id || results[selectedIndex].playerId
+          }`
+        );
+      } else if (results.length > 0) {
+        // Navigate to first result if none selected but results exist
+        navigate(`/player/${results[0].player_id || results[0].playerId}`);
+      }
     }
   };
 
@@ -47,8 +87,17 @@ const PlayerSearch = () => {
     const value = e.target.value;
     setQuery(value);
     setSelectedIndex(-1);
-    searchPlayers(value);
+    debouncedSearch(value);
   };
+
+  // Clean up debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="relative w-full">
@@ -75,7 +124,7 @@ const PlayerSearch = () => {
         <div className="absolute z-50 w-full bg-white mt-1 rounded-lg shadow-lg border border-gray-200 overflow-hidden">
           {results.map((player, index) => (
             <div
-              key={player.playerId || index}
+              key={player.player_id || player.playerId || index}
               onClick={() =>
                 navigate(`/player/${player.player_id || player.playerId}`)
               }

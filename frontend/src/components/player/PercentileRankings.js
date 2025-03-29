@@ -196,16 +196,6 @@ export const PercentileSection = ({
     activeTab === "batting"
       ? [
           {
-            title: "Value",
-            stats: [
-              { key: "Baserunning", label: "Baserunning", decimals: 1 },
-              { key: "Batting", label: "Batting", decimals: 1 },
-              { key: "WPA/LI", label: "WPA/LI", decimals: 1 },
-              { key: "WPA", label: "WPA", decimals: 1 },
-              { key: "REA", label: "RE24", decimals: 1 },
-            ],
-          },
-          {
             title: "Batting",
             stats: [
               { key: "wOBA", label: "wOBA", decimals: 3 },
@@ -213,6 +203,16 @@ export const PercentileSection = ({
               { key: "wRC+", label: "wRC+", decimals: 0 },
               { key: "K%", label: "K%", decimals: 1 },
               { key: "BB%", label: "BB%", decimals: 1 },
+            ],
+          },
+          {
+            title: "Value",
+            stats: [
+              { key: "Baserunning", label: "Baserunning", decimals: 1 },
+              { key: "Batting", label: "Batting", decimals: 1 },
+              { key: "WPA/LI", label: "WPA/LI", decimals: 1 },
+              { key: "WPA", label: "WPA", decimals: 1 },
+              { key: "REA", label: "RE24", decimals: 1 },
             ],
           },
         ]

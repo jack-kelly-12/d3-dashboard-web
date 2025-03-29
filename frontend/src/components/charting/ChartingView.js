@@ -99,13 +99,11 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
             setTopBottom("Top");
           }
 
-          // Only open pitcher modal if there's no pitcher set
           if (!updatedChart.pitcher) {
             setNextModalType("batter");
             setShouldOpenPitcherModal(true);
           }
         } else {
-          // For bullpen, only prompt if no pitcher is set
           if (!updatedChart.pitcher) {
             setShouldOpenPitcherModal(true);
           }
@@ -242,7 +240,11 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
           newOuts = 3;
         } else if (
           isOutType ||
-          ["strikeout_swinging", "strikeout_looking"].includes(result)
+          [
+            "strikeout_swinging",
+            "strikeout_looking",
+            "baserunner_out",
+          ].includes(result)
         ) {
           newOuts = Math.min(outs + 1, 3);
         }
