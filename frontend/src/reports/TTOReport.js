@@ -1,6 +1,5 @@
 import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
-import { LineChartPDF } from "../components/charting/pdf/LineChartPDF";
 
 const styles = StyleSheet.create({
   page: {
@@ -85,10 +84,17 @@ const styles = StyleSheet.create({
     borderTop: 1,
     borderTopColor: "#f3f4f6",
   },
+  emptyMessage: {
+    fontSize: 10,
+    fontStyle: "italic",
+    textAlign: "center",
+    color: "#6b7280",
+    padding: 10,
+  },
 });
 
-const TTOReport = ({ charts = [], pitchers = [] }) => {
-  if (!charts.length || !pitchers.length) {
+const TTOReport = ({ charts = [] }) => {
+  if (!charts.length) {
     return (
       <Document>
         <Page size="A4" style={styles.page}>
@@ -98,64 +104,72 @@ const TTOReport = ({ charts = [], pitchers = [] }) => {
     );
   }
 
+  const getUniquePitchers = () => {
+    const pitcherSet = new Set();
+    charts.forEach((chart) => {
+      chart.pitches.forEach((pitch) => {
+        if (pitch.pitcher?.name) {
+          pitcherSet.add(pitch.pitcher.name);
+        }
+      });
+    });
+    return Array.from(pitcherSet);
+  };
+
+  const pitchers = getUniquePitchers();
+
+  if (!pitchers.length) {
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <Text>No pitcher data available to generate the report.</Text>
+        </Page>
+      </Document>
+    );
+  }
+
   const calculateTTO = (pitches) => {
     const batterAppearances = {};
-
-    // Create a deep copy of pitches to modify
     const enrichedPitches = pitches.map((pitch) => ({ ...pitch }));
 
-    // Sort pitches by inning and timestamp
     enrichedPitches.sort((a, b) => {
-      if (a.inning === b.inning) {
-        return new Date(a.timestamp) - new Date(b.timestamp);
+      if (a.inning !== b.inning) {
+        return (a.inning || 0) - (b.inning || 0);
       }
-      return a.inning - b.inning;
+      return new Date(a.time || 0) - new Date(b.time || 0);
     });
 
-    // Calculate TTO for each pitch and modify the pitch object
     enrichedPitches.forEach((pitch) => {
-      const batterId = pitch.batter?.name; // Using name as ID since that's what we have
-      if (!batterId) return;
+      const batterName = pitch.batter?.name;
 
-      if (!batterAppearances[batterId]) {
-        batterAppearances[batterId] = {
+      if (!batterName) return;
+
+      const inning = pitch.inning;
+      const topBottom = pitch.topBottom;
+
+      if (inning === undefined || topBottom === undefined) return;
+
+      if (!batterAppearances[batterName]) {
+        batterAppearances[batterName] = {
           count: 1,
-          lastInning: pitch.inning,
+          lastInning: inning,
+          lastTopBottom: topBottom,
         };
         pitch.tto = 1;
-      } else if (pitch.inning !== batterAppearances[batterId].lastInning) {
-        batterAppearances[batterId].count++;
-        batterAppearances[batterId].lastInning = pitch.inning;
-        pitch.tto = batterAppearances[batterId].count;
+      } else if (
+        inning !== batterAppearances[batterName].lastInning ||
+        topBottom !== batterAppearances[batterName].lastTopBottom
+      ) {
+        batterAppearances[batterName].count++;
+        batterAppearances[batterName].lastInning = inning;
+        batterAppearances[batterName].lastTopBottom = topBottom;
+        pitch.tto = batterAppearances[batterName].count;
       } else {
-        pitch.tto = batterAppearances[batterId].count;
+        pitch.tto = batterAppearances[batterName].count;
       }
     });
 
     return enrichedPitches;
-  };
-
-  const aggregateVelocityByInning = (pitches) => {
-    const velocityMap = new Map();
-
-    pitches.forEach((pitch) => {
-      const inning = pitch.inning;
-      if (!velocityMap.has(inning)) {
-        velocityMap.set(inning, []);
-      }
-      if (pitch.velocity && !isNaN(pitch.velocity)) {
-        velocityMap.get(inning).push(Number(pitch.velocity));
-      }
-    });
-
-    const velocityData = [];
-    velocityMap.forEach((velocities, inning) => {
-      const avgVelocity =
-        velocities.reduce((sum, vel) => sum + vel, 0) / velocities.length;
-      velocityData.push({ inning, avgVelocity });
-    });
-
-    return velocityData.sort((a, b) => a.inning - b.inning);
   };
 
   const pages = pitchers
@@ -163,6 +177,8 @@ const TTOReport = ({ charts = [], pitchers = [] }) => {
       const pitcherPitches = charts.flatMap((chart) =>
         chart.pitches.filter((pitch) => pitch.pitcher?.name === pitcherName)
       );
+
+      if (pitcherPitches.length === 0) return null;
 
       return ["left", "right"].map((batterHand) => {
         const handFilteredPitches = pitcherPitches.filter(
@@ -172,12 +188,10 @@ const TTOReport = ({ charts = [], pitchers = [] }) => {
         if (!handFilteredPitches.length) return null;
 
         const ttoPitches = calculateTTO(handFilteredPitches);
-        console.log(ttoPitches);
+
         const tto1 = ttoPitches.filter((p) => p.tto === 1);
         const tto2 = ttoPitches.filter((p) => p.tto === 2);
         const tto3Plus = ttoPitches.filter((p) => p.tto >= 3);
-
-        const velocityData = aggregateVelocityByInning(handFilteredPitches);
 
         return (
           <Page
@@ -196,21 +210,44 @@ const TTOReport = ({ charts = [], pitchers = [] }) => {
               <Text style={styles.date}>{new Date().toLocaleDateString()}</Text>
             </View>
 
-            {/* TTO Tables */}
-            {renderTTOTable("1 TTO", tto1)}
-            {renderTTOTable("2 TTO", tto2)}
-            {renderTTOTable("3+ TTO", tto3Plus)}
-
-            {/* Velocity Line Chart */}
-            <View style={{ marginTop: 10 }}>
+            <View style={{ marginBottom: 10 }}>
               <Text
-                style={{ fontSize: 16, fontWeight: "bold", marginBottom: 10 }}
+                style={{ fontSize: 14, fontWeight: "bold", marginBottom: 5 }}
               >
-                Average Velocity by Inning
+                1st Time Through Order ({tto1.length} pitches)
               </Text>
-              <LineChartPDF data={velocityData} width={500} height={200} />
+              {tto1.length > 0 ? (
+                renderTTOTable(tto1)
+              ) : (
+                <Text style={styles.emptyMessage}>No data available</Text>
+              )}
             </View>
 
+            <View style={{ marginBottom: 10 }}>
+              <Text
+                style={{ fontSize: 14, fontWeight: "bold", marginBottom: 5 }}
+              >
+                2nd Time Through Order ({tto2.length} pitches)
+              </Text>
+              {tto2.length > 0 ? (
+                renderTTOTable(tto2)
+              ) : (
+                <Text style={styles.emptyMessage}>No data available</Text>
+              )}
+            </View>
+
+            <View style={{ marginBottom: 10 }}>
+              <Text
+                style={{ fontSize: 14, fontWeight: "bold", marginBottom: 5 }}
+              >
+                3rd+ Time Through Order ({tto3Plus.length} pitches)
+              </Text>
+              {tto3Plus.length > 0 ? (
+                renderTTOTable(tto3Plus)
+              ) : (
+                <Text style={styles.emptyMessage}>No data available</Text>
+              )}
+            </View>
             <Text style={styles.footer}>
               Generated by D3 Dashboard • {new Date().toLocaleDateString()}
             </Text>
@@ -220,58 +257,85 @@ const TTOReport = ({ charts = [], pitchers = [] }) => {
     })
     .filter(Boolean);
 
+  if (pages.length === 0) {
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <Text>No data available to generate the report.</Text>
+        </Page>
+      </Document>
+    );
+  }
+
   return <Document>{pages}</Document>;
 };
 
-const renderTTOTable = (title, pitches) => {
+const renderTTOTable = (pitches) => {
   const pitchMetrics = processPitchData(pitches);
 
+  // Convert object to array for sorting
+  const pitchMetricsArray = Object.entries(pitchMetrics).map(
+    ([type, data]) => ({
+      type,
+      ...data,
+    })
+  );
+
+  // Sort by usage rate (descending)
+  pitchMetricsArray.sort((a, b) => parseFloat(b.usage) - parseFloat(a.usage));
+
+  if (pitchMetricsArray.length === 0) {
+    return <Text style={styles.emptyMessage}>No pitch data available</Text>;
+  }
+
   return (
-    <View style={{ marginBottom: 10 }}>
-      <Text style={{ fontSize: 14, fontWeight: "bold", marginBottom: 5 }}>
-        {title}
-      </Text>
-      <View style={styles.table}>
-        <View style={[styles.tableRow, styles.tableHeader]}>
-          {[
-            "Pitch Type",
-            "Count",
-            "Usage %",
-            "Avg Velo",
-            "Max Velo",
-            "Zone%",
-            "CSW%",
-            "HardHit%",
-          ].map((header, i) => (
-            <Text
-              key={i}
-              style={[styles.tableCell, { fontWeight: "bold", fontSize: 9 }]}
-            >
-              {header}
-            </Text>
-          ))}
-        </View>
-        {Object.entries(pitchMetrics).map(([type, data]) => (
-          <View key={type} style={styles.tableRow}>
-            <Text style={styles.tableCell}>
-              {type.charAt(0) + type.slice(1).toLowerCase()}
-            </Text>
-            <Text style={styles.tableCell}>{data.count}</Text>
-            <Text style={styles.tableCell}>{data.usage}%</Text>
-            <Text style={styles.tableCell}>{data.avgVelo}</Text>
-            <Text style={styles.tableCell}>{data.maxVelo}</Text>
-            <Text style={styles.tableCell}>{data.zoneRate}%</Text>
-            <Text style={styles.tableCell}>{data.cswRate}%</Text>
-            <Text style={styles.tableCell}>{data.hardHitRate}%</Text>
-          </View>
+    <View style={styles.table}>
+      <View style={[styles.tableRow, styles.tableHeader]}>
+        {[
+          "Pitch Type",
+          "Count",
+          "Usage %",
+          "Avg Velo",
+          "Max Velo",
+          "Zone%",
+          "CSW%",
+          "HardHit%",
+        ].map((header, i) => (
+          <Text
+            key={i}
+            style={[styles.tableCell, { fontWeight: "bold", fontSize: 9 }]}
+          >
+            {header}
+          </Text>
         ))}
       </View>
+      {pitchMetricsArray.map((data) => (
+        <View key={data.type} style={styles.tableRow}>
+          <Text style={styles.tableCell}>
+            {data.type.charAt(0).toUpperCase() +
+              data.type.slice(1).toLowerCase()}
+          </Text>
+          <Text style={styles.tableCell}>{data.count}</Text>
+          <Text style={styles.tableCell}>{data.usage}%</Text>
+          <Text style={styles.tableCell}>{data.avgVelo}</Text>
+          <Text style={styles.tableCell}>{data.maxVelo}</Text>
+          <Text style={styles.tableCell}>{data.zoneRate}%</Text>
+          <Text style={styles.tableCell}>{data.cswRate}%</Text>
+          <Text style={styles.tableCell}>{data.hardHitRate}%</Text>
+        </View>
+      ))}
     </View>
   );
 };
 
 const processPitchData = (pitches) => {
+  if (!pitches || pitches.length === 0) {
+    return {};
+  }
+
   return pitches.reduce((acc, pitch) => {
+    if (!pitch || !pitch.type) return acc;
+
     const type = pitch.type?.toUpperCase() || "UNKNOWN";
 
     if (!acc[type]) {
@@ -298,7 +362,7 @@ const processPitchData = (pitches) => {
     acc[type].pitches.push(pitch);
 
     if (pitch.velocity) {
-      const velocity = Number(pitch.velocity);
+      const velocity = parseFloat(pitch.velocity);
       if (!isNaN(velocity)) {
         acc[type].velocities.push(velocity);
         acc[type].totalVelo += velocity;
@@ -319,7 +383,9 @@ const processPitchData = (pitches) => {
     }
 
     const data = acc[type];
+
     data.usage = ((data.count / pitches.length) * 100).toFixed(1);
+
     data.avgVelo = data.velocities.length
       ? (data.totalVelo / data.velocities.length).toFixed(1)
       : "-";
@@ -328,14 +394,19 @@ const processPitchData = (pitches) => {
       : "-";
 
     const calledStrikes =
-      data.results.called_strike + data.results.strikeout_looking || 0;
+      (data.results.called_strike || 0) + (data.results.strikeout_looking || 0);
     const whiffs =
-      data.results.swinging_strike + data.results.strikeout_swinging || 0;
-    data.cswRate = (((calledStrikes + whiffs) / data.count) * 100).toFixed(1);
+      (data.results.swinging_strike || 0) +
+      (data.results.strikeout_swinging || 0);
+    data.cswRate =
+      data.count > 0
+        ? (((calledStrikes + whiffs) / data.count) * 100).toFixed(1)
+        : "0.0";
 
-    data.hardHitRate = data.battedBalls
-      ? ((data.hardHit / data.battedBalls) * 100).toFixed(1)
-      : "0.0";
+    data.hardHitRate =
+      data.battedBalls > 0
+        ? ((data.hardHit / data.battedBalls) * 100).toFixed(1)
+        : "0.0";
 
     const zoneBounds = {
       1: { xMin: -8.5, yMin: 34, xMax: -2.833, yMax: 42 },
@@ -350,6 +421,10 @@ const processPitchData = (pitches) => {
     };
 
     const isPitchInZone = (x, y, zone) => {
+      if (x === undefined || y === undefined || x === null || y === null) {
+        return false;
+      }
+
       const bounds = zoneBounds[zone];
       return (
         x >= bounds.xMin &&
@@ -364,7 +439,9 @@ const processPitchData = (pitches) => {
         isPitchInZone(pitch.x, pitch.y, zone)
       )
     ).length;
-    data.zoneRate = ((inZonePitches / data.count) * 100).toFixed(1);
+
+    data.zoneRate =
+      data.count > 0 ? ((inZonePitches / data.count) * 100).toFixed(1) : "0.0";
 
     return acc;
   }, {});

@@ -389,13 +389,14 @@ const AdvanceReportModal = ({ isOpen, onClose, charts }) => {
                       const isGameOrScrimmage = ["game", "scrimmage"].includes(
                         chart.chartType
                       );
-                      const isSelected = isGameOrScrimmage
-                        ? selectedCharts.some(
-                            (c) => c.id === `${chart.id}_filtered`
-                          )
-                        : selectedCharts.some((c) => c.id === chart.id);
+                      const isSelected =
+                        isGameOrScrimmage &&
+                        currentReportType.showPitcherSelection
+                          ? selectedCharts.some(
+                              (c) => c.id === `${chart.id}_filtered`
+                            )
+                          : selectedCharts.some((c) => c.id === chart.id);
 
-                      // Only show the "Select Pitchers" option for specific report types
                       const showPitcherSelectionOption =
                         isGameOrScrimmage &&
                         currentReportType.showPitcherSelection;

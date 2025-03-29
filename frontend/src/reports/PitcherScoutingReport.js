@@ -148,14 +148,17 @@ const PitcherScoutingReport = ({ charts = [] }) => {
       chart.pitches.filter((pitch) => pitch.pitcher?.name === pitcherName)
     );
 
-    const lhhPitches = pitcherPitches.filter(
+    const atBats = groupPitchesByAtBat(pitcherPitches);
+    const markedPitches = markFirstPitches(pitcherPitches, atBats);
+
+    const lhhPitches = markedPitches.filter(
       (pitch) => pitch.batter?.batHand?.toLowerCase() === "left"
     );
-    const rhhPitches = pitcherPitches.filter(
+    const rhhPitches = markedPitches.filter(
       (pitch) => pitch.batter?.batHand?.toLowerCase() === "right"
     );
 
-    const metrics = processPitchData(pitcherPitches);
+    const metrics = processPitchData(markedPitches);
     const sequencesRHH = findTopSequences(rhhPitches);
     const sequencesLHH = findTopSequences(lhhPitches);
 
@@ -184,13 +187,7 @@ const PitcherScoutingReport = ({ charts = [] }) => {
           {Object.entries(metrics).map(([type, data]) => (
             <View key={type} style={styles.tableRow}>
               <Text style={[styles.pitchTypeCell, { width: "15%" }]}>
-                {type
-                  .split(" ")
-                  .map(
-                    (word) =>
-                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                  )
-                  .join(" ")}
+                {formatPitchType(type)}
               </Text>
               <Text style={[styles.veloCell, { width: "10%" }]}>
                 {data.avgVelo}
@@ -202,7 +199,8 @@ const PitcherScoutingReport = ({ charts = [] }) => {
               </View>
               <View style={[styles.tableCell, { width: "20%" }]}>
                 <Text style={styles.valueText}>
-                  LHH: {data.firstPitchLHH}% | RHH: {data.firstPitchRHH}%
+                  LHH: {data.firstPitchRateLHH}% | RHH: {data.firstPitchRateRHH}
+                  %
                 </Text>
               </View>
               <View style={[styles.tableCell, { width: "17.5%" }]}>
@@ -223,16 +221,9 @@ const PitcherScoutingReport = ({ charts = [] }) => {
           {Object.entries(metrics).map(([type, data]) => (
             <View key={type} style={styles.strikeZoneContainer}>
               <Text style={styles.strikeZoneTitle}>
-                {type
-                  .split(" ")
-                  .map(
-                    (word) =>
-                      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-                  )
-                  .join(" ")}
+                {formatPitchType(type)}
               </Text>
-              <StrikeZonePDF pitches={data.pitches} width={150} height={150} />{" "}
-              {/* Adjusted size */}
+              <StrikeZonePDF pitches={data.pitches} width={150} height={150} />
             </View>
           ))}
         </View>
@@ -274,6 +265,13 @@ const PitcherScoutingReport = ({ charts = [] }) => {
                 </Text>
               </View>
             ))}
+            {sequencesRHH.length === 0 && (
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCell, { width: "100%" }]}>
+                  No data available
+                </Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.sequenceTable}>
@@ -312,6 +310,13 @@ const PitcherScoutingReport = ({ charts = [] }) => {
                 </Text>
               </View>
             ))}
+            {sequencesLHH.length === 0 && (
+              <View style={styles.tableRow}>
+                <Text style={[styles.tableCell, { width: "100%" }]}>
+                  No data available
+                </Text>
+              </View>
+            )}
           </View>
         </View>
         <Text style={styles.footer}>
@@ -334,18 +339,90 @@ const getPitchers = (charts) => {
   ];
 };
 
+const groupPitchesByAtBat = (pitches) => {
+  const atBats = {};
+
+  const sortedPitches = [...pitches].sort(
+    (a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()
+  );
+
+  let currentPitcherId = null;
+  let currentBatterId = null;
+  let currentInning = null;
+  let currentTopBottom = null;
+  let currentAtBatId = null;
+
+  for (const pitch of sortedPitches) {
+    const pitcherId = pitch.pitcher?.name;
+    const batterId = pitch.batter?.name;
+    const inning = pitch.inning;
+    const topBottom = pitch.topBottom;
+
+    if (!pitcherId || !batterId) continue;
+
+    const isNewBatterPitcherCombo =
+      pitcherId !== currentPitcherId || batterId !== currentBatterId;
+
+    const isNewInning =
+      inning !== currentInning || topBottom !== currentTopBottom;
+
+    if (isNewBatterPitcherCombo || isNewInning || isNewAtBat(pitch)) {
+      currentAtBatId = `${pitcherId}_${batterId}_${inning}_${topBottom}_${Date.now()}`;
+      currentPitcherId = pitcherId;
+      currentBatterId = batterId;
+      currentInning = inning;
+      currentTopBottom = topBottom;
+    }
+
+    if (!atBats[currentAtBatId]) {
+      atBats[currentAtBatId] = [];
+    }
+
+    atBats[currentAtBatId].push(pitch.id);
+  }
+
+  return atBats;
+};
+
+const isNewAtBat = (pitch) => {
+  const result = pitch.result?.toLowerCase();
+
+  return (
+    [
+      "strikeout_swinging",
+      "strikeout_looking",
+      "walk",
+      "hit_by_pitch",
+      "in_play",
+    ].includes(result) ||
+    (pitch.hitDetails && pitch.hitDetails.result)
+  );
+};
+
+const markFirstPitches = (pitches, atBats) => {
+  return pitches.map((pitch) => {
+    const isFirstPitch = Object.values(atBats).some(
+      (pitchIds) => pitchIds[0] === pitch.id
+    );
+
+    return {
+      ...pitch,
+      isFirstPitch,
+    };
+  });
+};
+
 const processPitchData = (pitches) => {
   const totals = pitches.reduce(
     (acc, pitch) => {
       const isLHH = pitch.batter?.batHand?.toLowerCase() === "left";
-      const isFirstPitch = pitch.balls === 0 && pitch.strikes === 0;
 
       if (isLHH) {
         acc.totalLHH++;
-        if (isFirstPitch) acc.totalFirstPitchLHH++;
-      } else {
+        if (pitch.isFirstPitch === true) acc.totalFirstPitchLHH++;
+      } else if (pitch.batter?.batHand?.toLowerCase() === "right") {
         acc.totalRHH++;
-        if (isFirstPitch) acc.totalFirstPitchRHH++;
+        if (pitch.isFirstPitch === true) acc.totalFirstPitchRHH++;
       }
       return acc;
     },
@@ -355,12 +432,13 @@ const processPitchData = (pitches) => {
   return pitches.reduce((acc, pitch) => {
     const type = pitch.type?.toUpperCase() || "UNKNOWN";
     const isLHH = pitch.batter?.batHand?.toLowerCase() === "left";
-    const isFirstPitch = pitch.pitchNumber === 1;
+    const isRHH = pitch.batter?.batHand?.toLowerCase() === "right";
+
+    if (!isLHH && !isRHH) return acc;
 
     if (!acc[type]) {
       acc[type] = {
         velocities: [],
-        spinRates: [],
         pitches: [],
         countLHH: 0,
         countRHH: 0,
@@ -378,10 +456,10 @@ const processPitchData = (pitches) => {
 
     if (isLHH) {
       data.countLHH++;
-      if (isFirstPitch) data.firstPitchLHH++;
-    } else {
+      if (pitch.isFirstPitch === true) data.firstPitchLHH++;
+    } else if (isRHH) {
       data.countRHH++;
-      if (isFirstPitch) data.firstPitchRHH++;
+      if (pitch.isFirstPitch === true) data.firstPitchRHH++;
     }
 
     if (pitch.velocity) {
@@ -389,20 +467,19 @@ const processPitchData = (pitches) => {
       if (!isNaN(velocity)) data.velocities.push(velocity);
     }
 
-    if (pitch.spinRate) {
-      const spin = Number(pitch.spinRate);
-      if (!isNaN(spin)) data.spinRates.push(spin);
-    }
-
     const isInZone = isInStrikeZone(pitch.x, pitch.y);
-    const isChase =
-      !isInZone &&
-      (pitch.result === "swinging_strike" || pitch.result === "foul");
+    const isSwing = [
+      "swinging_strike",
+      "foul",
+      "in_play",
+      "strikeout_swinging",
+    ].includes(pitch.result);
+    const isChase = !isInZone && isSwing;
 
     if (isLHH) {
       if (isInZone) data.zonePitchesLHH++;
       if (isChase) data.chasePitchesLHH++;
-    } else {
+    } else if (isRHH) {
       if (isInZone) data.zonePitchesRHH++;
       if (isChase) data.chasePitchesRHH++;
     }
@@ -412,35 +489,48 @@ const processPitchData = (pitches) => {
           data.velocities.reduce((a, b) => a + b) / data.velocities.length
         ).toFixed(1)
       : "-";
-    data.spinRate = data.spinRates.length
-      ? Math.round(
-          data.spinRates.reduce((a, b) => a + b) / data.spinRates.length
-        )
-      : "-";
 
-    data.usageLHH = ((data.countLHH / totals.totalLHH) * 100 || 0).toFixed(1);
-    data.usageRHH = ((data.countRHH / totals.totalRHH) * 100 || 0).toFixed(1);
+    data.usageLHH =
+      totals.totalLHH > 0
+        ? ((data.countLHH / totals.totalLHH) * 100).toFixed(1)
+        : "0.0";
+    data.usageRHH =
+      totals.totalRHH > 0
+        ? ((data.countRHH / totals.totalRHH) * 100).toFixed(1)
+        : "0.0";
 
-    data.firstPitchLHH = (
-      (data.firstPitchLHH / totals.totalFirstPitchLHH) * 100 || 0
-    ).toFixed(1);
-    data.firstPitchRHH = (
-      (data.firstPitchRHH / totals.totalFirstPitchRHH) * 100 || 0
-    ).toFixed(1);
+    data.firstPitchRateLHH =
+      totals.totalFirstPitchLHH > 0
+        ? Number(
+            ((data.firstPitchLHH / totals.totalFirstPitchLHH) * 100).toFixed(1)
+          )
+        : 0;
+    data.firstPitchRateRHH =
+      totals.totalFirstPitchRHH > 0
+        ? Number(
+            ((data.firstPitchRHH / totals.totalFirstPitchRHH) * 100).toFixed(1)
+          )
+        : 0;
 
-    data.zoneRateLHH = (
-      (data.zonePitchesLHH / data.countLHH) * 100 || 0
-    ).toFixed(1);
-    data.zoneRateRHH = (
-      (data.zonePitchesRHH / data.countRHH) * 100 || 0
-    ).toFixed(1);
+    data.zoneRateLHH =
+      data.countLHH > 0
+        ? ((data.zonePitchesLHH / data.countLHH) * 100).toFixed(1)
+        : "0.0";
+    data.zoneRateRHH =
+      data.countRHH > 0
+        ? ((data.zonePitchesRHH / data.countRHH) * 100).toFixed(1)
+        : "0.0";
 
-    data.chaseRateLHH = (
-      (data.chasePitchesLHH / data.countLHH) * 100 || 0
-    ).toFixed(1);
-    data.chaseRateRHH = (
-      (data.chasePitchesRHH / data.countRHH) * 100 || 0
-    ).toFixed(1);
+    data.chaseRateLHH =
+      data.countLHH > 0
+        ? ((data.chasePitchesLHH / data.countLHH) * 100).toFixed(1)
+        : "0.0";
+    data.chaseRateRHH =
+      data.countRHH > 0
+        ? ((data.chasePitchesRHH / data.countRHH) * 100).toFixed(1)
+        : "0.0";
+
+    console.log(data);
 
     return acc;
   }, {});
@@ -452,20 +542,34 @@ const findTopSequences = (pitches) => {
   }
 
   const sequences = [];
+  const pitchesByAtBat = {};
 
-  for (let i = 0; i < pitches.length - 1; i++) {
-    const currentPitch = pitches[i];
-    const nextPitch = pitches[i + 1];
+  for (const pitch of pitches) {
+    const atBatId = `${pitch.batter?.name}_${pitch.inning}_${pitch.topBottom}`;
 
-    if (currentPitch.atBatIndex === nextPitch.atBatIndex) {
+    if (!pitchesByAtBat[atBatId]) {
+      pitchesByAtBat[atBatId] = [];
+    }
+
+    pitchesByAtBat[atBatId].push(pitch);
+  }
+
+  Object.values(pitchesByAtBat).forEach((atBatPitches) => {
+    atBatPitches.sort((a, b) => new Date(a.time) - new Date(b.time));
+
+    for (let i = 0; i < atBatPitches.length - 1; i++) {
+      const currentPitch = atBatPitches[i];
+      const nextPitch = atBatPitches[i + 1];
+
       const sequence = {
         key: `${currentPitch.type}-${nextPitch.type}`,
         firstPitch: currentPitch,
         secondPitch: nextPitch,
       };
+
       sequences.push(sequence);
     }
-  }
+  });
 
   const groupedSequences = sequences.reduce((acc, seq) => {
     if (!acc[seq.key]) {
@@ -492,7 +596,8 @@ const findTopSequences = (pitches) => {
         (p) =>
           p.result === "swinging_strike" ||
           p.result === "foul" ||
-          p.result === "in_play"
+          p.result === "in_play" ||
+          p.result === "strikeout_swinging"
       ).length;
 
       const whiffs = secondPitches.filter(
@@ -503,7 +608,10 @@ const findTopSequences = (pitches) => {
       const chases = secondPitches.filter(
         (p) =>
           !isInStrikeZone(p.x, p.y) &&
-          (p.result === "swinging_strike" || p.result === "foul")
+          (p.result === "swinging_strike" ||
+            p.result === "foul" ||
+            p.result === "strikeout_swinging" ||
+            p.result === "in_play")
       ).length;
 
       const bip = secondPitches.filter((p) => p.result === "in_play").length;
@@ -527,12 +635,25 @@ const STRIKE_ZONE = {
 };
 
 const isInStrikeZone = (x, y) => {
+  if (x === undefined || y === undefined || x === null || y === null) {
+    return false;
+  }
+
   const { plateHalfWidth, bottom, top, baseballRadius } = STRIKE_ZONE;
   return (
     Math.abs(x) <= plateHalfWidth + baseballRadius &&
     y + baseballRadius >= bottom &&
     y - baseballRadius <= top
   );
+};
+
+const formatPitchType = (type) => {
+  if (!type) return "Unknown";
+
+  return type
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
 };
 
 export default PitcherScoutingReport;
