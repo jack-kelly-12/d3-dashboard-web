@@ -11,6 +11,8 @@ const StatTable = ({ stats, type }) => {
         return getDataColumns("player_pitching");
       case "baserunning":
         return getDataColumns("baserunning");
+      case "batted_ball":
+        return getDataColumns("batted_ball");
       case "situational":
         return getDataColumns("situational");
       default:

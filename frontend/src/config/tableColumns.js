@@ -154,7 +154,7 @@ export const columnsValue = [
           {row.Player}
         </Link>
       ) : (
-        <span className="text-xs font-medium">{row.Player}</span>
+        <span className="font-medium">{row.Player}</span>
       ),
   },
   {
@@ -307,7 +307,7 @@ export const columnsSituational = [
           {row.Player}
         </Link>
       ) : (
-        <span className="text-xs font-medium">{row.Player}</span>
+        <span className="font-medium">{row.Player}</span>
       ),
   },
   {
@@ -457,7 +457,7 @@ export const columnsSituationalPitcher = [
           {row.Player}
         </Link>
       ) : (
-        <span className="text-xs font-medium">{row.Player}</span>
+        <span className="font-medium">{row.Player}</span>
       ),
   },
   {
@@ -608,7 +608,7 @@ export const columnsBaserunning = [
           {row.Player}
         </Link>
       ) : (
-        <span className="text-xs font-medium">{row.Player}</span>
+        <span className="font-medium">{row.Player}</span>
       ),
   },
   {
@@ -739,7 +739,7 @@ export const columnsBatted = [
           {row.Player}
         </Link>
       ) : (
-        <span className="text-xs font-medium">{row.Player}</span>
+        <span className="font-medium">{row.Player}</span>
       ),
   },
   {
@@ -778,7 +778,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.oppo_pct}% ` || "-",
+    cell: (row) => `${row.oppo_pct}% `,
   },
   {
     name: "Middle%",
@@ -786,7 +786,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.middle_pct}%` || "-",
+    cell: (row) => `${row.middle_pct}%`,
   },
   {
     name: "Pull%",
@@ -794,7 +794,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.pull_pct}%` || "-",
+    cell: (row) => `${row.pull_pct}%`,
   },
   {
     name: "GB%",
@@ -802,7 +802,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.gb_pct}%` || "-",
+    cell: (row) => `${row.gb_pct}%`,
   },
   {
     name: "LD%",
@@ -810,7 +810,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.ld_pct}%` || "-",
+    cell: (row) => `${row.ld_pct}%`,
   },
   {
     name: "Pop%",
@@ -818,7 +818,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.pop_pct}%` || "-",
+    cell: (row) => `${row.pop_pct}%`,
   },
   {
     name: "FB%",
@@ -826,7 +826,7 @@ export const columnsBatted = [
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.fb_pct}%` || "-",
+    cell: (row) => `${row.fb_pct}%`,
   },
   {
     name: "Pull Air%",
@@ -834,7 +834,7 @@ export const columnsBatted = [
     sortable: true,
     width: "7.5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.pull_air_pct}%` || "-",
+    cell: (row) => `${row.pull_air_pct}%`,
   },
   {
     name: "Backside GB%",
@@ -842,7 +842,7 @@ export const columnsBatted = [
     sortable: true,
     width: "7.5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.oppo_gb_pct}%` || "-",
+    cell: (row) => `${row.oppo_gb_pct}%`,
   },
 ];
 
@@ -869,7 +869,7 @@ export const columnsSplits = [
           {row.Player}
         </Link>
       ) : (
-        <span className="text-xs font-medium">{row.Player}</span>
+        <span className="font-medium">{row.Player}</span>
       ),
   },
   {
@@ -1118,6 +1118,129 @@ export const getDataColumns = (dataType) => {
   switch (dataType) {
     default:
       return [];
+    case "batted_ball":
+      return [
+        {
+          name: "Player",
+          selector: (row) => row.Player,
+          sortable: true,
+          width: "9.375rem",
+
+          cell: (row) =>
+            row.player_id.substring(0, 4) === "d3d-" ? (
+              <Link
+                to={`/player/${row.player_id}`}
+                className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+              >
+                {row.Player}
+              </Link>
+            ) : (
+              <span className="font-medium">{row.Player}</span>
+            ),
+        },
+        {
+          name: "Team",
+          selector: (row) => row.Team,
+          cell: (row) => row.renderedTeam,
+          sortable: true,
+          width: "4rem",
+          className: "px-2 py-2 text-xs",
+        },
+        {
+          name: "Conference",
+          selector: (row) => row.Conference,
+          cell: (row) => row.renderedConference,
+          sortable: true,
+          width: "6.5rem",
+          className: "px-2 py-2 text-xs",
+        },
+        {
+          name: "Year",
+          selector: (row) => row.Season,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "Count",
+          selector: (row) => row.count,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+        },
+        {
+          name: "Oppo%",
+          selector: (row) => row.oppo_pct,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.oppo_pct, 1)}% `,
+        },
+        {
+          name: "Middle%",
+          selector: (row) => row.middle_pct,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.middle_pct, 1)}%`,
+        },
+        {
+          name: "Pull%",
+          selector: (row) => row.pull_pct,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.pull_pct, 1)}%`,
+        },
+        {
+          name: "GB%",
+          selector: (row) => row.gb_pct,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.gb_pct, 1)}%`,
+        },
+        {
+          name: "LD%",
+          selector: (row) => row.ld_pct,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.ld_pct, 1)}%`,
+        },
+        {
+          name: "Pop%",
+          selector: (row) => row.pop_pct,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.pop_pct, 1)}%`,
+        },
+        {
+          name: "FB%",
+          selector: (row) => row.fb_pct,
+          sortable: true,
+          width: "5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.fb_pct, 1)}%`,
+        },
+        {
+          name: "Pull Air%",
+          selector: (row) => row.pull_air_pct,
+          sortable: true,
+          width: "7.5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.pull_air_pct, 1)}%`,
+        },
+        {
+          name: "Backside GB%",
+          selector: (row) => row.oppo_gb_pct,
+          sortable: true,
+          width: "7.5rem",
+          className: "px-3 py-2 text-xs text-center",
+          cell: (row) => `${roundTo(row.oppo_gb_pct, 1)}%`,
+        },
+      ];
     case "situational":
       return [
         {
@@ -2329,7 +2452,7 @@ export const columnsSplitsPitcher = [
           {row.Player}
         </Link>
       ) : (
-        <span className="text-xs font-medium">{row.Player}</span>
+        <span className="font-medium">{row.Player}</span>
       ),
   },
   {

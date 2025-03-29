@@ -37,6 +37,7 @@ const TabNavigation = memo(
     hasBattingStats,
     hasPitchingStats,
     hasBaserunningStats,
+    hasBattedBallStats,
   }) => (
     <div className="border-b border-gray-100">
       <div className="px-6 py-4 flex gap-4">
@@ -79,25 +80,49 @@ const TabNavigation = memo(
             Baserunning
           </button>
         )}
+        {hasBattedBallStats && (
+          <button
+            onClick={() => onTabChange("batted_ball")}
+            className={`px-4 py-2 font-medium rounded-lg transition-colors
+            ${
+              activeTab === "batted_ball"
+                ? "bg-blue-50 text-blue-600"
+                : "text-gray-600 hover:text-blue-600"
+            }`}
+          >
+            Batted Ball
+          </button>
+        )}
       </div>
     </div>
   )
 );
 
 const PlayerContent = memo(
-  ({ activeTab, playerData, baserunningStats, selectedDivision, playerId }) => {
+  ({
+    activeTab,
+    playerData,
+    baserunningStats,
+    battedBallStats,
+    selectedDivision,
+    playerId,
+  }) => {
     const getMostRecentYear = () => {
       if (activeTab === "batting" && playerData.battingStats?.length > 0) {
         return playerData.battingStats[0]?.Season || new Date().getFullYear();
       } else if (activeTab === "baserunning" && baserunningStats?.length > 0) {
         return baserunningStats[0]?.Year || new Date().getFullYear();
+      } else if (activeTab === "batted_ball" && battedBallStats?.length > 0) {
+        return battedBallStats[0]?.Year || new Date().getFullYear();
       }
       return new Date().getFullYear();
     };
 
     const shouldShowSprayChart =
       activeTab === "batting" &&
-      (playerData.battingStats?.length > 0 || baserunningStats?.length > 0);
+      (playerData.battingStats?.length > 0 ||
+        baserunningStats?.length > 0 ||
+        battedBallStats?.length > 0);
 
     return (
       <div className="p-6">
@@ -109,6 +134,9 @@ const PlayerContent = memo(
         )}
         {activeTab === "baserunning" && baserunningStats?.length > 0 && (
           <MemoizedStatTable stats={baserunningStats} type="baserunning" />
+        )}
+        {activeTab === "batted_ball" && battedBallStats?.length > 0 && (
+          <MemoizedStatTable stats={battedBallStats} type="batted_ball" />
         )}
 
         {/* Spray Chart Section */}
@@ -138,6 +166,7 @@ const PlayerPage = () => {
   const [activeTab, setActiveTab] = useState("batting");
   const [selectedDivision, setSelectedDivision] = useState(3);
   const [baserunningStats, setBaserunningStats] = useState([]);
+  const [battedBallStats, setBattedBallStats] = useState([]);
   const [tabsInitialized, setTabsInitialized] = useState(false);
 
   const fetchPercentiles = useCallback(
@@ -149,7 +178,10 @@ const PlayerPage = () => {
           )}/${year}/${division}`
         );
 
-        const effectiveType = type === "baserunning" ? "batting" : type;
+        const effectiveType =
+          type === "baserunning" || type === "batted_ball" || type === "batting"
+            ? "batting"
+            : type;
 
         if (effectiveType === "batting") {
           setBattingPercentiles({
@@ -214,6 +246,46 @@ const PlayerPage = () => {
       setBaserunningStats(playerBaserunningStats);
     } catch (err) {
       console.error("Error fetching baserunning stats:", err);
+    }
+  }, [playerId, selectedDivision]);
+
+  const fetchBattedBallStats = useCallback(async () => {
+    try {
+      const response = await fetchAPI(
+        `/api/leaderboards/batted_ball?start_year=2021&end_year=2025&division=${selectedDivision}`
+      );
+
+      const playerBattedBallStats = response
+        .filter((stat) => stat.player_id === decodeURIComponent(playerId))
+        .map((stat) => ({
+          ...stat,
+          renderedTeam: (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={stat.prev_team_id}
+                conferenceId={stat.conference_id}
+                teamName={stat.Team}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+          renderedConference: (
+            <div className="w-full flex justify-center items-center">
+              <TeamLogo
+                teamId={stat.prev_team_id}
+                conferenceId={stat.conference_id}
+                teamName={stat.Conference}
+                showConference={true}
+                className="h-8 w-8"
+              />
+            </div>
+          ),
+        }));
+
+      playerBattedBallStats.sort((a, b) => b.Year - a.Year);
+      setBattedBallStats(playerBattedBallStats);
+    } catch (err) {
+      console.error("Error fetching batted ball stats:", err);
     }
   }, [playerId, selectedDivision]);
 
@@ -356,6 +428,7 @@ const PlayerPage = () => {
         }
 
         fetchPromises.push(fetchBaserunningStats());
+        fetchPromises.push(fetchBattedBallStats());
 
         await Promise.all(fetchPromises);
 
@@ -375,13 +448,25 @@ const PlayerPage = () => {
     };
 
     fetchData();
-  }, [playerId, fetchPercentiles, fetchBaserunningStats, enhancePlayerData]);
+  }, [
+    playerId,
+    fetchPercentiles,
+    fetchBaserunningStats,
+    fetchBattedBallStats,
+    enhancePlayerData,
+  ]);
 
   useEffect(() => {
     if (tabsInitialized) {
       fetchBaserunningStats();
+      fetchBattedBallStats();
     }
-  }, [selectedDivision, fetchBaserunningStats, tabsInitialized]);
+  }, [
+    selectedDivision,
+    fetchBaserunningStats,
+    fetchBattedBallStats,
+    tabsInitialized,
+  ]);
 
   const getAvailableYears = useCallback(
     (type = null) => {
@@ -390,8 +475,12 @@ const PlayerPage = () => {
       const years = new Set();
 
       if (type === "baserunning") {
-        if (playerData?.battingStats) {
-          playerData.battingStats.forEach((stat) => years.add(stat.Season));
+        if (baserunningStats?.length) {
+          baserunningStats.forEach((stat) => years.add(stat.Year));
+        }
+      } else if (type === "batted_ball") {
+        if (battedBallStats?.length) {
+          battedBallStats.forEach((stat) => years.add(stat.Year));
         }
       } else if (type === "batting" || type === null) {
         if (playerData?.battingStats) {
@@ -405,7 +494,7 @@ const PlayerPage = () => {
 
       return Array.from(years).sort((a, b) => b - a);
     },
-    [playerData]
+    [playerData, baserunningStats, battedBallStats]
   );
 
   const getAvailableDivisions = useCallback(() => {
@@ -428,9 +517,14 @@ const PlayerPage = () => {
         if (stat.Division) divisions.add(stat.Division);
       });
     }
+    if (battedBallStats?.length) {
+      battedBallStats.forEach((stat) => {
+        if (stat.Division) divisions.add(stat.Division);
+      });
+    }
 
     return Array.from(divisions).sort((a, b) => a - b);
-  }, [playerData, baserunningStats]);
+  }, [playerData, baserunningStats, battedBallStats]);
 
   const handleDivisionChange = useCallback(
     (division) => {
@@ -439,8 +533,12 @@ const PlayerPage = () => {
       if (battingPercentiles?.batting) {
         const battingYear = battingPercentiles.batting.season;
         if (battingYear) {
-          // Use "batting" type for both batting and baserunning tabs
-          const type = activeTab === "baserunning" ? "batting" : activeTab;
+          const type =
+            activeTab === "baserunning" ||
+            activeTab === "batted_ball" ||
+            activeTab === "batting"
+              ? "batting"
+              : "pitching";
           fetchPercentiles(battingYear, division, type);
         }
       }
@@ -457,14 +555,21 @@ const PlayerPage = () => {
 
   const handleYearChange = useCallback(
     async (year, type) => {
-      const effectiveType = type === "baserunning" ? "batting" : type;
+      const effectiveType =
+        type === "baserunning" || type === "batted_ball" || type === "batting"
+          ? "batting"
+          : "pitching";
       await fetchPercentiles(year, selectedDivision, effectiveType);
     },
     [fetchPercentiles, selectedDivision]
   );
 
   const getCurrentPercentiles = useCallback(() => {
-    if (activeTab === "batting" || activeTab === "baserunning") {
+    if (
+      activeTab === "batting" ||
+      activeTab === "baserunning" ||
+      activeTab === "batted_ball"
+    ) {
       return battingPercentiles;
     } else if (activeTab === "pitching") {
       return pitchingPercentiles;
@@ -479,7 +584,7 @@ const PlayerPage = () => {
       setActiveTab(newTab);
 
       if (
-        newTab === "baserunning" &&
+        (newTab === "baserunning" || newTab === "batted_ball") &&
         playerData?.battingStats?.length > 0 &&
         (!battingPercentiles || !battingPercentiles.batting)
       ) {
@@ -513,8 +618,9 @@ const PlayerPage = () => {
       hasBattingStats: playerData?.battingStats?.length > 0,
       hasPitchingStats: playerData?.pitchingStats?.length > 0,
       hasBaserunningStats: baserunningStats?.length > 0,
+      hasBattedBallStats: battedBallStats?.length > 0,
     }),
-    [playerData, baserunningStats]
+    [playerData, baserunningStats, battedBallStats]
   );
 
   if (isLoading) return <LoadingState />;
@@ -538,7 +644,11 @@ const PlayerPage = () => {
               <PercentileSection
                 playerData={enhancedPlayerDataForPercentile}
                 initialPercentiles={getCurrentPercentiles()}
-                activeTab={activeTab === "baserunning" ? "batting" : activeTab}
+                activeTab={
+                  activeTab === "baserunning" || activeTab === "batted_ball"
+                    ? "batting"
+                    : activeTab
+                }
                 onYearChange={(year) => handleYearChange(year, activeTab)}
                 selectedDivision={selectedDivision}
                 onDivisionChange={handleDivisionChange}
@@ -555,6 +665,7 @@ const PlayerPage = () => {
               hasBattingStats={tabState.hasBattingStats}
               hasPitchingStats={tabState.hasPitchingStats}
               hasBaserunningStats={tabState.hasBaserunningStats}
+              hasBattedBallStats={tabState.hasBattedBallStats}
             />
 
             {/* Stats Table */}
@@ -562,6 +673,7 @@ const PlayerPage = () => {
               activeTab={activeTab}
               playerData={playerData}
               baserunningStats={baserunningStats}
+              battedBallStats={battedBallStats}
               selectedDivision={selectedDivision}
               playerId={playerId}
             />
