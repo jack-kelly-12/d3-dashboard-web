@@ -15,8 +15,14 @@ const StatTable = ({ stats, type }) => {
         return getDataColumns("batted_ball");
       case "situational":
         return getDataColumns("situational");
+      case "situational_pitcher":
+        return getDataColumns("situational_pitcher");
+      case "splits":
+        return getDataColumns("splits");
+      case "splits_pitcher":
+        return getDataColumns("splits_pitcher");
       default:
-        return getDataColumns("player_hitting");
+        return [];
     }
   };
 

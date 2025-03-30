@@ -30,116 +30,93 @@ const ErrorState = memo(({ error }) => (
 
 const MemoizedStatTable = memo(StatTable);
 
-const TabNavigation = memo(
-  ({
-    activeTab,
-    onTabChange,
-    hasBattingStats,
-    hasPitchingStats,
-    hasBaserunningStats,
-    hasBattedBallStats,
-  }) => (
-    <div className="border-b border-gray-100">
-      <div className="px-6 py-4 flex gap-4">
-        {hasBattingStats && (
-          <button
-            onClick={() => onTabChange("batting")}
-            className={`px-4 py-2 font-medium rounded-lg transition-colors
-            ${
-              activeTab === "batting"
-                ? "bg-blue-50 text-blue-600"
-                : "text-gray-600 hover:text-blue-600"
-            }`}
-          >
-            Batting
-          </button>
-        )}
-        {hasPitchingStats && (
-          <button
-            onClick={() => onTabChange("pitching")}
-            className={`px-4 py-2 font-medium rounded-lg transition-colors
-            ${
-              activeTab === "pitching"
-                ? "bg-blue-50 text-blue-600"
-                : "text-gray-600 hover:text-blue-600"
-            }`}
-          >
-            Pitching
-          </button>
-        )}
-        {hasBaserunningStats && (
-          <button
-            onClick={() => onTabChange("baserunning")}
-            className={`px-4 py-2 font-medium rounded-lg transition-colors
-            ${
-              activeTab === "baserunning"
-                ? "bg-blue-50 text-blue-600"
-                : "text-gray-600 hover:text-blue-600"
-            }`}
-          >
-            Baserunning
-          </button>
-        )}
-        {hasBattedBallStats && (
-          <button
-            onClick={() => onTabChange("batted_ball")}
-            className={`px-4 py-2 font-medium rounded-lg transition-colors
-            ${
-              activeTab === "batted_ball"
-                ? "bg-blue-50 text-blue-600"
-                : "text-gray-600 hover:text-blue-600"
-            }`}
-          >
-            Batted Ball
-          </button>
-        )}
-      </div>
+const TabButton = memo(({ active, onClick, children }) => (
+  <button
+    onClick={onClick}
+    className={`px-4 py-2 font-medium rounded-lg transition-colors ${
+      active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:text-blue-600"
+    }`}
+  >
+    {children}
+  </button>
+));
+
+const TabNavigation = memo(({ activeTab, onTabChange, availableTabs }) => (
+  <div className="border-b border-gray-100">
+    <div className="px-6 py-4 flex gap-4 overflow-x-auto">
+      {availableTabs.map((tab) => (
+        <TabButton
+          key={tab.id}
+          active={activeTab === tab.id}
+          onClick={() => onTabChange(tab.id)}
+        >
+          {tab.label}
+        </TabButton>
+      ))}
     </div>
-  )
+  </div>
+));
+
+const renderTeamLogo = (
+  teamId,
+  conferenceId,
+  teamName,
+  showConference = false
+) => (
+  <div className="w-full flex justify-center items-center">
+    <TeamLogo
+      teamId={teamId}
+      conferenceId={conferenceId}
+      teamName={teamName}
+      showConference={showConference}
+      className="h-8 w-8"
+    />
+  </div>
 );
 
+const enrichStats = (stats) => {
+  if (!stats || !Array.isArray(stats)) return [];
+
+  return stats
+    .map((stat) => ({
+      ...stat,
+      renderedTeam: renderTeamLogo(
+        stat.prev_team_id,
+        stat.conference_id,
+        stat.Team
+      ),
+      renderedConference: renderTeamLogo(
+        stat.prev_team_id,
+        stat.conference_id,
+        stat.Conference,
+        true
+      ),
+    }))
+    .sort((a, b) => {
+      const yearKey = "Season" in a ? "Season" : "Year";
+      return b[yearKey] - a[yearKey];
+    });
+};
+
 const PlayerContent = memo(
-  ({
-    activeTab,
-    playerData,
-    baserunningStats,
-    battedBallStats,
-    selectedDivision,
-    playerId,
-  }) => {
+  ({ activeTab, statCategories, selectedDivision, playerId }) => {
+    const stats = statCategories[activeTab]?.stats || [];
+    const statType = statCategories[activeTab]?.type || activeTab;
+
     const getMostRecentYear = () => {
-      if (activeTab === "batting" && playerData.battingStats?.length > 0) {
-        return playerData.battingStats[0]?.Season || new Date().getFullYear();
-      } else if (activeTab === "baserunning" && baserunningStats?.length > 0) {
-        return baserunningStats[0]?.Year || new Date().getFullYear();
-      } else if (activeTab === "batted_ball" && battedBallStats?.length > 0) {
-        return battedBallStats[0]?.Year || new Date().getFullYear();
-      }
-      return new Date().getFullYear();
+      if (stats.length === 0) return new Date().getFullYear();
+      const yearKey = "Season" in stats[0] ? "Season" : "Year";
+      return stats[0][yearKey];
     };
 
-    const shouldShowSprayChart =
-      activeTab === "batting" &&
-      (playerData.battingStats?.length > 0 ||
-        baserunningStats?.length > 0 ||
-        battedBallStats?.length > 0);
+    const shouldShowSprayChart = activeTab === "batting" && stats.length > 0;
 
     return (
       <div className="p-6">
-        {activeTab === "batting" && playerData.battingStats?.length > 0 && (
-          <MemoizedStatTable stats={playerData.battingStats} type="batting" />
-        )}
-        {activeTab === "pitching" && playerData.pitchingStats?.length > 0 && (
-          <MemoizedStatTable stats={playerData.pitchingStats} type="pitching" />
-        )}
-        {activeTab === "baserunning" && baserunningStats?.length > 0 && (
-          <MemoizedStatTable stats={baserunningStats} type="baserunning" />
-        )}
-        {activeTab === "batted_ball" && battedBallStats?.length > 0 && (
-          <MemoizedStatTable stats={battedBallStats} type="batted_ball" />
+        {stats.length > 0 && (
+          <MemoizedStatTable stats={stats} type={statType} />
         )}
 
-        {/* Spray Chart Section */}
         {shouldShowSprayChart && (
           <div className="mt-8">
             <SprayChart
@@ -156,290 +133,216 @@ const PlayerContent = memo(
   }
 );
 
+const STAT_TYPES = {
+  BATTING: "batting",
+  PITCHING: "pitching",
+  BASERUNNING: "baserunning",
+  BATTED_BALL: "batted_ball",
+  SITUATIONAL: "situational",
+  SITUATIONAL_PITCHER: "situational_pitcher",
+  SPLITS: "splits",
+  SPLITS_PITCHER: "splits_pitcher",
+};
+
+const getBaseStatType = (statType) => {
+  if (
+    [
+      STAT_TYPES.BATTING,
+      STAT_TYPES.BASERUNNING,
+      STAT_TYPES.BATTED_BALL,
+      STAT_TYPES.SPLITS,
+      STAT_TYPES.SITUATIONAL,
+    ].includes(statType)
+  ) {
+    return STAT_TYPES.BATTING;
+  }
+  return STAT_TYPES.PITCHING;
+};
+
 const PlayerPage = () => {
   const { playerId } = useParams();
   const [playerData, setPlayerData] = useState(null);
-  const [battingPercentiles, setBattingPercentiles] = useState(null);
-  const [pitchingPercentiles, setPitchingPercentiles] = useState(null);
+  const [percentiles, setPercentiles] = useState({
+    batting: null,
+    pitching: null,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("batting");
+  const [activeTab, setActiveTab] = useState(STAT_TYPES.BATTING);
   const [selectedDivision, setSelectedDivision] = useState(3);
-  const [baserunningStats, setBaserunningStats] = useState([]);
-  const [battedBallStats, setBattedBallStats] = useState([]);
-  const [tabsInitialized, setTabsInitialized] = useState(false);
+  const [statData, setStatData] = useState({
+    [STAT_TYPES.BASERUNNING]: [],
+    [STAT_TYPES.BATTED_BALL]: [],
+    [STAT_TYPES.SPLITS]: [],
+    [STAT_TYPES.SPLITS_PITCHER]: [],
+    [STAT_TYPES.SITUATIONAL]: [],
+    [STAT_TYPES.SITUATIONAL_PITCHER]: [],
+  });
+  const [initialized, setInitialized] = useState(false);
 
   const fetchPercentiles = useCallback(
-    async (year, division = selectedDivision, type = null) => {
+    async (year, division, statType) => {
       try {
-        const percentileResponse = await fetchAPI(
+        const baseStatType = getBaseStatType(statType);
+        const response = await fetchAPI(
           `/api/player-percentiles/${decodeURIComponent(
             playerId
           )}/${year}/${division}`
         );
 
-        const effectiveType =
-          type === "baserunning" || type === "batted_ball" || type === "batting"
-            ? "batting"
-            : type;
-
-        if (effectiveType === "batting") {
-          setBattingPercentiles({
-            batting: percentileResponse.batting,
-            pitching: null,
-          });
-        } else if (effectiveType === "pitching") {
-          setPitchingPercentiles({
-            batting: null,
-            pitching: percentileResponse.pitching,
-          });
-        } else {
-          if (percentileResponse.batting) {
-            setBattingPercentiles(percentileResponse);
-          }
-          if (percentileResponse.pitching) {
-            setPitchingPercentiles(percentileResponse);
-          }
-        }
+        setPercentiles((prev) => ({
+          ...prev,
+          [baseStatType]: response[baseStatType],
+        }));
       } catch (err) {
-        console.error("Error fetching percentiles:", err);
+        console.error(`Error fetching ${statType} percentiles:`, err);
+      }
+    },
+    [playerId]
+  );
+
+  const fetchStatsForType = useCallback(
+    async (statType) => {
+      try {
+        const response = await fetchAPI(
+          `/api/leaderboards/${statType}?start_year=2021&end_year=2025&division=${selectedDivision}`
+        );
+
+        const filteredStats = response.filter(
+          (stat) => stat.player_id === decodeURIComponent(playerId)
+        );
+
+        const enrichedStats = enrichStats(filteredStats);
+
+        setStatData((prev) => ({
+          ...prev,
+          [statType]: enrichedStats,
+        }));
+      } catch (err) {
+        console.error(`Error fetching ${statType} stats:`, err);
       }
     },
     [playerId, selectedDivision]
   );
 
-  const fetchBaserunningStats = useCallback(async () => {
-    try {
-      const response = await fetchAPI(
-        `/api/leaderboards/baserunning?start_year=2021&end_year=2025&division=${selectedDivision}`
-      );
+  const fetchAllStats = useCallback(() => {
+    const statTypes = [
+      STAT_TYPES.BASERUNNING,
+      STAT_TYPES.BATTED_BALL,
+      STAT_TYPES.SPLITS,
+      STAT_TYPES.SPLITS_PITCHER,
+      STAT_TYPES.SITUATIONAL,
+      STAT_TYPES.SITUATIONAL_PITCHER,
+    ];
 
-      const playerBaserunningStats = response
-        .filter((stat) => stat.player_id === decodeURIComponent(playerId))
-        .map((stat) => ({
-          ...stat,
-          renderedTeam: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-          renderedConference: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Conference}
-                showConference={true}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-        }));
+    return Promise.all(statTypes.map((type) => fetchStatsForType(type)));
+  }, [fetchStatsForType]);
 
-      playerBaserunningStats.sort((a, b) => b.Year - a.Year);
-
-      setBaserunningStats(playerBaserunningStats);
-    } catch (err) {
-      console.error("Error fetching baserunning stats:", err);
-    }
-  }, [playerId, selectedDivision]);
-
-  const fetchBattedBallStats = useCallback(async () => {
-    try {
-      const response = await fetchAPI(
-        `/api/leaderboards/batted_ball?start_year=2021&end_year=2025&division=${selectedDivision}`
-      );
-
-      const playerBattedBallStats = response
-        .filter((stat) => stat.player_id === decodeURIComponent(playerId))
-        .map((stat) => ({
-          ...stat,
-          renderedTeam: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-          renderedConference: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Conference}
-                showConference={true}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-        }));
-
-      playerBattedBallStats.sort((a, b) => b.Year - a.Year);
-      setBattedBallStats(playerBattedBallStats);
-    } catch (err) {
-      console.error("Error fetching batted ball stats:", err);
-    }
-  }, [playerId, selectedDivision]);
-
-  const enhancePlayerData = useCallback((playerResponse) => {
-    const sortBySeasonDesc = (a, b) => b.Season - a.Season;
+  const enhancePlayerData = useCallback((data) => {
+    if (!data) return null;
 
     return {
-      ...playerResponse,
-      renderedTeam: playerResponse.currentTeam ? (
-        <div className="w-full flex justify-center items-center">
-          <TeamLogo
-            teamId={playerResponse.prev_team_id}
-            conferenceId={playerResponse.conference_id}
-            teamName={playerResponse.currentTeam}
-            className="h-8 w-8"
-          />
-        </div>
-      ) : null,
-      renderedConference: playerResponse.conference ? (
-        <div className="w-full flex justify-center items-center">
-          <TeamLogo
-            teamId={playerResponse.prev_team_id}
-            conferenceId={playerResponse.conference_id}
-            teamName={playerResponse.conference}
-            showConference={true}
-            className="h-8 w-8"
-          />
-        </div>
-      ) : null,
-      battingStats: playerResponse.battingStats
-        ?.map((stat) => ({
-          ...stat,
-          renderedTeam: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-          renderedConference: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Conference}
-                showConference={true}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-        }))
-        .sort(sortBySeasonDesc),
-      pitchingStats: playerResponse.pitchingStats
-        ?.map((stat) => ({
-          ...stat,
-          renderedTeam: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Team}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-          renderedConference: (
-            <div className="w-full flex justify-center items-center">
-              <TeamLogo
-                teamId={stat.prev_team_id}
-                conferenceId={stat.conference_id}
-                teamName={stat.Conference}
-                showConference={true}
-                className="h-8 w-8"
-              />
-            </div>
-          ),
-        }))
-        .sort(sortBySeasonDesc),
+      ...data,
+      renderedTeam: data.currentTeam
+        ? renderTeamLogo(
+            data.prev_team_id,
+            data.conference_id,
+            data.currentTeam
+          )
+        : null,
+      renderedConference: data.conference
+        ? renderTeamLogo(
+            data.prev_team_id,
+            data.conference_id,
+            data.conference,
+            true
+          )
+        : null,
+      battingStats: enrichStats(data.battingStats),
+      pitchingStats: enrichStats(data.pitchingStats),
     };
   }, []);
 
+  const determineInitialActiveTab = useCallback((playerData) => {
+    if (!playerData.battingStats?.length && playerData.pitchingStats?.length) {
+      return STAT_TYPES.PITCHING;
+    }
+    return STAT_TYPES.BATTING;
+  }, []);
+
+  const determineDivision = useCallback((playerData) => {
+    const getMaxSeason = (stats) =>
+      stats?.length
+        ? Math.max(...stats.map((s) => s.Season || s.Year || 0))
+        : 0;
+
+    const maxBattingSeason = getMaxSeason(playerData.battingStats);
+    const maxPitchingSeason = getMaxSeason(playerData.pitchingStats);
+
+    let division = 3;
+
+    if (maxBattingSeason > 0) {
+      const stat = playerData.battingStats.find(
+        (s) => s.Season === maxBattingSeason
+      );
+      if (stat?.Division) division = stat.Division;
+    } else if (maxPitchingSeason > 0) {
+      const stat = playerData.pitchingStats.find(
+        (s) => s.Season === maxPitchingSeason
+      );
+      if (stat?.Division) division = stat.Division;
+    }
+
+    return division;
+  }, []);
+
+  const initializePercentiles = useCallback(
+    async (playerData, division) => {
+      const promises = [];
+
+      if (playerData.battingStats?.length) {
+        const maxSeason = Math.max(
+          ...playerData.battingStats.map((s) => s.Season)
+        );
+        promises.push(
+          fetchPercentiles(maxSeason, division, STAT_TYPES.BATTING)
+        );
+      }
+
+      if (playerData.pitchingStats?.length) {
+        const maxSeason = Math.max(
+          ...playerData.pitchingStats.map((s) => s.Season)
+        );
+        promises.push(
+          fetchPercentiles(maxSeason, division, STAT_TYPES.PITCHING)
+        );
+      }
+
+      return Promise.all(promises);
+    },
+    [fetchPercentiles]
+  );
+
   useEffect(() => {
-    const fetchData = async () => {
+    const loadPlayerData = async () => {
       setIsLoading(true);
       try {
-        const playerResponse = await fetchAPI(
+        const response = await fetchAPI(
           `/api/player/${decodeURIComponent(playerId)}`
         );
-        const enhancedPlayerData = enhancePlayerData(playerResponse);
-        setPlayerData(enhancedPlayerData);
+        const enhancedData = enhancePlayerData(response);
+        setPlayerData(enhancedData);
 
-        const maxBattingSeason = Math.max(
-          ...(enhancedPlayerData.battingStats?.map((stat) => stat.Season) || [
-            0,
-          ])
-        );
-        const maxPitchingSeason = Math.max(
-          ...(enhancedPlayerData.pitchingStats?.map((stat) => stat.Season) || [
-            0,
-          ])
-        );
+        const division = determineDivision(enhancedData);
+        setSelectedDivision(division);
 
-        let division = 3;
+        await Promise.all([
+          initializePercentiles(enhancedData, division),
+          fetchAllStats(),
+        ]);
 
-        if (maxBattingSeason > 0 || maxPitchingSeason > 0) {
-          const mostRecentBattingStat = enhancedPlayerData.battingStats?.find(
-            (stat) => stat.Season === maxBattingSeason
-          );
-          const mostRecentPitchingStat = enhancedPlayerData.pitchingStats?.find(
-            (stat) => stat.Season === maxPitchingSeason
-          );
-
-          if (mostRecentBattingStat && mostRecentBattingStat.Division) {
-            division = mostRecentBattingStat.Division;
-          } else if (
-            mostRecentPitchingStat &&
-            mostRecentPitchingStat.Division
-          ) {
-            division = mostRecentPitchingStat.Division;
-          }
-
-          setSelectedDivision(division);
-        }
-
-        const fetchPromises = [];
-
-        if (maxBattingSeason > 0) {
-          fetchPromises.push(
-            fetchPercentiles(maxBattingSeason, division, "batting")
-          );
-        }
-
-        if (maxPitchingSeason > 0) {
-          fetchPromises.push(
-            fetchPercentiles(maxPitchingSeason, division, "pitching")
-          );
-        }
-
-        fetchPromises.push(fetchBaserunningStats());
-        fetchPromises.push(fetchBattedBallStats());
-
-        await Promise.all(fetchPromises);
-
-        if (
-          !enhancedPlayerData.battingStats?.length &&
-          enhancedPlayerData.pitchingStats?.length
-        ) {
-          setActiveTab("pitching");
-        }
-
-        setTabsInitialized(true);
+        setActiveTab(determineInitialActiveTab(enhancedData));
+        setInitialized(true);
       } catch (err) {
         setError(err.message || "Failed to load player data");
       } finally {
@@ -447,26 +350,73 @@ const PlayerPage = () => {
       }
     };
 
-    fetchData();
+    loadPlayerData();
   }, [
     playerId,
-    fetchPercentiles,
-    fetchBaserunningStats,
-    fetchBattedBallStats,
     enhancePlayerData,
+    determineDivision,
+    initializePercentiles,
+    fetchAllStats,
+    determineInitialActiveTab,
   ]);
 
   useEffect(() => {
-    if (tabsInitialized) {
-      fetchBaserunningStats();
-      fetchBattedBallStats();
+    if (initialized) {
+      fetchAllStats();
     }
-  }, [
-    selectedDivision,
-    fetchBaserunningStats,
-    fetchBattedBallStats,
-    tabsInitialized,
-  ]);
+  }, [initialized, selectedDivision, fetchAllStats]);
+
+  const handleTabChange = useCallback(
+    (newTab) => {
+      if (newTab === activeTab) return;
+      setActiveTab(newTab);
+
+      const baseType = getBaseStatType(newTab);
+
+      if (
+        baseType === STAT_TYPES.BATTING &&
+        percentiles.batting === null &&
+        playerData?.battingStats?.length > 0
+      ) {
+        const maxSeason = Math.max(
+          ...playerData.battingStats.map((s) => s.Season)
+        );
+        fetchPercentiles(maxSeason, selectedDivision, baseType);
+      } else if (
+        baseType === STAT_TYPES.PITCHING &&
+        percentiles.pitching === null &&
+        playerData?.pitchingStats?.length > 0
+      ) {
+        const maxSeason = Math.max(
+          ...playerData.pitchingStats.map((s) => s.Season)
+        );
+        fetchPercentiles(maxSeason, selectedDivision, baseType);
+      }
+    },
+    [activeTab, playerData, percentiles, selectedDivision, fetchPercentiles]
+  );
+
+  const handleDivisionChange = useCallback(
+    (division) => {
+      setSelectedDivision(division);
+
+      const baseType = getBaseStatType(activeTab);
+      const currentPercentiles = percentiles[baseType];
+
+      if (currentPercentiles?.season) {
+        fetchPercentiles(currentPercentiles.season, division, baseType);
+      }
+    },
+    [activeTab, percentiles, fetchPercentiles]
+  );
+
+  const handleYearChange = useCallback(
+    (year) => {
+      const baseType = getBaseStatType(activeTab);
+      fetchPercentiles(year, selectedDivision, baseType);
+    },
+    [activeTab, selectedDivision, fetchPercentiles]
+  );
 
   const getAvailableYears = useCallback(
     (type = null) => {
@@ -474,27 +424,22 @@ const PlayerPage = () => {
 
       const years = new Set();
 
-      if (type === "baserunning") {
-        if (baserunningStats?.length) {
-          baserunningStats.forEach((stat) => years.add(stat.Year));
-        }
-      } else if (type === "batted_ball") {
-        if (battedBallStats?.length) {
-          battedBallStats.forEach((stat) => years.add(stat.Year));
-        }
-      } else if (type === "batting" || type === null) {
-        if (playerData?.battingStats) {
-          playerData.battingStats.forEach((stat) => years.add(stat.Season));
-        }
-      } else if (type === "pitching" || type === null) {
-        if (playerData?.pitchingStats) {
-          playerData.pitchingStats.forEach((stat) => years.add(stat.Season));
-        }
+      if (type === null || type === STAT_TYPES.BATTING) {
+        playerData.battingStats?.forEach((stat) => years.add(stat.Season));
+      }
+
+      if (type === null || type === STAT_TYPES.PITCHING) {
+        playerData.pitchingStats?.forEach((stat) => years.add(stat.Season));
+      }
+
+      if (type !== null && statData[type]) {
+        const yearKey = statData[type][0]?.Season ? "Season" : "Year";
+        statData[type].forEach((stat) => years.add(stat[yearKey]));
       }
 
       return Array.from(years).sort((a, b) => b - a);
     },
-    [playerData, baserunningStats, battedBallStats]
+    [playerData, statData]
   );
 
   const getAvailableDivisions = useCallback(() => {
@@ -502,105 +447,96 @@ const PlayerPage = () => {
 
     const divisions = new Set();
 
-    if (playerData?.battingStats) {
-      playerData.battingStats.forEach((stat) => {
+    [
+      playerData.battingStats,
+      playerData.pitchingStats,
+      ...Object.values(statData),
+    ].forEach((statsArray) => {
+      statsArray?.forEach((stat) => {
         if (stat.Division) divisions.add(stat.Division);
       });
-    }
-    if (playerData?.pitchingStats) {
-      playerData.pitchingStats.forEach((stat) => {
-        if (stat.Division) divisions.add(stat.Division);
-      });
-    }
-    if (baserunningStats?.length) {
-      baserunningStats.forEach((stat) => {
-        if (stat.Division) divisions.add(stat.Division);
-      });
-    }
-    if (battedBallStats?.length) {
-      battedBallStats.forEach((stat) => {
-        if (stat.Division) divisions.add(stat.Division);
-      });
-    }
+    });
 
     return Array.from(divisions).sort((a, b) => a - b);
-  }, [playerData, baserunningStats, battedBallStats]);
+  }, [playerData, statData]);
 
-  const handleDivisionChange = useCallback(
-    (division) => {
-      setSelectedDivision(division);
+  const availableTabs = useMemo(() => {
+    const tabs = [];
 
-      if (battingPercentiles?.batting) {
-        const battingYear = battingPercentiles.batting.season;
-        if (battingYear) {
-          const type =
-            activeTab === "baserunning" ||
-            activeTab === "batted_ball" ||
-            activeTab === "batting"
-              ? "batting"
-              : "pitching";
-          fetchPercentiles(battingYear, division, type);
-        }
-      }
-
-      if (pitchingPercentiles?.pitching) {
-        const pitchingYear = pitchingPercentiles.pitching.season;
-        if (pitchingYear) {
-          fetchPercentiles(pitchingYear, division, "pitching");
-        }
-      }
-    },
-    [activeTab, battingPercentiles, pitchingPercentiles, fetchPercentiles]
-  );
-
-  const handleYearChange = useCallback(
-    async (year, type) => {
-      const effectiveType =
-        type === "baserunning" || type === "batted_ball" || type === "batting"
-          ? "batting"
-          : "pitching";
-      await fetchPercentiles(year, selectedDivision, effectiveType);
-    },
-    [fetchPercentiles, selectedDivision]
-  );
-
-  const getCurrentPercentiles = useCallback(() => {
-    if (
-      activeTab === "batting" ||
-      activeTab === "baserunning" ||
-      activeTab === "batted_ball"
-    ) {
-      return battingPercentiles;
-    } else if (activeTab === "pitching") {
-      return pitchingPercentiles;
+    if (playerData?.battingStats?.length > 0) {
+      tabs.push({ id: STAT_TYPES.BATTING, label: "Batting" });
     }
-    return null;
-  }, [activeTab, battingPercentiles, pitchingPercentiles]);
 
-  const handleTabChange = useCallback(
-    (newTab) => {
-      if (newTab === activeTab) return;
+    if (playerData?.pitchingStats?.length > 0) {
+      tabs.push({ id: STAT_TYPES.PITCHING, label: "Pitching" });
+    }
 
-      setActiveTab(newTab);
+    if (statData[STAT_TYPES.BASERUNNING]?.length > 0) {
+      tabs.push({ id: STAT_TYPES.BASERUNNING, label: "Baserunning" });
+    }
 
-      if (
-        (newTab === "baserunning" || newTab === "batted_ball") &&
-        playerData?.battingStats?.length > 0 &&
-        (!battingPercentiles || !battingPercentiles.batting)
-      ) {
-        const maxBattingSeason = Math.max(
-          ...playerData.battingStats.map((stat) => stat.Season)
-        );
-        fetchPercentiles(maxBattingSeason, selectedDivision, "batting");
-      }
-    },
-    [
-      activeTab,
-      playerData,
-      battingPercentiles,
-      selectedDivision,
-      fetchPercentiles,
-    ]
+    if (statData[STAT_TYPES.BATTED_BALL]?.length > 0) {
+      tabs.push({ id: STAT_TYPES.BATTED_BALL, label: "Batted Ball" });
+    }
+
+    if (statData[STAT_TYPES.SITUATIONAL]?.length > 0) {
+      tabs.push({ id: STAT_TYPES.SITUATIONAL, label: "Situational (Batting)" });
+    }
+
+    if (statData[STAT_TYPES.SITUATIONAL_PITCHER]?.length > 0) {
+      tabs.push({
+        id: STAT_TYPES.SITUATIONAL_PITCHER,
+        label: "Situational (Pitching)",
+      });
+    }
+
+    if (statData[STAT_TYPES.SPLITS]?.length > 0) {
+      tabs.push({ id: STAT_TYPES.SPLITS, label: "Splits (Batting)" });
+    }
+
+    if (statData[STAT_TYPES.SPLITS_PITCHER]?.length > 0) {
+      tabs.push({ id: STAT_TYPES.SPLITS_PITCHER, label: "Splits (Pitching)" });
+    }
+
+    return tabs;
+  }, [playerData, statData]);
+
+  const statCategories = useMemo(
+    () => ({
+      [STAT_TYPES.BATTING]: {
+        stats: playerData?.battingStats || [],
+        type: STAT_TYPES.BATTING,
+      },
+      [STAT_TYPES.PITCHING]: {
+        stats: playerData?.pitchingStats || [],
+        type: STAT_TYPES.PITCHING,
+      },
+      [STAT_TYPES.BASERUNNING]: {
+        stats: statData[STAT_TYPES.BASERUNNING],
+        type: STAT_TYPES.BASERUNNING,
+      },
+      [STAT_TYPES.BATTED_BALL]: {
+        stats: statData[STAT_TYPES.BATTED_BALL],
+        type: STAT_TYPES.BATTED_BALL,
+      },
+      [STAT_TYPES.SITUATIONAL]: {
+        stats: statData[STAT_TYPES.SITUATIONAL],
+        type: STAT_TYPES.SITUATIONAL,
+      },
+      [STAT_TYPES.SITUATIONAL_PITCHER]: {
+        stats: statData[STAT_TYPES.SITUATIONAL_PITCHER],
+        type: STAT_TYPES.SITUATIONAL_PITCHER,
+      },
+      [STAT_TYPES.SPLITS]: {
+        stats: statData[STAT_TYPES.SPLITS],
+        type: STAT_TYPES.SPLITS,
+      },
+      [STAT_TYPES.SPLITS_PITCHER]: {
+        stats: statData[STAT_TYPES.SPLITS_PITCHER],
+        type: STAT_TYPES.SPLITS_PITCHER,
+      },
+    }),
+    [playerData, statData]
   );
 
   const enhancedPlayerDataForPercentile = useMemo(() => {
@@ -613,15 +549,12 @@ const PlayerPage = () => {
     };
   }, [playerData, getAvailableYears, getAvailableDivisions, activeTab]);
 
-  const tabState = useMemo(
-    () => ({
-      hasBattingStats: playerData?.battingStats?.length > 0,
-      hasPitchingStats: playerData?.pitchingStats?.length > 0,
-      hasBaserunningStats: baserunningStats?.length > 0,
-      hasBattedBallStats: battedBallStats?.length > 0,
-    }),
-    [playerData, baserunningStats, battedBallStats]
-  );
+  const currentPercentiles = useMemo(() => {
+    const baseType = getBaseStatType(activeTab);
+    return {
+      [baseType]: percentiles[baseType],
+    };
+  }, [activeTab, percentiles]);
 
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState error={error} />;
@@ -630,50 +563,32 @@ const PlayerPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* Main Content */}
         <div className="space-y-6">
-          {/* Top Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Player Info */}
             <div className="bg-white rounded-lg shadow-sm">
               <PlayerHeader playerData={playerData} />
             </div>
-
-            {/* Percentile Rankings */}
             <div className="lg:col-span-2 bg-white rounded-lg shadow-sm">
               <PercentileSection
                 playerData={enhancedPlayerDataForPercentile}
-                initialPercentiles={getCurrentPercentiles()}
-                activeTab={
-                  activeTab === "baserunning" || activeTab === "batted_ball"
-                    ? "batting"
-                    : activeTab
-                }
-                onYearChange={(year) => handleYearChange(year, activeTab)}
+                initialPercentiles={currentPercentiles}
+                activeTab={getBaseStatType(activeTab)}
+                onYearChange={handleYearChange}
                 selectedDivision={selectedDivision}
                 onDivisionChange={handleDivisionChange}
               />
             </div>
           </div>
 
-          {/* Stats Section */}
           <div className="bg-white rounded-lg shadow-sm">
-            {/* Navigation */}
             <TabNavigation
               activeTab={activeTab}
               onTabChange={handleTabChange}
-              hasBattingStats={tabState.hasBattingStats}
-              hasPitchingStats={tabState.hasPitchingStats}
-              hasBaserunningStats={tabState.hasBaserunningStats}
-              hasBattedBallStats={tabState.hasBattedBallStats}
+              availableTabs={availableTabs}
             />
-
-            {/* Stats Table */}
             <PlayerContent
               activeTab={activeTab}
-              playerData={playerData}
-              baserunningStats={baserunningStats}
-              battedBallStats={battedBallStats}
+              statCategories={statCategories}
               selectedDivision={selectedDivision}
               playerId={playerId}
             />
