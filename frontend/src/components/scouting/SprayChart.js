@@ -1,6 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { fetchAPI } from "../../config/api";
+
+// Create a cache object outside the component to persist between renders
+const apiCache = new Map();
+const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 const SprayChart = ({
   width = 600,
@@ -14,10 +18,32 @@ const SprayChart = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Create a memoized cache key based on the dependencies
+  const cacheKey = useMemo(
+    () => `spraychart-${playerId}-${year}-${division}`,
+    [playerId, year, division]
+  );
+
   useEffect(() => {
     const fetchPlayerData = async () => {
       setLoading(true);
+
       try {
+        // Check if we have cached data that's still valid
+        const cachedData = apiCache.get(cacheKey);
+        const now = Date.now();
+
+        if (cachedData && now - cachedData.timestamp < CACHE_EXPIRATION) {
+          // Use cached data if available and not expired
+          console.log("Using cached data for:", cacheKey);
+          setPlayerData(cachedData.data);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+
+        // If no cached data or expired, make the API call
+        console.log("Fetching fresh data for:", cacheKey);
         const data = await fetchAPI(
           `/spraychart-data/${playerId}?year=${year}&division=${division}`
         );
@@ -198,6 +224,12 @@ const SprayChart = ({
           ],
         };
 
+        // Cache the processed data with a timestamp
+        apiCache.set(cacheKey, {
+          data: processedData,
+          timestamp: Date.now(),
+        });
+
         setPlayerData(processedData);
         setError(null);
       } catch (err) {
@@ -209,7 +241,7 @@ const SprayChart = ({
     };
 
     fetchPlayerData();
-  }, [playerId, year, division]);
+  }, [cacheKey, division, playerId, year]);
 
   useEffect(() => {
     if (!svgRef.current || !playerData) return;

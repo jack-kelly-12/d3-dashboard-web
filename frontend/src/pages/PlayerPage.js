@@ -1,12 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useMemo,
-  memo,
-  createContext,
-  useContext,
-} from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useParams } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import { fetchAPI } from "../config/api";
@@ -15,12 +7,6 @@ import StatTable from "../components/player/StatTable";
 import PlayerHeader from "../components/player/PlayerHeader";
 import TeamLogo from "../components/data/TeamLogo";
 import SprayChart from "../components/scouting/SprayChart";
-
-// Create a context for spray chart data caching
-const SprayChartDataContext = createContext({
-  dataCache: {},
-  addToCache: () => {},
-});
 
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 via-white to-white">
@@ -43,7 +29,6 @@ const ErrorState = memo(({ error }) => (
 ));
 
 const MemoizedStatTable = memo(StatTable);
-const MemoizedSprayChart = memo(SprayChart);
 
 const TabButton = memo(({ active, onClick, children }) => (
   <button
@@ -113,101 +98,24 @@ const enrichStats = (stats) => {
     });
 };
 
-// Enhanced SprayChart component that uses context for data caching
-const EnhancedSprayChart = memo(
-  ({ playerId, year, division, height, width }) => {
-    const { dataCache, addToCache } = useContext(SprayChartDataContext);
-    const [chartData, setChartData] = useState(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const cacheKey = `${playerId}-${year}-${division}`;
-
-    useEffect(() => {
-      // If data exists in cache, use it
-      if (dataCache[cacheKey]) {
-        setChartData(dataCache[cacheKey]);
-        return;
-      }
-
-      // Otherwise fetch the data
-      const fetchData = async () => {
-        setIsLoading(true);
-        try {
-          // Use whatever API call the SprayChart component uses internally
-          const data = await fetchAPI(
-            `/api/spray-chart/${playerId}/${year}/${division}`
-          );
-
-          // Store in context cache
-          addToCache(cacheKey, data);
-
-          // Update local state
-          setChartData(data);
-        } catch (error) {
-          console.error("Error fetching spray chart data:", error);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-
-      fetchData();
-    }, [playerId, year, division, cacheKey, dataCache, addToCache]);
-
-    // Render the original SprayChart with either cached or fetched data
-    return (
-      <div className="mt-8">
-        {isLoading && !chartData ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-          </div>
-        ) : (
-          <MemoizedSprayChart
-            playerId={playerId}
-            year={year}
-            division={division}
-            height={height}
-            width={width}
-            data={chartData} // Pass cached data if we have it
-          />
-        )}
-      </div>
-    );
-  }
-);
-
-// Wrapper component that uses the enhanced version
-const PlayerSprayChart = memo(({ playerId, year, division }) => {
-  return (
-    <EnhancedSprayChart
-      playerId={playerId}
-      year={year}
-      division={division}
-      height={600}
-      width={700}
-    />
-  );
-});
-
 const PlayerContent = memo(
   ({ activeTab, statCategories, selectedDivision, playerId }) => {
     const stats = statCategories[activeTab]?.stats || [];
     const statType = statCategories[activeTab]?.type || activeTab;
 
-    const getMostRecentYear = useMemo(() => {
+    const getMostRecentYear = () => {
       if (stats.length === 0) return new Date().getFullYear();
       const yearKey = "Season" in stats[0] ? "Season" : "Year";
       return stats[0][yearKey];
-    }, [stats]);
+    };
 
-    // Determine if we should show spray chart for this tab
-    const isBattingRelatedTab = useMemo(() => {
-      return [
-        "batting",
-        "batted_ball",
-        "baserunning",
-        "situational",
-        "splits",
-      ].includes(activeTab);
-    }, [activeTab]);
+    const shouldShowSprayChart =
+      [
+        STAT_TYPES.BATTING,
+        STAT_TYPES.BASERUNNING,
+        STAT_TYPES.SITUATIONAL,
+        STAT_TYPES.SPLITS,
+      ].includes(activeTab) && stats.length > 0;
 
     return (
       <div className="p-6">
@@ -215,12 +123,16 @@ const PlayerContent = memo(
           <MemoizedStatTable stats={stats} type={statType} />
         )}
 
-        {isBattingRelatedTab && stats.length > 0 && (
-          <PlayerSprayChart
-            playerId={playerId}
-            year={getMostRecentYear}
-            division={selectedDivision}
-          />
+        {shouldShowSprayChart && (
+          <div className="mt-8">
+            <SprayChart
+              playerId={playerId}
+              year={getMostRecentYear()}
+              division={selectedDivision}
+              height={600}
+              width={700}
+            />
+          </div>
         )}
       </div>
     );
@@ -273,9 +185,6 @@ const PlayerPage = () => {
     [STAT_TYPES.SITUATIONAL_PITCHER]: [],
   });
   const [initialized, setInitialized] = useState(false);
-
-  // Spray chart data cache state
-  const [sprayChartDataCache, setSprayChartDataCache] = useState({});
 
   const fetchPercentiles = useCallback(
     async (year, division, statType) => {
@@ -653,63 +562,46 @@ const PlayerPage = () => {
     };
   }, [activeTab, percentiles]);
 
-  const addToSprayChartCache = useCallback((key, data) => {
-    setSprayChartDataCache((prev) => ({
-      ...prev,
-      [key]: data,
-    }));
-  }, []);
-
-  const sprayChartContextValue = useMemo(
-    () => ({
-      dataCache: sprayChartDataCache,
-      addToCache: addToSprayChartCache,
-    }),
-    [sprayChartDataCache, addToSprayChartCache]
-  );
-
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState error={error} />;
   if (!playerData) return null;
 
   return (
-    <SprayChartDataContext.Provider value={sprayChartContextValue}>
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-        <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow-sm">
-                <PlayerHeader playerData={playerData} />
-              </div>
-              <div className="lg:col-span-2 bg-white rounded-lg shadow-sm">
-                <PercentileSection
-                  playerData={enhancedPlayerDataForPercentile}
-                  initialPercentiles={currentPercentiles}
-                  activeTab={getBaseStatType(activeTab)}
-                  onYearChange={handleYearChange}
-                  selectedDivision={selectedDivision}
-                  onDivisionChange={handleDivisionChange}
-                />
-              </div>
-            </div>
-
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="bg-white rounded-lg shadow-sm">
-              <TabNavigation
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                availableTabs={availableTabs}
-              />
-              <PlayerContent
-                activeTab={activeTab}
-                statCategories={statCategories}
+              <PlayerHeader playerData={playerData} />
+            </div>
+            <div className="lg:col-span-2 bg-white rounded-lg shadow-sm">
+              <PercentileSection
+                playerData={enhancedPlayerDataForPercentile}
+                initialPercentiles={currentPercentiles}
+                activeTab={getBaseStatType(activeTab)}
+                onYearChange={handleYearChange}
                 selectedDivision={selectedDivision}
-                playerId={playerId}
+                onDivisionChange={handleDivisionChange}
               />
             </div>
           </div>
+
+          <div className="bg-white rounded-lg shadow-sm">
+            <TabNavigation
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              availableTabs={availableTabs}
+            />
+            <PlayerContent
+              activeTab={activeTab}
+              statCategories={statCategories}
+              selectedDivision={selectedDivision}
+              playerId={playerId}
+            />
+          </div>
         </div>
       </div>
-    </SprayChartDataContext.Provider>
+    </div>
   );
 };
 
