@@ -115,6 +115,7 @@ const PlayerContent = memo(
         STAT_TYPES.BASERUNNING,
         STAT_TYPES.SITUATIONAL,
         STAT_TYPES.SPLITS,
+        STAT_TYPES.BATTED_BALL,
       ].includes(activeTab) && stats.length > 0;
 
     return (
