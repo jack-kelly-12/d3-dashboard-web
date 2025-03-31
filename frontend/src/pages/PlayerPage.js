@@ -33,7 +33,7 @@ const MemoizedStatTable = memo(StatTable);
 const TabButton = memo(({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 font-medium text-sm rounded-lg transition-colors ${
+    className={`px-4 py-2 font-medium text-sm sm:text-xs rounded-lg transition-colors ${
       active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:text-blue-600"
     }`}
   >

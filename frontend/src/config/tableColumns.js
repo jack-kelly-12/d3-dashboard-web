@@ -764,7 +764,7 @@ export const columnsBatted = [
   },
   {
     name: "Oppo%",
-    selector: (row) => row.oppo_pct,
+    selector: (row) => row.oppo_pct || 0,
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
@@ -772,15 +772,15 @@ export const columnsBatted = [
   },
   {
     name: "Middle%",
-    selector: (row) => row.middle_pct,
+    selector: (row) => row.middle_pct || 0,
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
-    cell: (row) => `${row.middle_pct}%`,
+    cell: (row) => (row.middle_pct ? `${row.middle_pct}%` : "-"),
   },
   {
     name: "Pull%",
-    selector: (row) => row.pull_pct,
+    selector: (row) => row.pull_pct || 0,
     sortable: true,
     width: "5rem",
     className: "px-3 py-2 text-xs text-center",
