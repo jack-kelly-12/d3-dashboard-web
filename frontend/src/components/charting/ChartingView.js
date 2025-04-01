@@ -9,7 +9,6 @@ import HitInput from "./HitInput";
 import PitchTable from "../tables/PitchTable";
 import PlayerModal from "../modals/PlayerModal";
 import ChartManager from "../../managers/ChartManager";
-import GameStateManager from "../../managers/GameStateManager";
 import { BullpenPitchCounter, GamePitchCounter } from "./PitchCounter";
 
 export const ChartingView = ({ chart, onSave, onBack }) => {
@@ -23,15 +22,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isStrikeZone, setIsStrikeZone] = useState(true);
   const disableAutoOuts = chart.disableAutoOuts || false;
-
-  const [gameState, setGameState] = useState({
-    balls: 0,
-    strikes: 0,
-    outs: 0,
-    inning: 1,
-    topBottom: "Top",
-  });
-
   const [currentPitch, setCurrentPitch] = useState({
     velocity: null,
     type: "",
@@ -39,20 +29,21 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
     location: null,
     note: "",
   });
-
   const [currentHit, setCurrentHit] = useState({
     type: "",
     location: null,
-    result: "",
-    exitVelocity: "",
   });
-
   const [shouldResetPlot, setShouldResetPlot] = useState(false);
   const isBullpen = chart.chartType === "bullpen";
   const zoneType = chart.zoneType;
   const [shouldOpenCatcherModal, setShouldOpenCatcherModal] = useState(false);
   const [shouldOpenBatterModal, setShouldOpenBatterModal] = useState(false);
   const [shouldOpenPitcherModal, setShouldOpenPitcherModal] = useState(false);
+  const [outs, setOuts] = useState(isBullpen ? null : 0);
+  const [balls, setBalls] = useState(isBullpen ? null : 0);
+  const [strikes, setStrikes] = useState(isBullpen ? null : 0);
+  const [inning, setInning] = useState(isBullpen ? null : 1);
+  const [topBottom, setTopBottom] = useState(isBullpen ? null : "Top");
   const [nextModalType, setNextModalType] = useState(null);
   const [isPitcherView, setIsPitcherView] = useState(false);
 
@@ -95,35 +86,32 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
           const lastPitch =
             updatedChart.pitches?.[updatedChart.pitches.length - 1];
           if (lastPitch) {
-            setGameState({
-              balls: lastPitch.balls || 0,
-              strikes: lastPitch.strikes || 0,
-              outs: lastPitch.outs || 0,
-              inning: lastPitch.inning || 1,
-              topBottom: lastPitch.topBottom || "Top",
-            });
+            setBalls(lastPitch.balls || 0);
+            setStrikes(lastPitch.strikes || 0);
+            setOuts(lastPitch.outs || 0);
+            setInning(lastPitch.inning || 1);
+            setTopBottom(lastPitch.topBottom || "Top");
           } else {
-            setGameState({
-              balls: 0,
-              strikes: 0,
-              outs: 0,
-              inning: 1,
-              topBottom: "Top",
-            });
+            setBalls(0);
+            setStrikes(0);
+            setOuts(0);
+            setInning(1);
+            setTopBottom("Top");
           }
 
+          // Only open pitcher modal if there's no pitcher set
           if (!updatedChart.pitcher) {
             setNextModalType("batter");
             setShouldOpenPitcherModal(true);
           }
         } else {
+          // For bullpen, only prompt if no pitcher is set
           if (!updatedChart.pitcher) {
             setShouldOpenPitcherModal(true);
           }
         }
       } catch (error) {
         toast.error("Failed to load chart data");
-        console.error("Chart load error:", error);
       } finally {
         setIsLoading(false);
       }
@@ -147,6 +135,8 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
       let playerUpdate = null;
 
       switch (editingPlayer) {
+        default:
+          break;
         case "pitcher":
           playerUpdate = {
             name: playerData.name,
@@ -178,8 +168,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
           };
           setUmpire(playerUpdate);
           updatedData.umpire = playerUpdate;
-          break;
-        default:
           break;
       }
 
@@ -228,6 +216,90 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   const handleAddPitch = async () => {
     try {
       const isInPlay = currentPitch.result.toLowerCase() === "in_play";
+      const isNewBatterEvent = [
+        "walk",
+        "strikeout_swinging",
+        "strikeout_looking",
+        "hbp",
+      ].includes(currentPitch.result.toLowerCase());
+
+      let newBalls = balls;
+      let newStrikes = strikes;
+      let newOuts = outs;
+
+      if (!isBullpen) {
+        const result = currentPitch.result?.toLowerCase();
+        const hitResult = currentHit.result?.toLowerCase();
+        const hitType = currentHit.type?.toLowerCase();
+
+        const isOutType = ["groundout", "flyout", "lineout", "popout"].includes(
+          hitType
+        );
+
+        if (hitResult === "double_play") {
+          newOuts = Math.min(outs + 2, 3);
+        } else if (hitResult === "triple_play") {
+          newOuts = 3;
+        } else if (
+          isOutType ||
+          ["strikeout_swinging", "strikeout_looking"].includes(result)
+        ) {
+          newOuts = Math.min(outs + 1, 3);
+        }
+
+        if (result === "ball") {
+          newBalls = balls + 1;
+        } else if (
+          ["swinging_strike", "called_strike", "foul"].includes(result)
+        ) {
+          if (result !== "foul" || strikes < 2) {
+            newStrikes = strikes + 1;
+          }
+        }
+
+        const isHit = [
+          "single",
+          "double",
+          "triple",
+          "home_run",
+          "fielders_choice",
+          "error",
+        ].includes(hitResult);
+        if (
+          result === "walk" ||
+          result === "hit_by_pitch" ||
+          isOutType ||
+          isHit
+        ) {
+          newBalls = 0;
+          newStrikes = 0;
+        }
+
+        if (newOuts >= 3) {
+          if (!disableAutoOuts) {
+            newOuts = 0;
+            newBalls = 0;
+            newStrikes = 0;
+
+            if (topBottom === "Top") {
+              setTopBottom("Bottom");
+            } else {
+              setTopBottom("Top");
+              setInning((prev) => prev + 1);
+            }
+
+            setBatter(null);
+            setPitcher(null);
+            setNextModalType("batter");
+            setEditingPlayer("pitcher");
+            setIsPlayerModalOpen(true);
+          }
+        }
+
+        setBalls(newBalls);
+        setStrikes(newStrikes);
+        setOuts(newOuts);
+      }
 
       const newPitch = {
         id: Date.now().toString(),
@@ -250,36 +322,11 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
       };
 
       if (!isBullpen) {
-        const updatedState = GameStateManager.updateGameState(
-          gameState,
-          currentPitch,
-          isInPlay ? currentHit : null,
-          disableAutoOuts
-        );
-        setGameState({
-          balls: updatedState.balls,
-          strikes: updatedState.strikes,
-          outs: updatedState.outs,
-          inning: updatedState.inning,
-          topBottom: updatedState.topBottom,
-        });
-
-        newPitch.balls = updatedState.balls;
-        newPitch.strikes = updatedState.strikes;
-        newPitch.outs = updatedState.outs;
-        newPitch.inning = updatedState.inning;
-        newPitch.topBottom = updatedState.topBottom;
-
-        if (updatedState.shouldChangeBatter) {
-          setBatter(null);
-          setShouldOpenBatterModal(true);
-        }
-
-        if (updatedState.shouldChangePitcher) {
-          setPitcher(null);
-          setNextModalType("batter");
-          setShouldOpenPitcherModal(true);
-        }
+        newPitch.balls = newBalls;
+        newPitch.strikes = newStrikes;
+        newPitch.outs = newOuts;
+        newPitch.inning = inning;
+        newPitch.topBottom = topBottom;
       }
 
       if (isInPlay) {
@@ -290,6 +337,16 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
           result: currentHit.result,
           exitVelocity: currentHit.exitVelocity,
         };
+      }
+
+      const shouldChangeBatter =
+        (!disableAutoOuts || newOuts < 3) &&
+        (isNewBatterEvent ||
+          (isInPlay && (currentHit.result || currentHit.type)));
+
+      if (shouldChangeBatter) {
+        setBatter(null);
+        setShouldOpenBatterModal(true);
       }
 
       await ChartManager.addPitch(chart.id, newPitch);
@@ -373,17 +430,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
     );
   }
 
-  // Display the current game state for game charts
-  const GameStateDisplay = () => {
-    if (isBullpen) return null;
-
-    return (
-      <div className="bg-blue-50 px-4 py-2 rounded-md mb-4 text-center font-medium text-blue-800">
-        {GameStateManager.formatGameState(gameState)}
-      </div>
-    );
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
@@ -401,6 +447,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12 w-full">
+              {" "}
               <div className="space-y-6">
                 <div className="space-y-4">
                   <PlayerSelector
@@ -433,7 +480,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                     Toggle View
                   </button>
                 </div>
-                <BullpenPitchCounter pitches={pitches} />
+                <BullpenPitchCounter pitches={pitches} />{" "}
                 <StrikeZone
                   key={isPitcherView ? "pitcher" : "catcher"}
                   onPlotPitch={handlePlotPitch}
@@ -453,7 +500,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   Pitch History
                 </h2>
               </div>
-              <div className="w-full max-w-full">
+              <div className="overflow-x-auto">
                 <PitchTable
                   pitches={pitches}
                   onDeletePitch={handleDeletePitch}
@@ -474,9 +521,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                 <span>Back to Charts</span>
               </button>
             </div>
-
-            {/* Game state display */}
-            <GameStateDisplay />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full mb-6">
               <div className="space-y-6">
@@ -596,13 +640,13 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-800">
                   Pitch History
                 </h2>
               </div>
-              <div className="w-full max-w-full">
+              <div className="overflow-x-auto">
                 <PitchTable
                   pitches={pitches}
                   onDeletePitch={handleDeletePitch}
