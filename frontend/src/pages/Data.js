@@ -8,6 +8,7 @@ import TeamLogo from "../components/data/TeamLogo";
 import { useSearchParams } from "react-router-dom";
 import debounce from "lodash/debounce";
 import { useSubscription } from "../contexts/SubscriptionContext";
+import PlayerListManager from "../managers/PlayerListManager";
 
 const MemoizedTable = React.memo(({ data, dataType, filename }) => (
   <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -32,12 +33,15 @@ const Data = () => {
     minIP: Number(searchParams.get("minIP")) || 10,
     selectedConference: searchParams.get("conference") || "",
     division: Number(searchParams.get("division")) || 3,
+    selectedListId: searchParams.get("listId") || "",
   });
 
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [conferences, setConferences] = useState([]);
+  const [selectedListPlayerIds, setSelectedListPlayerIds] = useState([]);
+  const [isLoadingPlayerList, setIsLoadingPlayerList] = useState(false);
 
   useEffect(() => {
     if (isPremiumUser) {
@@ -49,6 +53,35 @@ const Data = () => {
       }));
     }
   }, [isPremiumUser, searchParams]);
+
+  // Fetch player list IDs when selectedListId changes
+  useEffect(() => {
+    const fetchPlayerList = async () => {
+      if (!state.selectedListId || !state.dataType.includes("player")) {
+        setSelectedListPlayerIds([]);
+        return;
+      }
+
+      try {
+        setIsLoadingPlayerList(true);
+        const list = await PlayerListManager.getPlayerListById(
+          state.selectedListId
+        );
+        if (list && list.playerIds) {
+          setSelectedListPlayerIds(list.playerIds);
+        } else {
+          setSelectedListPlayerIds([]);
+        }
+      } catch (err) {
+        console.error("Error fetching player list:", err);
+        setSelectedListPlayerIds([]);
+      } finally {
+        setIsLoadingPlayerList(false);
+      }
+    };
+
+    fetchPlayerList();
+  }, [state.selectedListId, state.dataType]);
 
   const endpointMap = useMemo(
     () => ({
@@ -92,6 +125,10 @@ const Data = () => {
 
         if (isPremiumUser) {
           params.division = state.division.toString();
+        }
+
+        if (state.selectedListId && state.dataType.includes("player")) {
+          params.listId = state.selectedListId;
         }
 
         setSearchParams(params);
@@ -174,7 +211,8 @@ const Data = () => {
   }, [fetchData]);
 
   const filteredData = useMemo(() => {
-    return data.filter((item) => {
+    // Start with the basic filtering
+    let filtered = data.filter((item) => {
       const searchStr = state.searchTerm.toLowerCase();
       const name = item.Player?.toLowerCase() || item.Team?.toLowerCase() || "";
       const team = item.Team?.toLowerCase() || "";
@@ -194,7 +232,32 @@ const Data = () => {
         (name.includes(searchStr) || team.includes(searchStr))
       );
     });
-  }, [data, state]);
+
+    // Apply player list filtering if a list is selected
+    if (
+      state.selectedListId &&
+      selectedListPlayerIds.length > 0 &&
+      state.dataType.includes("player")
+    ) {
+      filtered = filtered.filter((item) => {
+        // The player ID in the data might be "d3d-123" or just 123
+        const playerId = item.player_id || item.Player_ID;
+        if (!playerId) return false;
+
+        // Check if the player ID is in the selected list
+        // Handle both string and number comparisons
+        return selectedListPlayerIds.some(
+          (id) =>
+            id === playerId.toString() ||
+            id === playerId ||
+            (playerId.toString().includes("d3d-") &&
+              id === playerId.toString().replace("d3d-", ""))
+        );
+      });
+    }
+
+    return filtered;
+  }, [data, state, selectedListPlayerIds]);
 
   useEffect(() => {
     updateSearchParams(state);
@@ -204,7 +267,8 @@ const Data = () => {
     setState((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const isPageLoading = isSubscriptionLoading || isLoading;
+  const isPageLoading =
+    isSubscriptionLoading || isLoading || isLoadingPlayerList;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
@@ -219,23 +283,55 @@ const Data = () => {
           setSearchTerm={(val) => handleStateChange("searchTerm", val)}
           setConference={(val) => handleStateChange("selectedConference", val)}
           setDivision={(val) => handleStateChange("division", val)}
+          setSelectedListId={(val) => handleStateChange("selectedListId", val)}
           conferences={conferences}
           isPremiumUser={isPremiumUser}
         />
+
         {isPageLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col justify-center items-center h-64">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-gray-500 text-sm">
+              {isLoadingPlayerList
+                ? "Loading player list..."
+                : "Loading data..."}
+            </p>
           </div>
         ) : error ? (
           <div className="text-center py-12">
             <p className="text-red-600">{error}</p>
           </div>
+        ) : filteredData.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+            <p className="text-gray-600 mb-4">
+              No data found for the current filters.
+            </p>
+            {state.selectedListId && (
+              <p className="text-gray-500 text-sm">
+                {selectedListPlayerIds.length === 0
+                  ? "The selected player list is empty."
+                  : "None of the players in the selected list match the current filters."}
+              </p>
+            )}
+          </div>
         ) : (
-          <MemoizedTable
-            data={filteredData}
-            dataType={state.dataType}
-            filename={`${state.dataType}_${state.selectedYears.join("-")}.csv`}
-          />
+          <div>
+            {state.selectedListId && (
+              <div className="mb-2 px-2 py-1 bg-blue-50 text-blue-700 rounded-md inline-flex items-center text-sm">
+                <span className="font-medium">Filtered: </span>
+                <span className="ml-2">
+                  Showing {filteredData.length} players from selected list
+                </span>
+              </div>
+            )}
+            <MemoizedTable
+              data={filteredData}
+              dataType={state.dataType}
+              filename={`${state.dataType}_${state.selectedYears.join("-")}${
+                state.selectedListId ? `_list_${state.selectedListId}` : ""
+              }.csv`}
+            />
+          </div>
         )}
       </div>
     </div>

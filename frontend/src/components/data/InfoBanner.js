@@ -1,6 +1,12 @@
 const InfoBanner = ({ dataType }) => {
   const getMessage = () => {
     switch (dataType) {
+      case "player-lists":
+        return {
+          title: "Player Lists",
+          description:
+            "Explore a comprehensive list of players with their statistics and performance metrics.",
+        };
       case "guts":
         return {
           title: "Guts",

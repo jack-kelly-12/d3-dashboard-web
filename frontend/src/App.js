@@ -17,6 +17,7 @@ import Leaderboards from "./pages/Leaderboards.js";
 import GamePage from "./pages/GamePage.js";
 import Scoreboard from "./pages/Scoreboard.js";
 import InsightsPage from "./pages/InsightsPage.js";
+import PlayerLists from "./pages/PlayerLists.js"; // Import the new PlayerLists component
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { Navigate, useLocation } from "react-router-dom";
 import { useSubscription } from "./contexts/SubscriptionContext";
@@ -144,6 +145,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <GamePage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* New Player Lists route */}
+              <Route
+                path="/player-lists"
+                element={
+                  <ProtectedRoute>
+                    <PlayerLists />
                   </ProtectedRoute>
                 }
               />

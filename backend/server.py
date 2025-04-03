@@ -325,7 +325,7 @@ def get_team_players(team_name):
         return jsonify(data)
 
     except Exception as e:
-        print(f"Error in get_team_players: {str(e)}")  # Log the error
+        print(f"Error in get_team_players: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
 
 
@@ -1113,6 +1113,72 @@ def get_team_logo(team_id):
     except Exception as e:
         print(f"Error serving logo: {e}")
         return '', 404
+
+
+@app.route('/api/players')
+def get_players():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        # This improved query correctly joins with a subquery that finds the most recent year for each player
+        cursor.execute("""
+            WITH LatestPlayerYear AS (
+                SELECT 
+                    player_id, 
+                    MAX(year) as latest_year
+                FROM rosters
+                WHERE player_id LIKE 'd3d-%'
+                GROUP BY player_id
+            )
+            SELECT 
+                r1.player_id, 
+                r1.player_name,
+                -- Get team info from the most recent year
+                r2.team_name,
+                r2.conference,
+                r2.division,
+                MIN(r1.year) as minYear,
+                MAX(r1.year) as maxYear,
+                -- Collect all years as an array
+                JSON_GROUP_ARRAY(DISTINCT r1.year) as years
+            FROM rosters r1
+            -- Join with the latest year data to get the most recent team info
+            LEFT JOIN (
+                SELECT r.player_id, r.team_name, r.conference, r.division, r.year
+                FROM rosters r
+                JOIN LatestPlayerYear lpy ON r.player_id = lpy.player_id AND r.year = lpy.latest_year
+            ) r2 ON r1.player_id = r2.player_id
+            WHERE r1.player_id LIKE 'd3d-%'
+            GROUP BY r1.player_id
+            ORDER BY r1.player_name
+        """)
+
+        players = []
+        for row in cursor.fetchall():
+            player_dict = dict(row)
+
+            # Parse the years JSON array
+            try:
+                if isinstance(player_dict.get('years'), str):
+                    import json
+                    player_dict['years'] = json.loads(player_dict['years'])
+            except:
+                # Fallback if JSON parsing fails
+                player_dict['years'] = [
+                    player_dict['minYear'], player_dict['maxYear']]
+
+            players.append(player_dict)
+
+        return jsonify(players)
+
+    except Exception as e:
+        print(f"Error fetching players: {e}")
+        return jsonify({"error": f"Failed to fetch players: {str(e)}"}), 500
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 @app.route('/api/conferences/logos/<conference_id>.png')
