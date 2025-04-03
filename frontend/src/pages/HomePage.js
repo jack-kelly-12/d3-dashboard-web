@@ -28,7 +28,7 @@ const HomePage = () => {
               D3 Dashboard
             </h1>
             <p className="mt-2 sm:mt-3 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
-              Empowering Division III baseball teams with advanced analytics and
+              Empowering college baseball teams with advanced analytics and
               performance insights
             </p>
           </div>

@@ -1,7 +1,16 @@
-import React, { useState, useEffect, useRef, lazy, Suspense } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  lazy,
+  Suspense,
+  useCallback,
+} from "react";
 import { ChevronDown } from "lucide-react";
 import { useSubscription } from "../contexts/SubscriptionContext";
 import AuthManager from "../managers/AuthManager";
+import PlayerListManager from "../managers/PlayerListManager";
+import { useSearchParams } from "react-router-dom";
 
 const ValueLeaderboard = lazy(() =>
   import("../components/tables/ValueLeaderboard")
@@ -62,17 +71,25 @@ const LoadingFallback = () => (
 );
 
 const Leaderboards = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedType, setSelectedType] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    const urlType = params.get("type");
+    const urlType = searchParams.get("type");
     return Object.values(LEADERBOARD_TYPES).some((t) => t.id === urlType)
       ? urlType
       : LEADERBOARD_TYPES.VALUE.id;
   });
+  const [selectedListId, setSelectedListId] = useState(
+    searchParams.get("listId") || ""
+  );
+  const [selectedListPlayerIds, setSelectedListPlayerIds] = useState([]);
+  const [isLoadingPlayerList, setIsLoadingPlayerList] = useState(false);
+  const [playerLists, setPlayerLists] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showListDropdown, setShowListDropdown] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const { isPremiumUser, isLoadingPremium } = useSubscription();
   const dropdownRef = useRef(null);
+  const listDropdownRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -83,6 +100,17 @@ const Leaderboards = () => {
 
         if (isMounted) {
           setIsAuthReady(true);
+
+          // Load player lists when auth is ready
+          if (user) {
+            try {
+              const lists = await PlayerListManager.getUserPlayerLists();
+              setPlayerLists(lists || []);
+            } catch (err) {
+              console.error("Error fetching player lists:", err);
+              setPlayerLists([]);
+            }
+          }
         }
       });
 
@@ -97,10 +125,43 @@ const Leaderboards = () => {
     };
   }, []);
 
+  // Fetch player list IDs when selectedListId changes
+  useEffect(() => {
+    const fetchPlayerList = async () => {
+      if (!selectedListId) {
+        setSelectedListPlayerIds([]);
+        return;
+      }
+
+      try {
+        setIsLoadingPlayerList(true);
+        const list = await PlayerListManager.getPlayerListById(selectedListId);
+        if (list && list.playerIds) {
+          setSelectedListPlayerIds(list.playerIds);
+        } else {
+          setSelectedListPlayerIds([]);
+        }
+      } catch (err) {
+        console.error("Error fetching player list:", err);
+        setSelectedListPlayerIds([]);
+      } finally {
+        setIsLoadingPlayerList(false);
+      }
+    };
+
+    fetchPlayerList();
+  }, [selectedListId]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (
+        listDropdownRef.current &&
+        !listDropdownRef.current.contains(event.target)
+      ) {
+        setShowListDropdown(false);
       }
     };
 
@@ -121,23 +182,48 @@ const Leaderboards = () => {
   }, [selectedType]);
 
   useEffect(() => {
-    const url = new URL(window.location);
-    url.searchParams.set("type", selectedType);
-    window.history.pushState({}, "", url);
-  }, [selectedType]);
+    const params = new URLSearchParams();
+    params.set("type", selectedType);
+
+    if (selectedListId) {
+      params.set("listId", selectedListId);
+    }
+
+    setSearchParams(params);
+  }, [selectedType, selectedListId, setSearchParams]);
 
   useEffect(() => {
     const handlePopState = () => {
       const params = new URLSearchParams(window.location.search);
       const urlType = params.get("type");
+      const urlListId = params.get("listId");
+
       if (Object.values(LEADERBOARD_TYPES).some((t) => t.id === urlType)) {
         setSelectedType(urlType);
       }
+
+      setSelectedListId(urlListId || "");
     };
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
+
+  const handleListSelection = useCallback((listId) => {
+    setSelectedListId(listId);
+    setShowListDropdown(false);
+  }, []);
+
+  const clearListSelection = useCallback(() => {
+    setSelectedListId("");
+    setShowListDropdown(false);
+  }, []);
+
+  const getSelectedListName = useCallback(() => {
+    if (!selectedListId) return "All Players";
+    const list = playerLists.find((list) => list.id === selectedListId);
+    return list ? list.name : "All Players";
+  }, [selectedListId, playerLists]);
 
   const getCurrentLeaderboard = () => {
     const leaderboard = Object.values(LEADERBOARD_TYPES).find(
@@ -147,7 +233,12 @@ const Leaderboards = () => {
 
     return LeaderboardComponent ? (
       <Suspense fallback={<LoadingFallback />}>
-        <LeaderboardComponent isPremiumUser={isPremiumUser} />
+        <LeaderboardComponent
+          isPremiumUser={isPremiumUser}
+          selectedListId={selectedListId}
+          selectedListPlayerIds={selectedListPlayerIds}
+          isLoadingPlayerList={isLoadingPlayerList}
+        />
       </Suspense>
     ) : null;
   };
@@ -165,48 +256,143 @@ const Leaderboards = () => {
             {LEADERBOARD_TYPES[selectedType.toUpperCase()]?.label}
           </h1>
 
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <span className="text-sm font-medium text-gray-700">
-                Current: {LEADERBOARD_TYPES[selectedType.toUpperCase()]?.label}
-              </span>
-              <ChevronDown
-                size={16}
-                className={`text-gray-500 transition-transform ${
-                  isDropdownOpen ? "rotate-180" : ""
-                }`}
-              />
-            </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Leaderboard Type Selection Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <span className="text-sm font-medium text-gray-700">
+                  Current:{" "}
+                  {LEADERBOARD_TYPES[selectedType.toUpperCase()]?.label}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-gray-500 transition-transform ${
+                    isDropdownOpen ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
 
-            {isDropdownOpen && (
-              <div className="absolute right-0 z-50 w-72 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg">
-                {Object.values(LEADERBOARD_TYPES).map((type) => (
+              {isDropdownOpen && (
+                <div className="absolute right-0 z-50 w-72 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg">
+                  {Object.values(LEADERBOARD_TYPES).map((type) => (
+                    <button
+                      key={type.id}
+                      onClick={() => {
+                        setSelectedType(type.id);
+                        setIsDropdownOpen(false);
+                      }}
+                      className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                    >
+                      <div className="font-medium text-gray-900">
+                        {type.label}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {type.description}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Player List Selection Dropdown */}
+            <div className="relative" ref={listDropdownRef}>
+              <div className="flex items-center gap-2">
+                <div className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Player List:
+                </div>
+                <div className="relative">
                   <button
-                    key={type.id}
-                    onClick={() => {
-                      setSelectedType(type.id);
-                      setIsDropdownOpen(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                    onClick={() => setShowListDropdown(!showListDropdown)}
+                    className="flex items-center justify-between px-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm text-gray-700
+                      focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+                      hover:border-gray-300 transition-colors min-w-[160px]"
                   >
-                    <div className="font-medium text-gray-900">
-                      {type.label}
+                    <div className="flex items-center gap-2">
+                      <span className="truncate">
+                        {isLoadingPlayerList
+                          ? "Loading lists..."
+                          : getSelectedListName()}
+                      </span>
                     </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {type.description}
-                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={`transition-transform ${
+                        showListDropdown ? "rotate-180" : ""
+                      }`}
+                    />
                   </button>
-                ))}
+
+                  {showListDropdown && (
+                    <div className="absolute right-0 mt-1 w-72 bg-white border border-gray-200 rounded-md shadow-lg z-10 max-h-64 overflow-y-auto">
+                      <div className="p-1">
+                        <button
+                          onClick={clearListSelection}
+                          className={`w-full text-left px-3 py-2 text-sm rounded-md ${
+                            !selectedListId
+                              ? "bg-blue-50 text-blue-700"
+                              : "hover:bg-gray-50"
+                          }`}
+                        >
+                          All Players
+                        </button>
+
+                        {playerLists.length > 0 ? (
+                          playerLists.map((list) => (
+                            <button
+                              key={list.id}
+                              onClick={() => handleListSelection(list.id)}
+                              className={`w-full text-left px-3 py-2 text-sm rounded-md ${
+                                selectedListId === list.id
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="truncate">{list.name}</span>
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {list.playerIds?.length || 0} players
+                                </span>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-2 text-xs text-gray-500 text-center">
+                            No player lists found
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
+        {/* Player List Filter Status */}
+        {selectedListId && (
+          <div className="mx-auto px-4 md:px-12 mb-4">
+            <div className="px-3 py-2 bg-blue-50 border border-blue-100 rounded-md inline-flex items-center text-sm">
+              <span className="font-medium text-blue-700">Filtered: </span>
+              <span className="ml-2 text-blue-600">
+                {isLoadingPlayerList
+                  ? "Loading player list..."
+                  : `Showing players from "${getSelectedListName()}" (${
+                      selectedListPlayerIds.length
+                    } players)`}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Leaderboard Content */}
-        <div className="overflow-x-auto px-6">{getCurrentLeaderboard()}</div>
+        <div className="overflow-x-auto px-6">
+          {isLoadingPlayerList ? <LoadingFallback /> : getCurrentLeaderboard()}
+        </div>
       </div>
     </div>
   );

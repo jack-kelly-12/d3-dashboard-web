@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
-import { Search } from "lucide-react";
+import { Search, FileBox } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import AuthManager from "../../managers/AuthManager";
 import { columnsValue } from "../../config/tableColumns";
 
-const ValueLeaderboard = () => {
+const ValueLeaderboard = ({
+  isPremiumUserProp,
+  selectedListId,
+  selectedListPlayerIds,
+  isLoadingPlayerList,
+}) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [data, setData] = useState([]);
@@ -19,7 +24,9 @@ const ValueLeaderboard = () => {
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
-  const [isPremiumUser, setIsPremiumUser] = useState(false);
+  const [isPremiumUser, setIsPremiumUser] = useState(
+    isPremiumUserProp || false
+  );
 
   const fetchConferences = useCallback(async () => {
     if (!isAuthReady) return;
@@ -35,6 +42,16 @@ const ValueLeaderboard = () => {
   useEffect(() => {
     let isMounted = true;
 
+    // If isPremiumUserProp is provided, use it
+    if (isPremiumUserProp !== undefined) {
+      setIsPremiumUser(isPremiumUserProp);
+      setIsAuthReady(true);
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    // Otherwise, fetch the subscription status
     const initializeAuth = async () => {
       const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
         if (!isMounted) return;
@@ -80,10 +97,12 @@ const ValueLeaderboard = () => {
 
     return () => {
       isMounted = false;
-      cleanup.then((unsubscribe) => unsubscribe());
+      if (cleanup) {
+        cleanup.then((unsubscribe) => unsubscribe && unsubscribe());
+      }
       SubscriptionManager.stopListening();
     };
-  }, []);
+  }, [isPremiumUserProp]);
 
   // Update URL when division changes
   useEffect(() => {
@@ -101,7 +120,7 @@ const ValueLeaderboard = () => {
   }, [fetchConferences, isAuthReady]);
 
   const fetchData = useCallback(async () => {
-    if (!isAuthReady) return;
+    if (!isAuthReady || isLoadingPlayerList) return;
 
     setIsLoading(true);
     setError(null);
@@ -146,7 +165,7 @@ const ValueLeaderboard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, endYear, division, isAuthReady]);
+  }, [startYear, endYear, division, isAuthReady, isLoadingPlayerList]);
 
   useEffect(() => {
     fetchData();
@@ -161,20 +180,63 @@ const ValueLeaderboard = () => {
   );
 
   const filteredData = useMemo(() => {
-    return data.filter((player) => {
+    // First apply the standard filters (search and conference)
+    let filtered = data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
-      const nameMatch = player.Player.toLowerCase().includes(searchStr);
-      const teamMatch = player.Team.toLowerCase().includes(searchStr);
+      const nameMatch = player.Player?.toLowerCase().includes(searchStr);
+      const teamMatch = player.Team?.toLowerCase().includes(searchStr);
       const conferenceMatch = selectedConference
         ? player.Conference === selectedConference
         : true;
       return (nameMatch || teamMatch) && conferenceMatch;
     });
-  }, [data, searchTerm, selectedConference]);
+
+    // Then apply the player list filter if selected
+    if (
+      selectedListId &&
+      selectedListPlayerIds &&
+      selectedListPlayerIds.length > 0
+    ) {
+      filtered = filtered.filter((player) => {
+        const playerId = player.player_id || player.Player_ID;
+        if (!playerId) return false;
+
+        // Check if the player ID is in the selected list
+        // Handle both string and number comparisons
+        return selectedListPlayerIds.some(
+          (id) =>
+            id === playerId.toString() ||
+            id === playerId ||
+            (playerId.toString().includes("d3d-") &&
+              id === playerId.toString().replace("d3d-", ""))
+        );
+      });
+    }
+
+    return filtered;
+  }, [
+    data,
+    searchTerm,
+    selectedConference,
+    selectedListId,
+    selectedListPlayerIds,
+  ]);
 
   const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
 
-  if (!isAuthReady || isLoading) {
+  // Generate a filename for export that includes list information if present
+  const generateFilename = () => {
+    let filename = `value_leaderboard_${startYear}`;
+    if (startYear !== endYear) {
+      filename += `-${endYear}`;
+    }
+    if (selectedListId) {
+      filename += `_list_${selectedListId}`;
+    }
+    return `${filename}.csv`;
+  };
+
+  if (!isAuthReady || isLoading || isLoadingPlayerList) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -282,6 +344,13 @@ const ValueLeaderboard = () => {
                 </select>
               )}
             </div>
+
+            {/* Player List Filter Status */}
+            {selectedListId && (
+              <div className="ml-auto px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
+                Showing {filteredData.length} of {data.length} players
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -291,6 +360,22 @@ const ValueLeaderboard = () => {
         <div className="text-center py-12">
           <p className="text-red-600 text-xs lg:text-sm">{error}</p>
         </div>
+      ) : filteredData.length === 0 ? (
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
+          <p className="text-gray-600 mb-4">
+            No data found for the current filters.
+          </p>
+          {selectedListId && (
+            <div className="mt-4 flex flex-col items-center">
+              <FileBox size={32} className="text-blue-500 mb-2" />
+              <p className="text-gray-500 text-sm">
+                {selectedListPlayerIds.length === 0
+                  ? "The selected player list is empty."
+                  : "None of the players in the selected list match the current criteria."}
+              </p>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
@@ -299,6 +384,7 @@ const ValueLeaderboard = () => {
             defaultSortField="WAR"
             defaultSortAsc={false}
             stickyColumns={[0, 1]}
+            filename={generateFilename()}
           />
         </div>
       )}

@@ -1121,7 +1121,6 @@ def get_players():
     cursor = conn.cursor()
 
     try:
-        # This improved query correctly joins with a subquery that finds the most recent year for each player
         cursor.execute("""
             WITH LatestPlayerYear AS (
                 SELECT 
@@ -1134,18 +1133,16 @@ def get_players():
             SELECT 
                 r1.player_id, 
                 r1.player_name,
-                -- Get team info from the most recent year
+                r2.position,
                 r2.team_name,
                 r2.conference,
                 r2.division,
                 MIN(r1.year) as minYear,
                 MAX(r1.year) as maxYear,
-                -- Collect all years as an array
                 JSON_GROUP_ARRAY(DISTINCT r1.year) as years
             FROM rosters r1
-            -- Join with the latest year data to get the most recent team info
             LEFT JOIN (
-                SELECT r.player_id, r.team_name, r.conference, r.division, r.year
+                SELECT r.player_id, r.team_name, r.conference, r.division, r.year, r.position
                 FROM rosters r
                 JOIN LatestPlayerYear lpy ON r.player_id = lpy.player_id AND r.year = lpy.latest_year
             ) r2 ON r1.player_id = r2.player_id
@@ -1157,6 +1154,10 @@ def get_players():
         players = []
         for row in cursor.fetchall():
             player_dict = dict(row)
+
+            # Capitalize the position field
+            if player_dict.get('position'):
+                player_dict['position'] = player_dict['position'].upper()
 
             # Parse the years JSON array
             try:
