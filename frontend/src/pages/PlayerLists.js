@@ -49,7 +49,28 @@ const PlayerLists = () => {
 
   // Refs
   const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
+  const listNameInputRef = useRef(null);
+  const listDescInputRef = useRef(null);
   const allPlayersLoaded = useRef(false);
+
+  // Cache helper function
+  const cachePlayers = (cacheKey, players) => {
+    try {
+      const minimalPlayers = players.map(
+        ({ player_id, player_name, team_name, minYear, maxYear }) => ({
+          player_id,
+          player_name,
+          team_name,
+          minYear,
+          maxYear,
+        })
+      );
+      localStorage.setItem(cacheKey, JSON.stringify(minimalPlayers));
+    } catch (error) {
+      console.warn("Failed to cache players:", error);
+    }
+  };
 
   // Load players for a specific list
   const loadPlayersForList = useCallback(
@@ -59,106 +80,62 @@ const PlayerLists = () => {
       try {
         setIsPlayersLoading(true);
         const cacheKey = `list_players_${listId}`;
-        let cachedListPlayers = null;
 
-        // Try to get data from cache
+        // Try cache first
         try {
           const cachedData = localStorage.getItem(cacheKey);
           if (cachedData) {
-            cachedListPlayers = JSON.parse(cachedData);
+            setListPlayers(JSON.parse(cachedData));
+            return;
           }
-        } catch (cacheError) {
-          console.warn(`Could not read cache for list ${listId}:`, cacheError);
+        } catch (error) {
+          console.warn("Cache read error:", error);
         }
 
-        // Use cached data if available
-        if (cachedListPlayers) {
-          setListPlayers(cachedListPlayers);
-          setIsPlayersLoading(false);
-          return;
-        }
-
-        // Fetch player list
         const playerList = await PlayerListManager.getPlayerListById(listId);
         const playerIds = playerList.playerIds;
 
-        // Handle empty list
         if (playerIds.length === 0) {
           setListPlayers([]);
-          setIsPlayersLoading(false);
           return;
         }
 
-        // Use already loaded players if available
+        // Use existing players if available
         if (allPlayers.length > 0) {
-          const players = allPlayers.filter((player) =>
-            playerIds.includes(player.player_id.toString())
+          const players = allPlayers.filter((p) =>
+            playerIds.includes(p.player_id.toString())
           );
-
-          try {
-            const minimalPlayers = players.map((player) => ({
-              player_id: player.player_id,
-              player_name: player.player_name,
-              team_name: player.team_name,
-              minYear: player.minYear,
-              maxYear: player.maxYear,
-            }));
-
-            localStorage.setItem(cacheKey, JSON.stringify(minimalPlayers));
-          } catch (storageError) {
-            console.warn(
-              `Could not cache list ${listId} players:`,
-              storageError
-            );
-          }
-
+          cachePlayers(cacheKey, players);
           setListPlayers(players);
-        } else {
-          // Try to use cached global players
-          try {
-            const cachedAllPlayers = localStorage.getItem("baseballPlayers");
-            if (cachedAllPlayers) {
-              const allPlayersData = JSON.parse(cachedAllPlayers);
-              const playersInList = allPlayersData.filter((player) =>
-                playerIds.includes(player.player_id.toString())
-              );
-
-              localStorage.setItem(cacheKey, JSON.stringify(playersInList));
-              setListPlayers(playersInList);
-              return;
-            }
-          } catch (error) {
-            console.warn("Could not read from global player cache:", error);
-          }
-
-          // Fetch all players if no cache available
-          const allPlayersData = await fetchAPI("/api/players");
-          const playersInList = allPlayersData.filter((player) =>
-            playerIds.includes(player.player_id.toString())
-          );
-
-          try {
-            const minimalPlayers = playersInList.map((player) => ({
-              player_id: player.player_id,
-              player_name: player.player_name,
-              team_name: player.team_name,
-              minYear: player.minYear,
-              maxYear: player.maxYear,
-            }));
-
-            localStorage.setItem(cacheKey, JSON.stringify(minimalPlayers));
-          } catch (storageError) {
-            console.warn(
-              `Could not cache list ${listId} players:`,
-              storageError
-            );
-          }
-
-          setListPlayers(playersInList);
+          return;
         }
+
+        // Try global cache
+        try {
+          const cachedAllPlayers = localStorage.getItem("baseballPlayers");
+          if (cachedAllPlayers) {
+            const allPlayersData = JSON.parse(cachedAllPlayers);
+            const playersInList = allPlayersData.filter((p) =>
+              playerIds.includes(p.player_id.toString())
+            );
+            cachePlayers(cacheKey, playersInList);
+            setListPlayers(playersInList);
+            return;
+          }
+        } catch (error) {
+          console.warn("Global cache error:", error);
+        }
+
+        // Final fallback - fetch all players
+        const allPlayersData = await fetchAPI("/api/players");
+        const playersInList = allPlayersData.filter((p) =>
+          playerIds.includes(p.player_id.toString())
+        );
+        cachePlayers(cacheKey, playersInList);
+        setListPlayers(playersInList);
       } catch (err) {
-        console.error("Error loading players:", err);
-        toast.error("Failed to load player data");
+        toast.error("Failed to load players");
+        console.error("Player load error:", err);
       } finally {
         setIsPlayersLoading(false);
       }
@@ -174,51 +151,33 @@ const PlayerLists = () => {
       try {
         setIsLoadingPlayers(true);
 
-        // Try to get data from cache
+        // Try cache first
         try {
           const cachedPlayers = localStorage.getItem("baseballPlayers");
           if (cachedPlayers) {
             const players = JSON.parse(cachedPlayers);
             setAllPlayers(players);
             setFilteredPlayers(players.slice(0, 10));
-            setIsLoadingPlayers(false);
             allPlayersLoaded.current = true;
             return;
           }
-        } catch (cacheError) {
-          console.warn("Could not read from cache:", cacheError);
+        } catch (error) {
+          console.warn("Cache read error:", error);
         }
 
-        // Fetch players
+        // Fetch fresh data
         const players = await fetchAPI("/api/players");
         const sortedPlayers = players.sort((a, b) =>
           a.player_name.localeCompare(b.player_name)
         );
 
-        // Cache sorted players
-        try {
-          const minimalPlayers = sortedPlayers.map((player) => ({
-            player_id: player.player_id,
-            player_name: player.player_name,
-            team_name: player.team_name,
-            minYear: player.minYear,
-            maxYear: player.maxYear,
-          }));
-
-          localStorage.setItem(
-            "baseballPlayers",
-            JSON.stringify(minimalPlayers)
-          );
-        } catch (storageError) {
-          console.warn("Could not cache player data:", storageError);
-        }
-
+        cachePlayers("baseballPlayers", sortedPlayers);
         setAllPlayers(sortedPlayers);
         setFilteredPlayers(sortedPlayers.slice(0, 10));
         allPlayersLoaded.current = true;
       } catch (err) {
-        console.error("Error fetching player data:", err);
-        toast.error("Failed to fetch player data");
+        toast.error("Failed to load players");
+        console.error("Player fetch error:", err);
       } finally {
         setIsLoadingPlayers(false);
       }
@@ -237,7 +196,7 @@ const PlayerLists = () => {
 
         if (
           selectedListId &&
-          lists.find((list) => list.id === selectedListId)
+          lists.some((list) => list.id === selectedListId)
         ) {
           await loadPlayersForList(selectedListId);
         } else if (lists.length > 0 && !selectedListId) {
@@ -245,7 +204,8 @@ const PlayerLists = () => {
           await loadPlayersForList(lists[0].id);
         }
       } catch (err) {
-        toast.error("Failed to load player lists");
+        toast.error("Failed to load lists");
+        console.error("List fetch error:", err);
       } finally {
         setIsLoading(false);
       }
@@ -254,7 +214,7 @@ const PlayerLists = () => {
     fetchPlayerLists();
   }, [loadPlayersForList, selectedListId]);
 
-  // Update URL params when selected list changes
+  // Update URL when selected list changes
   useEffect(() => {
     if (selectedListId) {
       setSearchParams({ listId: selectedListId });
@@ -266,45 +226,53 @@ const PlayerLists = () => {
     }
   }, [selectedListId, setSearchParams, loadPlayersForList]);
 
-  // Filter players based on search term
-  const memoizedFilteredPlayers = useMemo(() => {
-    if (!playerSearchTerm) return allPlayers.slice(0, 10);
-
-    const searchTermLower = playerSearchTerm.toLowerCase();
-    return allPlayers
-      .filter((player) =>
-        player.player_name.toLowerCase().includes(searchTermLower)
-      )
-      .slice(0, 10);
-  }, [playerSearchTerm, allPlayers]);
-
-  // Update filtered players with debounce
+  // Filter players with debounce
   useEffect(() => {
-    const debounceTimeout = setTimeout(() => {
-      setFilteredPlayers(memoizedFilteredPlayers);
+    const debounceTimer = setTimeout(() => {
+      if (!playerSearchTerm) {
+        setFilteredPlayers(allPlayers.slice(0, 10));
+        return;
+      }
+
+      const searchTerm = playerSearchTerm.toLowerCase();
+      const filtered = allPlayers
+        .filter((p) => p.player_name.toLowerCase().includes(searchTerm))
+        .slice(0, 10);
+      setFilteredPlayers(filtered);
     }, 150);
 
-    return () => clearTimeout(debounceTimeout);
-  }, [memoizedFilteredPlayers]);
+    return () => clearTimeout(debounceTimer);
+  }, [playerSearchTerm, allPlayers]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setIsAddingPlayer(false);
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Create a new player list
+  // Focus handling for inputs
+  useEffect(() => {
+    if (isCreatingList && listNameInputRef.current) {
+      listNameInputRef.current.focus();
+    }
+  }, [isCreatingList]);
+
+  useEffect(() => {
+    if (isAddingPlayer && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isAddingPlayer]);
+
+  // Create a new list
   const handleCreateList = async () => {
     if (!newListName.trim()) {
-      toast.error("Please enter a list name");
+      toast.error("List name is required");
       return;
     }
 
@@ -321,66 +289,60 @@ const PlayerLists = () => {
       setIsCreatingList(false);
       setNewListName("");
       setNewListDescription("");
-      toast.success("Player list created successfully");
+      toast.success("List created successfully");
     } catch (err) {
-      toast.error("Failed to create player list");
+      toast.error("Failed to create list");
+      console.error("List creation error:", err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Delete a player list
+  // Delete a list
   const confirmDeleteList = async () => {
     try {
       setIsLoading(true);
       await PlayerListManager.deletePlayerList(listToDelete);
-
       localStorage.removeItem(`list_players_${listToDelete}`);
 
-      toast.success("List deleted successfully");
       setPlayerLists((prev) => prev.filter((list) => list.id !== listToDelete));
 
       if (selectedListId === listToDelete) {
-        const remainingLists = playerLists.filter(
+        const remaining = playerLists.filter(
           (list) => list.id !== listToDelete
         );
-        if (remainingLists.length > 0) {
-          setSelectedListId(remainingLists[0].id);
-        } else {
-          setSelectedListId("");
-          setListPlayers([]);
-        }
+        setSelectedListId(remaining[0]?.id || "");
       }
+
+      toast.success("List deleted");
     } catch (err) {
       toast.error("Failed to delete list");
+      console.error("List deletion error:", err);
     } finally {
       setIsLoading(false);
       setListToDelete(null);
     }
   };
 
-  // Add a player to the selected list
+  // Add player to list
   const handleAddPlayer = async (player) => {
     if (!selectedListId) {
       toast.error("Please select a list first");
       return;
     }
 
+    const playerId = player.player_id.toString();
+    const currentList = playerLists.find((list) => list.id === selectedListId);
+
+    if (currentList?.playerIds.includes(playerId)) {
+      toast.info(`${player.player_name} is already in this list`);
+      setIsAddingPlayer(false);
+      setPlayerSearchTerm("");
+      return;
+    }
+
     try {
-      const playerId = player.player_id.toString();
-
-      // Check if player is already in the list
-      const currentList = playerLists.find(
-        (list) => list.id === selectedListId
-      );
-      if (currentList?.playerIds.includes(playerId)) {
-        toast.info(`${player.player_name} is already in this list`);
-        setIsAddingPlayer(false);
-        setPlayerSearchTerm("");
-        return;
-      }
-
-      // Add player to local state
+      // Optimistic UI update
       const playerToAdd = {
         player_id: player.player_id,
         player_name: player.player_name,
@@ -389,159 +351,94 @@ const PlayerLists = () => {
         maxYear: player.maxYear,
       };
 
-      const updatedListPlayers = [...listPlayers, playerToAdd];
-      setListPlayers(updatedListPlayers);
+      const updatedPlayers = [...listPlayers, playerToAdd];
+      setListPlayers(updatedPlayers);
+      cachePlayers(`list_players_${selectedListId}`, updatedPlayers);
 
-      // Update cache
-      try {
-        const minimalPlayers = updatedListPlayers.map((p) => ({
-          player_id: p.player_id,
-          player_name: p.player_name,
-          team_name: p.team_name,
-          minYear: p.minYear,
-          maxYear: p.maxYear,
-        }));
-
-        localStorage.setItem(
-          `list_players_${selectedListId}`,
-          JSON.stringify(minimalPlayers)
-        );
-      } catch (storageError) {
-        console.warn("Could not cache updated player list:", storageError);
-      }
-
-      // Update lists state
       setPlayerLists((prev) =>
-        prev.map((list) => {
-          if (list.id === selectedListId) {
-            return {
-              ...list,
-              playerIds: [...list.playerIds, playerId],
-            };
-          }
-          return list;
-        })
+        prev.map((list) =>
+          list.id === selectedListId
+            ? { ...list, playerIds: [...list.playerIds, playerId] }
+            : list
+        )
       );
 
-      // Save to server
       await PlayerListManager.addPlayerToList(selectedListId, playerId);
-
-      setIsAddingPlayer(false);
-      setPlayerSearchTerm("");
       toast.success(`Added ${player.player_name} to list`);
     } catch (err) {
-      console.error("Error adding player:", err);
-      toast.error("Failed to add player");
-
-      // Revert the changes
-      const revertedPlayers = listPlayers.filter(
-        (p) => p.player_id.toString() !== player.player_id.toString()
+      // Revert on error
+      const reverted = listPlayers.filter(
+        (p) => p.player_id.toString() !== playerId
       );
-
-      setListPlayers(revertedPlayers);
-
-      try {
-        const minimalPlayers = revertedPlayers.map((p) => ({
-          player_id: p.player_id,
-          player_name: p.player_name,
-          team_name: p.team_name,
-          minYear: p.minYear,
-          maxYear: p.maxYear,
-        }));
-
-        localStorage.setItem(
-          `list_players_${selectedListId}`,
-          JSON.stringify(minimalPlayers)
-        );
-      } catch (storageError) {
-        console.warn("Could not cache reverted player list:", storageError);
-      }
+      setListPlayers(reverted);
+      cachePlayers(`list_players_${selectedListId}`, reverted);
 
       setPlayerLists((prev) =>
-        prev.map((list) => {
-          if (list.id === selectedListId) {
-            return {
-              ...list,
-              playerIds: list.playerIds.filter(
-                (id) => id !== player.player_id.toString()
-              ),
-            };
-          }
-          return list;
-        })
+        prev.map((list) =>
+          list.id === selectedListId
+            ? {
+                ...list,
+                playerIds: list.playerIds.filter((id) => id !== playerId),
+              }
+            : list
+        )
       );
+
+      toast.error("Failed to add player");
+      console.error("Add player error:", err);
+    } finally {
+      setIsAddingPlayer(false);
+      setPlayerSearchTerm("");
     }
   };
 
-  // Table columns with actions
-  const getColumnsWithActions = useMemo(() => {
-    const handleRemovePlayer = async (playerId) => {
-      if (!selectedListId) return;
+  // Remove player from list
+  const handleRemovePlayer = async (playerId) => {
+    if (!selectedListId) return;
 
-      try {
-        await PlayerListManager.removePlayerFromList(
-          selectedListId,
-          playerId.toString()
-        );
+    try {
+      // Optimistic UI update
+      const updatedPlayers = listPlayers.filter(
+        (player) => player.player_id.toString() !== playerId.toString()
+      );
+      setListPlayers(updatedPlayers);
+      cachePlayers(`list_players_${selectedListId}`, updatedPlayers);
 
-        // Update local state
-        const updatedPlayers = listPlayers.filter(
-          (player) => player.player_id.toString() !== playerId.toString()
-        );
-
-        setListPlayers(updatedPlayers);
-
-        // Update cache
-        try {
-          const minimalPlayers = updatedPlayers.map((p) => ({
-            player_id: p.player_id,
-            player_name: p.player_name,
-            team_name: p.team_name,
-            minYear: p.minYear,
-            maxYear: p.maxYear,
-          }));
-
-          localStorage.setItem(
-            `list_players_${selectedListId}`,
-            JSON.stringify(minimalPlayers)
-          );
-        } catch (storageError) {
-          console.warn(
-            "Could not cache player list after removal:",
-            storageError
-          );
-        }
-
-        // Update lists state
-        setPlayerLists((prev) =>
-          prev.map((list) => {
-            if (list.id === selectedListId) {
-              return {
+      setPlayerLists((prev) =>
+        prev.map((list) =>
+          list.id === selectedListId
+            ? {
                 ...list,
                 playerIds: list.playerIds.filter(
                   (id) => id !== playerId.toString()
                 ),
-              };
-            }
-            return list;
-          })
-        );
+              }
+            : list
+        )
+      );
 
-        toast.success("Player removed from list");
-      } catch (err) {
-        toast.error("Failed to remove player");
-      }
-    };
+      await PlayerListManager.removePlayerFromList(
+        selectedListId,
+        playerId.toString()
+      );
+      toast.success("Player removed");
+    } catch (err) {
+      toast.error("Failed to remove player");
+      console.error("Remove player error:", err);
+    }
+  };
 
-    return [
+  // Table columns
+  const tableColumns = useMemo(
+    () => [
       {
         name: "",
         minWidth: "40px",
         cell: (row) => (
           <button
             onClick={() => handleRemovePlayer(row.player_id)}
-            className="p-1 sm:p-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-            title="Remove from list"
+            className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded transition-colors"
+            title="Remove player"
           >
             <Trash2 size={16} />
           </button>
@@ -549,240 +446,84 @@ const PlayerLists = () => {
       },
       {
         name: "Player",
-        selector: (row) => row.player_name || row.Player || "Unknown Player",
+        selector: (row) => row.player_name,
         sortable: true,
-        minWidth: "300px",
+        minWidth: "200px",
         cell: (row) => (
-          <span className="font-medium text-xs sm:text-base">
-            {row.player_name || row.Player || "Unknown Player"}
-          </span>
+          <span className="font-medium text-sm">{row.player_name}</span>
         ),
       },
       {
         name: "Team",
-        selector: (row) => row.team_name || row.Team || "N/A",
+        selector: (row) => row.team_name,
         sortable: true,
-        minWidth: "10%",
+        minWidth: "120px",
         cell: (row) => (
-          <span className="text-xs sm:text-base">
-            {row.team_name || row.Team || "N/A"}
-          </span>
+          <span className="text-sm">{row.team_name || "N/A"}</span>
         ),
       },
       {
         name: "Years",
         selector: (row) => `${row.minYear || "N/A"} - ${row.maxYear || "N/A"}`,
         sortable: true,
-        minWidth: "20%",
+        minWidth: "120px",
         cell: (row) => (
-          <span className="whitespace-nowrap text-sm sm:text-base">
+          <span className="text-sm whitespace-nowrap">
             {row.minYear || "N/A"} - {row.maxYear || "N/A"}
           </span>
         ),
       },
-    ];
-  }, [listPlayers, selectedListId]);
+    ],
+    [listPlayers, selectedListId]
+  );
 
   const selectedList = playerLists.find((list) => list.id === selectedListId);
 
-  const CreateListForm = () => (
-    <div className="m-3 sm:m-4 bg-white p-3 sm:p-4 rounded-lg border border-blue-100">
-      <h3 className="font-medium mb-2 sm:mb-3 text-blue-800">
-        Create New List
-      </h3>
-      <div className="mb-2 sm:mb-3">
-        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-          List Name
-        </label>
-        <input
-          type="text"
-          value={newListName}
-          onChange={(e) => setNewListName(e.target.value)}
-          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-          placeholder="Enter list name"
-        />
-      </div>
-      <div className="mb-3 sm:mb-4">
-        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
-          Description (optional)
-        </label>
-        <textarea
-          value={newListDescription}
-          onChange={(e) => setNewListDescription(e.target.value)}
-          className="w-full px-2 sm:px-3 py-1 sm:py-2 border border-gray-300 rounded-md text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-          rows={2}
-          placeholder="Enter description"
-        />
-      </div>
-      <div className="flex gap-2">
-        <button
-          onClick={handleCreateList}
-          className="px-3 sm:px-4 py-1 sm:py-2 bg-blue-600 text-white text-xs sm:text-sm rounded-md hover:bg-blue-700 transition-colors flex-1"
-          disabled={!newListName.trim() || isLoading}
-        >
-          Create List
-        </button>
-        <button
-          onClick={() => {
-            setIsCreatingList(false);
-            setNewListName("");
-            setNewListDescription("");
-          }}
-          className="px-3 sm:px-4 py-1 sm:py-2 bg-gray-200 text-gray-700 text-xs sm:text-sm rounded-md hover:bg-gray-300 transition-colors"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  );
-
-  // Component for player search dropdown
-  const PlayerSearchDropdown = () => (
-    <div className="fixed inset-0 z-50 overflow-auto bg-transparent">
-      <div className="absolute right-0 mt-1 sm:mt-2 w-full sm:w-80 bg-white border border-gray-200 rounded-lg shadow-xl overflow-visible">
-        <div className="p-2 sm:p-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="relative">
-            <input
-              type="text"
-              value={playerSearchTerm}
-              onChange={(e) => setPlayerSearchTerm(e.target.value)}
-              placeholder="Search players..."
-              className="w-full pl-8 sm:pl-9 pr-8 sm:pr-9 py-1 sm:py-2 border border-gray-300 rounded-md text-xs sm:text-sm shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              autoFocus
-            />
-            <Search
-              size={16}
-              className="absolute left-2 sm:left-3 top-1.5 sm:top-2.5 text-gray-400"
-            />
-            {playerSearchTerm && (
-              <button
-                onClick={() => setPlayerSearchTerm("")}
-                className="absolute right-2 sm:right-3 top-1.5 sm:top-2.5 text-gray-400 hover:text-gray-600"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="max-h-64 sm:max-h-72 overflow-y-auto">
-          {filteredPlayers.length === 0 ? (
-            <div className="p-3 sm:p-4 text-center text-gray-500">
-              <Filter
-                size={20}
-                className="mx-auto mb-1 sm:mb-2 text-gray-300"
-              />
-              <p className="text-sm">No players found</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Try a different search term
-              </p>
-            </div>
-          ) : (
-            filteredPlayers.map((player) => (
-              <div
-                key={player.player_id}
-                className="p-2 sm:p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 transition-colors"
-                onClick={() => handleAddPlayer(player)}
-              >
-                <div>
-                  <div className="font-medium text-sm sm:text-base text-gray-800">
-                    {player.player_name}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1 flex items-center">
-                    <span className="font-medium">{player.team_name}</span>
-                    <span className="mx-1">•</span>
-                    <span>
-                      {player.minYear}-{player.maxYear}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  // Component for delete confirmation modal
-  const DeleteConfirmationModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-3 sm:mb-4">
-          Delete List
-        </h3>
-        <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6">
-          Are you sure you want to delete this list? This action cannot be
-          undone.
-        </p>
-        <div className="flex justify-end space-x-2 sm:space-x-3">
-          <button
-            onClick={() => setListToDelete(null)}
-            className="px-3 sm:px-4 py-1 sm:py-2 border border-gray-300 rounded-md text-xs sm:text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={confirmDeleteList}
-            className="px-3 sm:px-4 py-1 sm:py-2 bg-red-600 text-white rounded-md text-xs sm:text-sm font-medium hover:bg-red-700"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-2 sm:p-4 md:p-6">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto">
-        <div className="mb-4 sm:mb-6">
-          <InfoBanner dataType={"player-lists"} />
+    <div className="min-h-screen bg-gray-50 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
+          <InfoBanner dataType="player-lists" />
         </div>
 
-        {/* Mobile List Selector */}
-        <div className="lg:hidden mb-3">
+        {/* Mobile sidebar toggle */}
+        <div className="lg:hidden mb-4">
           <button
             onClick={() => setShowMobileSidebar(!showMobileSidebar)}
-            className="w-full flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 bg-white rounded-lg shadow-sm border border-gray-200"
+            className="w-full flex items-center justify-between p-3 bg-white rounded-lg shadow border border-gray-200"
           >
             <div className="flex items-center">
-              <List size={16} className="mr-2 text-blue-600" />
-              <span className="font-medium text-sm sm:text-base">
-                {selectedList ? selectedList.name : "Your Lists"}
+              <List className="mr-2 text-blue-600" size={18} />
+              <span className="font-medium">
+                {selectedList?.name || "Your Lists"}
               </span>
             </div>
             <ChevronDown
-              size={16}
               className={`transition-transform ${
                 showMobileSidebar ? "rotate-180" : ""
               }`}
+              size={18}
             />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar */}
           <div
             className={`lg:col-span-1 ${
-              showMobileSidebar || window.innerWidth >= 1024
-                ? "block"
-                : "hidden"
+              showMobileSidebar ? "block" : "hidden lg:block"
             }`}
           >
-            <div className="bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden">
-              {/* Sidebar Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-3 sm:p-4 text-white">
+            <div className="bg-white rounded-xl shadow-md overflow-hidden">
+              <div className="bg-blue-600 p-4 text-white">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    <Users size={18} className="mr-2" />
-                    <h2 className="text-base sm:text-lg font-semibold">
-                      Player Lists
-                    </h2>
+                    <Users className="mr-2" size={20} />
+                    <h2 className="font-semibold text-lg">Player Lists</h2>
                   </div>
                   <button
                     onClick={() => setIsCreatingList(true)}
-                    className="inline-flex items-center text-xs sm:text-sm bg-white text-blue-600 px-2 sm:px-3 py-1 rounded-full hover:bg-blue-50 transition-colors"
+                    className="flex items-center text-xs bg-white text-blue-600 px-3 py-1 rounded-full hover:bg-blue-50"
                     disabled={isLoading}
                   >
                     <Plus size={14} className="mr-1" /> New List
@@ -791,200 +532,299 @@ const PlayerLists = () => {
               </div>
 
               {/* Create List Form */}
-              {isCreatingList && <CreateListForm />}
-
-              {/* Lists Content */}
-              {isLoading ? (
-                <div className="flex justify-center py-8 sm:py-10">
-                  <div className="w-6 sm:w-8 h-6 sm:h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                </div>
-              ) : playerLists.length === 0 ? (
-                <div className="text-center py-8 sm:py-10 px-3 sm:px-4">
-                  <div className="bg-blue-50 rounded-lg p-4 sm:p-6">
-                    <Users
-                      size={32}
-                      className="mx-auto text-blue-300 mb-2 sm:mb-3"
+              {isCreatingList && (
+                <div className="p-4 border-b">
+                  <h3 className="font-medium text-blue-800 mb-3">
+                    Create New List
+                  </h3>
+                  <div className="mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      List Name
+                    </label>
+                    <input
+                      ref={listNameInputRef}
+                      type="text"
+                      value={newListName}
+                      onChange={(e) => setNewListName(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="My Player List"
                     />
-                    <p className="text-gray-600 text-sm sm:text-base mb-3 sm:mb-4">
-                      You haven't created any player lists yet.
-                    </p>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description (optional)
+                    </label>
+                    <textarea
+                      ref={listDescInputRef}
+                      value={newListDescription}
+                      onChange={(e) => setNewListDescription(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                      rows={2}
+                      placeholder="Describe this list..."
+                    />
+                  </div>
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => setIsCreatingList(true)}
-                      className="px-3 sm:px-4 py-1 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center text-xs sm:text-sm"
+                      onClick={handleCreateList}
+                      className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm"
+                      disabled={!newListName.trim() || isLoading}
                     >
-                      <Plus size={14} className="mr-1" /> Create Your First List
+                      Create List
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsCreatingList(false);
+                        setNewListName("");
+                        setNewListDescription("");
+                      }}
+                      className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-md text-sm"
+                    >
+                      Cancel
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-0.5 max-h-[400px] sm:max-h-[500px] overflow-y-auto p-1 sm:p-2">
-                  {playerLists.map((list) => (
-                    <div
-                      key={list.id}
-                      className={`p-2 sm:p-3 rounded-md cursor-pointer transition-all ${
-                        selectedListId === list.id
-                          ? "bg-blue-100 border-l-4 border-blue-600"
-                          : "hover:bg-gray-50 border-l-4 border-transparent"
-                      }`}
-                      onClick={() => setSelectedListId(list.id)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3
-                            className={`font-medium text-sm sm:text-base mb-1 ${
-                              selectedListId === list.id ? "text-blue-800" : ""
-                            }`}
-                          >
-                            {list.name}
-                          </h3>
-                          <div className="flex items-center">
-                            <span
-                              className={`text-xs px-2 py-0.5 rounded-full ${
+              )}
+
+              {/* Lists */}
+              <div className="max-h-[calc(100vh-250px)] overflow-y-auto">
+                {isLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : playerLists.length === 0 ? (
+                  <div className="text-center p-6">
+                    <div className="bg-blue-50 rounded-lg p-6">
+                      <Users className="mx-auto text-blue-300 mb-3" size={32} />
+                      <p className="text-gray-600 mb-4">
+                        You haven't created any player lists yet.
+                      </p>
+                      <button
+                        onClick={() => setIsCreatingList(true)}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md inline-flex items-center text-sm"
+                      >
+                        <Plus size={14} className="mr-1" /> Create First List
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {playerLists.map((list) => (
+                      <div
+                        key={list.id}
+                        className={`p-3 cursor-pointer transition-colors ${
+                          selectedListId === list.id
+                            ? "bg-blue-50"
+                            : "hover:bg-gray-50"
+                        }`}
+                        onClick={() => setSelectedListId(list.id)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3
+                              className={`font-medium ${
                                 selectedListId === list.id
-                                  ? "bg-blue-200 text-blue-800"
-                                  : "bg-gray-100 text-gray-600"
+                                  ? "text-blue-800"
+                                  : ""
                               }`}
                             >
-                              {list.playerIds.length} player
-                              {list.playerIds.length !== 1 ? "s" : ""}
-                            </span>
+                              {list.name}
+                            </h3>
+                            <div className="flex items-center mt-1">
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full ${
+                                  selectedListId === list.id
+                                    ? "bg-blue-200 text-blue-800"
+                                    : "bg-gray-100 text-gray-600"
+                                }`}
+                              >
+                                {list.playerIds.length} player
+                                {list.playerIds.length !== 1 ? "s" : ""}
+                              </span>
+                            </div>
+                            {list.description && (
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                {list.description}
+                              </p>
+                            )}
                           </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setListToDelete(list.id);
+                            }}
+                            className="text-gray-400 hover:text-red-500 p-1 rounded-full hover:bg-red-50"
+                            title="Delete list"
+                          >
+                            <Trash2 size={16} />
+                          </button>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setListToDelete(list.id);
-                          }}
-                          className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50"
-                          title="Delete list"
-                        >
-                          <Trash2 size={14} />
-                        </button>
                       </div>
-                      {list.description && (
-                        <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2 line-clamp-2">
-                          {list.description}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           {/* Main Content */}
           <div className="lg:col-span-3">
             {selectedListId ? (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden">
+              <div className="bg-white rounded-xl shadow-md overflow-hidden">
                 {/* List Header */}
-                <div className="p-3 sm:p-4 md:p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-3 md:gap-4">
+                <div className="p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                      <h2 className="text-lg sm:text-xl font-bold text-gray-800">
+                      <h2 className="font-bold text-gray-800 text-xl">
                         {selectedList?.name || "Players"}
                       </h2>
                       {selectedList?.description && (
-                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 mt-1">
                           {selectedList.description}
                         </p>
                       )}
                     </div>
 
-                    {/* Add Player Button & Dropdown */}
-                    <div
-                      className="relative self-end sm:self-auto"
-                      ref={dropdownRef}
-                    >
+                    {/* Add Player Button */}
+                    <div className="relative" ref={dropdownRef}>
                       <button
                         onClick={() => setIsAddingPlayer(!isAddingPlayer)}
-                        className="px-3 sm:px-4 py-1 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs sm:text-sm rounded-md hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center shadow-md"
+                        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-md text-sm flex items-center shadow"
                         disabled={isLoadingPlayers}
                       >
                         {isLoadingPlayers ? (
                           <>
-                            <div className="w-3 sm:w-4 h-3 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-1 sm:mr-2" />
-                            <span className="text-xs sm:text-sm">
-                              Loading Players...
-                            </span>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                            Loading...
                           </>
                         ) : (
                           <>
-                            <Plus size={14} className="mr-1 sm:mr-2" />
-                            <span className="text-xs sm:text-sm">
-                              Add Player
-                            </span>
+                            <Plus size={16} className="mr-2" />
+                            Add Player
                           </>
                         )}
                       </button>
 
-                      {isAddingPlayer && <PlayerSearchDropdown />}
+                      {/* Player Search Dropdown */}
+                      {isAddingPlayer && (
+                        <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-xl z-10 border border-gray-200">
+                          <div className="p-3 border-b bg-gray-50">
+                            <div className="relative">
+                              <input
+                                ref={searchInputRef}
+                                type="text"
+                                value={playerSearchTerm}
+                                onChange={(e) =>
+                                  setPlayerSearchTerm(e.target.value)
+                                }
+                                placeholder="Search players..."
+                                className="w-full pl-9 pr-8 py-2 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                              />
+                              <Search
+                                size={16}
+                                className="absolute left-3 top-2.5 text-gray-400"
+                              />
+                              {playerSearchTerm && (
+                                <button
+                                  onClick={() => setPlayerSearchTerm("")}
+                                  className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                >
+                                  <X size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="max-h-72 overflow-y-auto">
+                            {filteredPlayers.length === 0 ? (
+                              <div className="p-4 text-center text-gray-500">
+                                <Filter
+                                  size={20}
+                                  className="mx-auto mb-2 text-gray-300"
+                                />
+                                <p>No players found</p>
+                                <p className="text-xs mt-1">
+                                  Try a different search term
+                                </p>
+                              </div>
+                            ) : (
+                              filteredPlayers.map((player) => (
+                                <div
+                                  key={player.player_id}
+                                  className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
+                                  onClick={() => handleAddPlayer(player)}
+                                >
+                                  <div className="font-medium">
+                                    {player.player_name}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1 flex items-center">
+                                    <span className="font-medium">
+                                      {player.team_name}
+                                    </span>
+                                    <span className="mx-1">•</span>
+                                    <span>
+                                      {player.minYear}-{player.maxYear}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* List Content */}
                 {isPlayersLoading ? (
-                  <div className="flex flex-col items-center justify-center py-12 sm:py-20">
-                    <div className="w-8 sm:w-12 h-8 sm:h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-3 sm:mb-4" />
-                    <p className="text-gray-500 text-sm sm:text-base">
-                      Loading players...
-                    </p>
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-gray-500">Loading players...</p>
                   </div>
                 ) : listPlayers.length === 0 ? (
-                  <div className="text-center py-10 sm:py-16 px-3 sm:px-4">
-                    <div className="bg-white max-w-md mx-auto rounded-lg p-4 sm:p-8">
-                      <Users
-                        size={36}
-                        className="mx-auto text-gray-300 mb-3 sm:mb-4"
-                      />
-                      <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-1 sm:mb-2">
+                  <div className="text-center p-8">
+                    <div className="max-w-md mx-auto">
+                      <Users className="mx-auto text-gray-300 mb-4" size={40} />
+                      <h3 className="font-medium text-gray-800 mb-2">
                         No Players Yet
                       </h3>
-                      <p className="text-gray-500 text-sm sm:text-base mb-4 sm:mb-6">
-                        This list doesn't have any players yet. Use the "Add
-                        Player" button to start building your collection.
+                      <p className="text-gray-500 mb-6">
+                        This list is empty. Add players to get started.
                       </p>
                       <button
                         onClick={() => setIsAddingPlayer(true)}
-                        className="px-3 sm:px-4 py-1 sm:py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors inline-flex items-center text-xs sm:text-sm mx-auto"
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md inline-flex items-center text-sm"
                       >
-                        <Plus size={14} className="mr-1 sm:mr-2" /> Add Your
-                        First Player
+                        <Plus size={16} className="mr-2" /> Add Players
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-lg overflow-hidden">
+                  <div className="p-2">
                     <BaseballTable
                       data={listPlayers}
-                      columns={getColumnsWithActions}
-                      filename={`player_list_${
-                        selectedList?.name || selectedListId
-                      }.csv`}
+                      columns={tableColumns}
+                      filename={`${selectedList?.name || "player_list"}.csv`}
                     />
                   </div>
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 shadow-lg p-4 sm:p-6 md:p-8 text-center">
-                <div className="max-w-md mx-auto bg-white rounded-lg p-4 sm:p-6">
-                  <Users
-                    size={36}
-                    className="mx-auto text-blue-300 mb-3 sm:mb-4"
-                  />
-                  <h3 className="text-base sm:text-lg font-medium text-gray-800 mb-1 sm:mb-2">
+              <div className="bg-white rounded-xl shadow-md p-6 text-center">
+                <div className="max-w-md mx-auto">
+                  <Users className="mx-auto text-blue-300 mb-4" size={40} />
+                  <h3 className="font-medium text-gray-800 mb-2">
                     No List Selected
                   </h3>
-                  <p className="text-gray-600 text-sm sm:text-base mb-4 sm:mb-6">
-                    Select a player list from the sidebar or create a new one to
-                    get started.
+                  <p className="text-gray-500 mb-6">
+                    Select a list from the sidebar or create a new one to get
+                    started.
                   </p>
                   <button
                     onClick={() => setIsCreatingList(true)}
-                    className="px-3 sm:px-4 py-1 sm:py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md hover:from-blue-700 hover:to-indigo-700 transition-colors flex items-center text-xs sm:text-sm mx-auto"
+                    className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-md inline-flex items-center text-sm"
                   >
-                    <Plus size={14} className="mr-1 sm:mr-2" /> Create New List
+                    <Plus size={16} className="mr-2" /> Create New List
                   </button>
                 </div>
               </div>
@@ -994,7 +834,33 @@ const PlayerLists = () => {
       </div>
 
       {/* Delete Confirmation Modal */}
-      {listToDelete && <DeleteConfirmationModal />}
+      {listToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Delete List
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this list? This action cannot be
+              undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setListToDelete(null)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteList}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
