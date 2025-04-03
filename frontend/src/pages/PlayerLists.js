@@ -23,7 +23,6 @@ import toast from "react-hot-toast";
 import InfoBanner from "../components/data/InfoBanner";
 
 const PlayerLists = () => {
-  // State management
   const [searchParams, setSearchParams] = useSearchParams();
   const [playerLists, setPlayerLists] = useState([]);
   const [selectedListId, setSelectedListId] = useState(
@@ -33,7 +32,6 @@ const PlayerLists = () => {
   const [allPlayers, setAllPlayers] = useState([]);
   const [filteredPlayers, setFilteredPlayers] = useState([]);
 
-  // UI state
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [newListDescription, setNewListDescription] = useState("");
@@ -42,20 +40,17 @@ const PlayerLists = () => {
   const [playerSearchTerm, setPlayerSearchTerm] = useState("");
   const [listToDelete, setListToDelete] = useState(null);
 
-  // Loading states
   const [isLoading, setIsLoading] = useState(true);
   const [isPlayersLoading, setIsPlayersLoading] = useState(false);
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
 
-  // Refs
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
   const listNameInputRef = useRef(null);
   const listDescInputRef = useRef(null);
   const allPlayersLoaded = useRef(false);
 
-  // Cache helper function
-  const cachePlayers = (cacheKey, players) => {
+  const cachePlayers = useCallback((cacheKey, players) => {
     try {
       const minimalPlayers = players.map(
         ({ player_id, player_name, team_name, minYear, maxYear }) => ({
@@ -70,9 +65,8 @@ const PlayerLists = () => {
     } catch (error) {
       console.warn("Failed to cache players:", error);
     }
-  };
+  }, []);
 
-  // Load players for a specific list
   const loadPlayersForList = useCallback(
     async (listId) => {
       if (!listId) return;
@@ -81,7 +75,6 @@ const PlayerLists = () => {
         setIsPlayersLoading(true);
         const cacheKey = `list_players_${listId}`;
 
-        // Try cache first
         try {
           const cachedData = localStorage.getItem(cacheKey);
           if (cachedData) {
@@ -100,7 +93,6 @@ const PlayerLists = () => {
           return;
         }
 
-        // Use existing players if available
         if (allPlayers.length > 0) {
           const players = allPlayers.filter((p) =>
             playerIds.includes(p.player_id.toString())
@@ -110,7 +102,6 @@ const PlayerLists = () => {
           return;
         }
 
-        // Try global cache
         try {
           const cachedAllPlayers = localStorage.getItem("baseballPlayers");
           if (cachedAllPlayers) {
@@ -126,7 +117,6 @@ const PlayerLists = () => {
           console.warn("Global cache error:", error);
         }
 
-        // Final fallback - fetch all players
         const allPlayersData = await fetchAPI("/api/players");
         const playersInList = allPlayersData.filter((p) =>
           playerIds.includes(p.player_id.toString())
@@ -140,10 +130,9 @@ const PlayerLists = () => {
         setIsPlayersLoading(false);
       }
     },
-    [allPlayers]
+    [allPlayers, cachePlayers]
   );
 
-  // Fetch all players
   useEffect(() => {
     const fetchAllPlayers = async () => {
       if (allPlayersLoaded.current) return;
@@ -151,7 +140,6 @@ const PlayerLists = () => {
       try {
         setIsLoadingPlayers(true);
 
-        // Try cache first
         try {
           const cachedPlayers = localStorage.getItem("baseballPlayers");
           if (cachedPlayers) {
@@ -165,7 +153,6 @@ const PlayerLists = () => {
           console.warn("Cache read error:", error);
         }
 
-        // Fetch fresh data
         const players = await fetchAPI("/api/players");
         const sortedPlayers = players.sort((a, b) =>
           a.player_name.localeCompare(b.player_name)
@@ -184,9 +171,8 @@ const PlayerLists = () => {
     };
 
     fetchAllPlayers();
-  }, []);
+  }, [cachePlayers]);
 
-  // Fetch player lists
   useEffect(() => {
     const fetchPlayerLists = async () => {
       try {
@@ -214,7 +200,6 @@ const PlayerLists = () => {
     fetchPlayerLists();
   }, [loadPlayersForList, selectedListId]);
 
-  // Update URL when selected list changes
   useEffect(() => {
     if (selectedListId) {
       setSearchParams({ listId: selectedListId });
@@ -226,7 +211,6 @@ const PlayerLists = () => {
     }
   }, [selectedListId, setSearchParams, loadPlayersForList]);
 
-  // Filter players with debounce
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       if (!playerSearchTerm) {
@@ -244,7 +228,6 @@ const PlayerLists = () => {
     return () => clearTimeout(debounceTimer);
   }, [playerSearchTerm, allPlayers]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -256,7 +239,6 @@ const PlayerLists = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Focus handling for inputs
   useEffect(() => {
     if (isCreatingList && listNameInputRef.current) {
       listNameInputRef.current.focus();
@@ -269,7 +251,6 @@ const PlayerLists = () => {
     }
   }, [isAddingPlayer]);
 
-  // Create a new list
   const handleCreateList = async () => {
     if (!newListName.trim()) {
       toast.error("List name is required");
@@ -298,7 +279,6 @@ const PlayerLists = () => {
     }
   };
 
-  // Delete a list
   const confirmDeleteList = async () => {
     try {
       setIsLoading(true);
@@ -324,7 +304,6 @@ const PlayerLists = () => {
     }
   };
 
-  // Add player to list
   const handleAddPlayer = async (player) => {
     if (!selectedListId) {
       toast.error("Please select a list first");
@@ -342,7 +321,6 @@ const PlayerLists = () => {
     }
 
     try {
-      // Optimistic UI update
       const playerToAdd = {
         player_id: player.player_id,
         player_name: player.player_name,
@@ -366,7 +344,6 @@ const PlayerLists = () => {
       await PlayerListManager.addPlayerToList(selectedListId, playerId);
       toast.success(`Added ${player.player_name} to list`);
     } catch (err) {
-      // Revert on error
       const reverted = listPlayers.filter(
         (p) => p.player_id.toString() !== playerId
       );
@@ -392,43 +369,43 @@ const PlayerLists = () => {
     }
   };
 
-  // Remove player from list
-  const handleRemovePlayer = async (playerId) => {
-    if (!selectedListId) return;
+  const handleRemovePlayer = useCallback(
+    async (playerId) => {
+      if (!selectedListId) return;
 
-    try {
-      // Optimistic UI update
-      const updatedPlayers = listPlayers.filter(
-        (player) => player.player_id.toString() !== playerId.toString()
-      );
-      setListPlayers(updatedPlayers);
-      cachePlayers(`list_players_${selectedListId}`, updatedPlayers);
+      try {
+        const updatedPlayers = listPlayers.filter(
+          (player) => player.player_id.toString() !== playerId.toString()
+        );
+        setListPlayers(updatedPlayers);
+        cachePlayers(`list_players_${selectedListId}`, updatedPlayers);
 
-      setPlayerLists((prev) =>
-        prev.map((list) =>
-          list.id === selectedListId
-            ? {
-                ...list,
-                playerIds: list.playerIds.filter(
-                  (id) => id !== playerId.toString()
-                ),
-              }
-            : list
-        )
-      );
+        setPlayerLists((prev) =>
+          prev.map((list) =>
+            list.id === selectedListId
+              ? {
+                  ...list,
+                  playerIds: list.playerIds.filter(
+                    (id) => id !== playerId.toString()
+                  ),
+                }
+              : list
+          )
+        );
 
-      await PlayerListManager.removePlayerFromList(
-        selectedListId,
-        playerId.toString()
-      );
-      toast.success("Player removed");
-    } catch (err) {
-      toast.error("Failed to remove player");
-      console.error("Remove player error:", err);
-    }
-  };
+        await PlayerListManager.removePlayerFromList(
+          selectedListId,
+          playerId.toString()
+        );
+        toast.success("Player removed");
+      } catch (err) {
+        toast.error("Failed to remove player");
+        console.error("Remove player error:", err);
+      }
+    },
+    [selectedListId, listPlayers, setListPlayers, cachePlayers, setPlayerLists]
+  );
 
-  // Table columns
   const tableColumns = useMemo(
     () => [
       {
@@ -474,7 +451,7 @@ const PlayerLists = () => {
         ),
       },
     ],
-    [listPlayers, selectedListId]
+    [handleRemovePlayer]
   );
 
   const selectedList = playerLists.find((list) => list.id === selectedListId);
