@@ -96,7 +96,7 @@ const DataControls = ({
             onChange={(e) => setValue(Number(e.target.value))}
             className="flex-1 lg:flex-none lg:w-44 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
               focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-              hover:border-gray-300 transition-colors"
+              hover:border-gray-300 transition-colors text-ellipsis"
           >
             {qualifiers.map((qualifier) => (
               <option key={qualifier.value} value={qualifier.value}>

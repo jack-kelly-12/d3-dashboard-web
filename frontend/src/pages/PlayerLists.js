@@ -546,7 +546,6 @@ const PlayerLists = () => {
   };
 
   const handleImportPlayers = () => {
-    // Create a file input and trigger it programmatically
     const fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.accept = ".csv,.txt";
