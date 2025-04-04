@@ -96,7 +96,7 @@ const DataControls = ({
             onChange={(e) => setValue(Number(e.target.value))}
             className="flex-1 lg:flex-none lg:w-44 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
               focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-              hover:border-gray-300 transition-colors text-ellipsis"
+              hover:border-gray-300 transition-colors"
           >
             {qualifiers.map((qualifier) => (
               <option key={qualifier.value} value={qualifier.value}>
@@ -133,11 +133,11 @@ const DataControls = ({
               onClick={() => setShowListDropdown(!showListDropdown)}
               className="w-full flex items-center justify-between px-3 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
                 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-                hover:border-gray-300 transition-colors"
+                hover:border-gray-300 transition-colors text-ellipsis truncate"
             >
               <div className="flex items-center gap-2">
                 <FileBox size={14} className="text-blue-600" />
-                <span className="truncate">
+                <span className="flex-1 text-ellipsis truncate">
                   {isLoadingLists ? "Loading lists..." : getSelectedListName()}
                 </span>
               </div>
