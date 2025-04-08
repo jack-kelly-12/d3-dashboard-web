@@ -78,8 +78,10 @@ export default class GameStateManager {
         newState.outs = Math.min(outs + 1, 3);
       }
 
-      if (pitchResult === "baserunner_out") {
+      if (pitchResult === "baserunner_(1_out)") {
         newState.outs = Math.min(outs + 1, 3);
+      } else if (hitResult === "baserunner_(2_out)") {
+        newState.outs = Math.min(outs + 2, 3);
       }
 
       newState.strikes = 0;

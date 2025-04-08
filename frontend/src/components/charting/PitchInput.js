@@ -145,7 +145,8 @@ const PITCH_RESULTS = [
   "in_play",
   "walk",
   "hit_by_pitch",
-  "baserunner_out",
+  "baserunner_(1_out)",
+  "baserunner_(2_out)",
 ];
 
 const ZONES_STANDARD = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14];
