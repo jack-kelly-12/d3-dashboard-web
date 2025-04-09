@@ -132,7 +132,6 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
               teamId={player.prev_team_id}
               conferenceId={player.conference_id}
               teamName={player.team}
-              className="h-6 w-6 mr-1"
             />
             <span className="text-sm">
               {player.year} - {player.player_name}
