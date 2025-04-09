@@ -74,6 +74,76 @@ const renderTeamLogo = (
   </div>
 );
 
+const SimilarBatters = memo(({ playerId, year, division }) => {
+  const [similarPlayers, setSimilarPlayers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSimilarBatters = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchAPI(
+          `/api/similar-batters/${playerId}?year=${year}&division=${division}`
+        );
+        // Filter out duplicates by player_id and year combination
+        const uniquePlayers = [];
+        const playerYearSet = new Set();
+        (response.similar_players || []).forEach((player) => {
+          const playerYearKey = `${player.player_id}-${player.year}`;
+          if (!playerYearSet.has(playerYearKey)) {
+            playerYearSet.add(playerYearKey);
+            uniquePlayers.push(player);
+          }
+        });
+        setSimilarPlayers(uniquePlayers);
+      } catch (err) {
+        console.error("Error fetching similar batters:", err);
+        setError("Could not load similar batters");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (playerId && year && division) {
+      fetchSimilarBatters();
+    }
+  }, [playerId, year, division]);
+
+  if (isLoading)
+    return <div className="text-center py-4">Loading similar batters...</div>;
+  if (error) return null;
+  if (!similarPlayers.length) return null;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
+      <div className="flex items-center">
+        <span className="mr-1">
+          Similar Batters to {similarPlayers[0]?.player_name}:
+        </span>
+
+        {similarPlayers.slice(0, 5).map((player, idx) => (
+          <a
+            key={`${player.player_id}-${player.year}`}
+            href={`/player/${player.player_id}`}
+            className="flex items-center mx-2"
+          >
+            <TeamLogo
+              teamId={player.prev_team_id}
+              conferenceId={player.conference_id}
+              teamName={player.team}
+              className="h-6 w-6 mr-1"
+            />
+            <span className="text-sm">
+              {player.year} - {player.player_name}
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+});
+
 const enrichStats = (stats) => {
   if (!stats || !Array.isArray(stats)) return [];
 
@@ -118,17 +188,31 @@ const PlayerContent = memo(
         STAT_TYPES.BATTED_BALL,
       ].includes(activeTab) && stats.length > 0;
 
+    const shouldShowSimilarBatters =
+      [STAT_TYPES.BATTING, STAT_TYPES.BATTED_BALL].includes(activeTab) &&
+      stats.length > 0;
+
+    const currentYear = getMostRecentYear();
+
     return (
       <div className="p-6">
         {stats.length > 0 && (
           <MemoizedStatTable stats={stats} type={statType} />
         )}
 
+        {shouldShowSimilarBatters && (
+          <SimilarBatters
+            playerId={playerId}
+            year={currentYear}
+            division={selectedDivision}
+          />
+        )}
+
         {shouldShowSprayChart && (
           <div className="mt-8">
             <SprayChart
               playerId={playerId}
-              year={getMostRecentYear()}
+              year={currentYear}
               division={selectedDivision}
               height={600}
               width={700}

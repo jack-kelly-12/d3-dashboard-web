@@ -1222,6 +1222,126 @@ def get_conference_logo(conference_id):
         return '', 404
 
 
+@app.route('/api/similar-batters/<player_id>', methods=['GET'])
+def get_similar_batters(player_id):
+    year = request.args.get('year', type=int, default=2025)
+    division = request.args.get('division', type=int, default=3)
+    count = request.args.get('count', type=int, default=5)
+
+    if year < 2021 or year > 2025:
+        return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    try:
+        # Get target player data
+        cursor.execute("""
+            SELECT 
+                bb.*,
+                b.WAR,
+                b.GP,
+                (b.WAR / CASE WHEN b.GP = 0 THEN 1 ELSE b.GP END) as WAR_per_game,
+                b.Player as player_name,
+                b.Team as team_name
+            FROM batted_ball bb
+            JOIN batting_war b ON bb.batter_id = b.player_id AND bb.year = b.Season AND bb.division = b.Division
+            WHERE bb.batter_id = ? AND bb.year = ? AND bb.division = ?
+        """, (player_id, year, division))
+
+        target_player = cursor.fetchone()
+
+        if not target_player:
+            return jsonify({"error": "Player not found or no data available"}), 404
+
+        target_data = dict(target_player)
+        target_name = target_data.get('player_name', "Unknown Player")
+
+        # Get all players across all years in the same division
+        cursor.execute("""
+            SELECT 
+                bb.*,
+                b.WAR, 
+                b.GP,
+                (b.WAR / CASE WHEN b.GP = 0 THEN 1 ELSE b.GP END) as WAR_per_game,
+                b.Player, 
+                b.Team,
+                b.Season as year,
+                i.prev_team_id,
+                i.conference_id
+            FROM batted_ball bb
+            JOIN batting_war b ON bb.batter_id = b.player_id AND bb.year = b.Season AND bb.division = b.Division
+            LEFT JOIN ids_for_images i ON bb.bat_team = i.team_name
+            WHERE bb.division = ? AND (bb.batter_id != ? OR bb.year != ?)
+        """, (division, player_id, year))
+
+        all_players = [dict(row) for row in cursor.fetchall()]
+
+        weights = {
+            'gb_pct': 4,
+            'fb_pct': 4,
+            'ld_pct': 4,
+            'WAR_per_game': 5,  # Increased weight for WAR/G
+            'bWAR': 3,
+            'avg_exit_velo': 3,
+            'avg_launch_angle': 3
+        }
+
+        for player in all_players:
+            total_distance = 0
+            total_weight = 0
+
+            for key, weight in weights.items():
+                if key in target_data and key in player:
+                    try:
+                        distance = (
+                            float(target_data[key]) - float(player[key])) ** 2
+                        total_distance += distance * weight
+                        total_weight += weight
+                    except (ValueError, TypeError):
+                        pass
+
+            if total_weight > 0:
+                normalized_distance = (total_distance / total_weight) ** 0.5
+                player['similarity_score'] = max(
+                    0, 100 - (normalized_distance * 15))
+            else:
+                player['similarity_score'] = 0
+
+        similar_players = sorted(
+            all_players, key=lambda x: x['similarity_score'], reverse=True)[:count]
+
+        results = [{
+            'player_id': player['batter_id'],
+            'player_name': player.get('Player', player.get('batter_standardized', 'Unknown')),
+            'team': player.get('Team', player.get('bat_team', 'Unknown')),
+            'year': player.get('year', player.get('Season', year)),
+            'similarity_score': round(player['similarity_score']),
+            'war': round(player.get('WAR', 0), 1),
+            'war_per_game': round(player.get('WAR_per_game', 0), 3),
+            'prev_team_id': player.get('prev_team_id'),
+            'conference_id': player.get('conference_id')
+        } for player in similar_players]
+
+        return jsonify({
+            'target_player': {
+                'player_id': player_id,
+                'player_name': target_name,
+                'year': year
+            },
+            'similar_players': results
+        })
+
+    except sqlite3.Error as e:
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        conn.close()
+
+
 @app.route('/api/leaderboards/value', methods=['GET'])
 @require_premium
 def get_value_leaderboard():
