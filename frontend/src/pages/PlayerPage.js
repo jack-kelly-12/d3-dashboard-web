@@ -110,22 +110,22 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
-      <div className="flex items-center">
-        <span className="mr-1 text-xs">Similar Batters to {player}:</span>
+      <h3 className="text-sm font-medium mb-3">Similar Batters to {player}:</h3>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {similarPlayers.slice(0, 5).map((player, idx) => (
           <a
             key={`${player.player_id}-${player.year}`}
             href={`/player/${player.player_id}`}
-            className="flex items-center mx-2"
+            className="flex items-center p-2 hover:bg-blue-50 rounded-lg transition-colors"
           >
             <TeamLogo
               teamId={player.prev_team_id}
               conferenceId={player.conference_id}
               teamName={player.team}
-              className="h-8 w-8 mr-2"
+              className="h-8 w-8 flex-shrink-0 mr-2"
             />
-            <span className="text-xs">
+            <span className="text-xs truncate">
               {player.year} - {player.player_name}
             </span>
           </a>
@@ -179,7 +179,6 @@ const PlayerContent = memo(
         STAT_TYPES.BATTED_BALL,
       ].includes(activeTab) && stats.length > 0;
 
-    // Update this condition to match the spray chart condition
     const shouldShowSimilarBatters = shouldShowSprayChart;
 
     const currentYear = getMostRecentYear();
