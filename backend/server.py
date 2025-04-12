@@ -1222,7 +1222,7 @@ def get_conference_logo(conference_id):
         return '', 404
 
 
-@app.route('/api/similar-batters/<player_id>', methods=['GET'])
+@app.route('/api/similar-batters/<string:player_id>', methods=['GET'])
 def get_similar_batters(player_id):
     year = request.args.get('year', type=int, default=2025)
     division = request.args.get('division', type=int, default=3)
@@ -1239,15 +1239,17 @@ def get_similar_batters(player_id):
     cursor = conn.cursor()
 
     try:
-        # Get target player data
+        # Get target player data - direct query with indices
         cursor.execute("""
             SELECT 
                 bb.*,
                 b.WAR,
                 b.GP,
-                (b.WAR / CASE WHEN b.GP = 0 THEN 1 ELSE b.GP END) as WAR_per_game,
+                (b.WAR / CASE WHEN b.PA = 0 THEN 1 ELSE b.PA END) as WAR_per_PA,
                 b.Player as player_name,
-                b.Team as team_name
+                b.Team as team_name,
+                b.[K%],
+                b.[BB%]
             FROM batted_ball bb
             JOIN batting_war b ON bb.batter_id = b.player_id AND bb.year = b.Season AND bb.division = b.Division
             WHERE bb.batter_id = ? AND bb.year = ? AND bb.division = ?
@@ -1261,71 +1263,79 @@ def get_similar_batters(player_id):
         target_data = dict(target_player)
         target_name = target_data.get('player_name', "Unknown Player")
 
-        # Get all players across all years in the same division
+        # Run a single optimized query with calculated similarity scores
+        # This avoids fetching all players and calculating in Python
         cursor.execute("""
+            WITH target_metrics AS (
+                SELECT 
+                    gb_pct, fb_pct, ld_pct, 
+                    (WAR / CASE WHEN PA = 0 THEN 1 ELSE PA END) as WAR_per_PA,
+                    [K%], [BB%],
+                    WAR
+                FROM (
+                    SELECT 
+                        bb.*,
+                        b.WAR,
+                        b.[K%],
+                        b.[BB%],
+                        b.GP
+                    FROM batted_ball bb
+                    JOIN batting_war b ON bb.batter_id = b.player_id 
+                        AND bb.year = b.Season 
+                        AND bb.division = b.Division
+                    WHERE bb.batter_id = ? AND bb.year = ? AND bb.division = ?
+                )
+            ),
+            similar_players AS (
+                SELECT 
+                    bb.*,
+                    b.WAR, 
+                    b.GP,
+                    (b.WAR / CASE WHEN b.PA = 0 THEN 1 ELSE PA END) as WAR_per_PA,
+                    b.[K%],
+                    b.[BB%],
+                    b.Player, 
+                    b.Team,
+                    b.Season as year,
+                    i.prev_team_id,
+                    i.conference_id,
+                    (
+                        (4 * POWER((bb.gb_pct - (SELECT gb_pct FROM target_metrics)), 2) + 
+                        4 * POWER((bb.fb_pct - (SELECT fb_pct FROM target_metrics)), 2) + 
+                        4 * POWER((bb.ld_pct - (SELECT ld_pct FROM target_metrics)), 2) + 
+                        4 * POWER((b.[K%] - (SELECT [K%] FROM target_metrics)), 2) + 
+                        4 * POWER((b.[BB%] - (SELECT [BB%] FROM target_metrics)), 2) + 
+                        5 * POWER(
+                             ((b.WAR / CASE WHEN b.GP = 0 THEN 1 ELSE b.GP END) - 
+                             (SELECT WAR_per_PA FROM target_metrics)), 2)
+                        ) / (4 + 4 + 4 + 4 + 4 + 5)
+                    ) as distance_score
+                FROM batted_ball bb
+                JOIN batting_war b ON bb.batter_id = b.player_id 
+                    AND bb.year = b.Season 
+                    AND bb.division = b.Division
+                LEFT JOIN ids_for_images i ON bb.bat_team = i.team_name
+                WHERE bb.division = ? AND (bb.batter_id != ? OR bb.year != ?)
+                ORDER BY distance_score ASC
+                LIMIT 50
+            )
             SELECT 
-                bb.*,
-                b.WAR, 
-                b.GP,
-                (b.WAR / CASE WHEN b.GP = 0 THEN 1 ELSE b.GP END) as WAR_per_game,
-                b.Player, 
-                b.Team,
-                b.Season as year,
-                i.prev_team_id,
-                i.conference_id
-            FROM batted_ball bb
-            JOIN batting_war b ON bb.batter_id = b.player_id AND bb.year = b.Season AND bb.division = b.Division
-            LEFT JOIN ids_for_images i ON bb.bat_team = i.team_name
-            WHERE bb.division = ? AND (bb.batter_id != ? OR bb.year != ?)
-        """, (division, player_id, year))
+                batter_id as player_id,
+                Player as player_name,
+                Team as team,
+                year,
+                ROUND(MAX(0, 100 - (distance_score * 15))) as similarity_score,
+                ROUND(WAR, 1) as war,
+                ROUND(WAR_per_PA, 3) as war_per_PA,
+                prev_team_id,
+                conference_id
+            FROM similar_players
+            GROUP BY batter_id
+            ORDER BY similarity_score DESC
+            LIMIT ?
+        """, (player_id, year, division, division, player_id, year, count))
 
-        all_players = [dict(row) for row in cursor.fetchall()]
-
-        weights = {
-            'gb_pct': 4,
-            'fb_pct': 4,
-            'ld_pct': 4,
-            'WAR_per_game': 5,  # Increased weight for WAR/G
-            'bWAR': 3,
-            'avg_exit_velo': 3,
-            'avg_launch_angle': 3
-        }
-
-        for player in all_players:
-            total_distance = 0
-            total_weight = 0
-
-            for key, weight in weights.items():
-                if key in target_data and key in player:
-                    try:
-                        distance = (
-                            float(target_data[key]) - float(player[key])) ** 2
-                        total_distance += distance * weight
-                        total_weight += weight
-                    except (ValueError, TypeError):
-                        pass
-
-            if total_weight > 0:
-                normalized_distance = (total_distance / total_weight) ** 0.5
-                player['similarity_score'] = max(
-                    0, 100 - (normalized_distance * 15))
-            else:
-                player['similarity_score'] = 0
-
-        similar_players = sorted(
-            all_players, key=lambda x: x['similarity_score'], reverse=True)[:count]
-
-        results = [{
-            'player_id': player['batter_id'],
-            'player_name': player.get('Player', player.get('batter_standardized', 'Unknown')),
-            'team': player.get('Team', player.get('bat_team', 'Unknown')),
-            'year': player.get('year', player.get('Season', year)),
-            'similarity_score': round(player['similarity_score']),
-            'war': round(player.get('WAR', 0), 1),
-            'war_per_game': round(player.get('WAR_per_game', 0), 3),
-            'prev_team_id': player.get('prev_team_id'),
-            'conference_id': player.get('conference_id')
-        } for player in similar_players]
+        similar_players = [dict(row) for row in cursor.fetchall()]
 
         return jsonify({
             'target_player': {
@@ -1333,10 +1343,11 @@ def get_similar_batters(player_id):
                 'player_name': target_name,
                 'year': year
             },
-            'similar_players': results
+            'similar_players': similar_players
         })
 
     except sqlite3.Error as e:
+        print(f"Database error: {e}")
         return jsonify({"error": f"Database error: {str(e)}"}), 500
     finally:
         conn.close()
@@ -1457,11 +1468,12 @@ def get_value_leaderboard():
 
 
 @app.route('/api/leaderboards/baserunning', methods=['GET'])
-@require_premium
-def get_baserunning_leaderboard():
-    start_year = request.args.get('start_year', '2025')
+@app.route('/api/leaderboards/baserunning/<string:player_id>', methods=['GET'])
+def get_player_baserunning(player_id=None):
+    start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
+    limit = request.args.get('limit', type=int, default=100)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
@@ -1507,11 +1519,25 @@ def get_baserunning_leaderboard():
                     LEFT JOIN ids_for_images i
                         ON b.Team = i.team_name
                     WHERE b.Division = ? AND b.Year = ?
+                    {0}
                     ORDER BY b.Baserunning DESC
+                    {1}
                 )
                 SELECT * FROM baserunning_query
             """
-            cursor.execute(query, (division, year))
+
+            if player_id:
+                where_clause = "AND b.player_id = ?"
+                limit_clause = ""
+                params = (division, year, player_id)
+            else:
+                where_clause = ""
+                limit_clause = "LIMIT ?"
+                params = (division, year, limit)
+
+            formatted_query = query.format(where_clause, limit_clause)
+            cursor.execute(formatted_query, params)
+
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -1528,20 +1554,16 @@ def get_baserunning_leaderboard():
 
 
 @app.route('/api/leaderboards/situational', methods=['GET'])
-@require_premium
-def get_situational_leaderboard():
-    start_year = request.args.get('start_year', '2025')
+@app.route('/api/leaderboards/situational/<string:player_id>', methods=['GET'])
+def get_player_situational(player_id=None):
+    start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
-    min_pa = request.args.get('min_pa', '50')
     division = request.args.get('division', type=int, default=3)
-
-    if division not in [1, 2, 3]:
-        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+    limit = request.args.get('limit', type=int, default=100)
 
     try:
         start_year = int(start_year)
         end_year = int(end_year)
-        min_pa = int(min_pa)
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
@@ -1594,16 +1616,27 @@ def get_situational_leaderboard():
                         AND s.division = p.Division
                     LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
-                    WHERE s.PA_Overall >= ?
-                        AND p.Division = ?
+                    WHERE p.Division = ?
                         AND p.Season = ?
-                        AND s.year = ?
+                        {0}
                     ORDER BY s.wOBA_Overall DESC
+                    {1}
                 )
                 SELECT * FROM situational_query
             """
 
-            cursor.execute(query, (min_pa, division, year, year))
+            if player_id:
+                where_clause = "AND p.player_id = ?"
+                limit_clause = ""
+                params = (division, year, player_id)
+            else:
+                where_clause = ""
+                limit_clause = "LIMIT ?"
+                params = (division, year, limit)
+
+            formatted_query = query.format(where_clause, limit_clause)
+            cursor.execute(formatted_query, params)
+
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -1620,20 +1653,16 @@ def get_situational_leaderboard():
 
 
 @app.route('/api/leaderboards/situational_pitcher', methods=['GET'])
-@require_premium
-def get_situational_pitcher_leaderboard():
-    start_year = request.args.get('start_year', '2025')
+@app.route('/api/leaderboards/situational_pitcher/<string:player_id>', methods=['GET'])
+def get_player_situational_pitcher(player_id=None):
+    start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
-    min_pa = request.args.get('min_pa', '50')
     division = request.args.get('division', type=int, default=3)
-
-    if division not in [1, 2, 3]:
-        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+    limit = request.args.get('limit', type=int, default=100)
 
     try:
         start_year = int(start_year)
         end_year = int(end_year)
-        min_pa = int(min_pa)
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
@@ -1686,16 +1715,27 @@ def get_situational_pitcher_leaderboard():
                         AND s.division = p.Division
                     LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
-                    WHERE s.PA_Overall >= ?
-                        AND p.Division = ?
+                    WHERE p.Division = ?
                         AND p.Season = ?
-                        AND s.year = ?
+                        {0}
                     ORDER BY s.wOBA_Overall ASC
+                    {1}
                 )
                 SELECT * FROM situational_query
             """
 
-            cursor.execute(query, (min_pa, division, year, year))
+            if player_id:
+                where_clause = "AND p.player_id = ?"
+                limit_clause = ""
+                params = (division, year, player_id)
+            else:
+                where_clause = ""
+                limit_clause = "LIMIT ?"
+                params = (division, year, limit)
+
+            formatted_query = query.format(where_clause, limit_clause)
+            cursor.execute(formatted_query, params)
+
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -1712,20 +1752,16 @@ def get_situational_pitcher_leaderboard():
 
 
 @app.route('/api/leaderboards/splits', methods=['GET'])
-@require_premium
-def get_splits_leaderboard():
-    start_year = request.args.get('start_year', '2025')
+@app.route('/api/leaderboards/splits/<string:player_id>', methods=['GET'])
+def get_player_splits(player_id=None):
+    start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
-    min_pa = request.args.get('min_pa', '50')
     division = request.args.get('division', type=int, default=3)
-
-    if division not in [1, 2, 3]:
-        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+    limit = request.args.get('limit', type=int, default=100)
 
     try:
         start_year = int(start_year)
         end_year = int(end_year)
-        min_pa = int(min_pa)
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
@@ -1776,16 +1812,27 @@ def get_splits_leaderboard():
                         AND s.Division = p.Division
                     LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
-                    WHERE s.[PA_Overall] >= ?
-                        AND p.Division = ?
+                    WHERE p.Division = ?
                         AND p.Season = ?
-                        AND s.Year = ?
+                        {0}
                     ORDER BY s.[wOBA_Overall] DESC
+                    {1}
                 )
                 SELECT * FROM splits_query
             """
 
-            cursor.execute(query, (min_pa, division, year, year))
+            if player_id:
+                where_clause = "AND p.player_id = ?"
+                limit_clause = ""
+                params = (division, year, player_id)
+            else:
+                where_clause = ""
+                limit_clause = "LIMIT ?"
+                params = (division, year, limit)
+
+            formatted_query = query.format(where_clause, limit_clause)
+            cursor.execute(formatted_query, params)
+
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -1802,20 +1849,16 @@ def get_splits_leaderboard():
 
 
 @app.route('/api/leaderboards/splits_pitcher', methods=['GET'])
-@require_premium
-def get_splits_pitcher_leaderboard():
-    start_year = request.args.get('start_year', '2025')
+@app.route('/api/leaderboards/splits_pitcher/<string:player_id>', methods=['GET'])
+def get_player_splits_pitcher(player_id=None):
+    start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
-    min_pa = request.args.get('min_pa', '50')
     division = request.args.get('division', type=int, default=3)
-
-    if division not in [1, 2, 3]:
-        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+    limit = request.args.get('limit', type=int, default=100)
 
     try:
         start_year = int(start_year)
         end_year = int(end_year)
-        min_pa = int(min_pa)
     except ValueError:
         return jsonify({"error": "Invalid parameters"}), 400
 
@@ -1866,16 +1909,27 @@ def get_splits_pitcher_leaderboard():
                         AND s.Division = p.Division
                     LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
-                    WHERE s.[PA_Overall] >= ?
-                        AND p.Division = ?
+                    WHERE p.Division = ?
                         AND p.Season = ?
-                        AND s.Year = ?
-                    ORDER BY s.[wOBA_Overall] ASC  -- Note: ASC for pitchers (lower is better)
+                        {0}
+                    ORDER BY s.[wOBA_Overall] ASC
+                    {1}
                 )
                 SELECT * FROM splits_query
             """
 
-            cursor.execute(query, (min_pa, division, year, year))
+            if player_id:
+                where_clause = "AND p.player_id = ?"
+                limit_clause = ""
+                params = (division, year, player_id)
+            else:
+                where_clause = ""
+                limit_clause = "LIMIT ?"
+                params = (division, year, limit)
+
+            formatted_query = query.format(where_clause, limit_clause)
+            cursor.execute(formatted_query, params)
+
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]
@@ -1892,12 +1946,12 @@ def get_splits_pitcher_leaderboard():
 
 
 @app.route('/api/leaderboards/batted_ball', methods=['GET'])
-@require_premium
-def get_batted_ball_leaders():
-    start_year = request.args.get('start_year', '2025')
+@app.route('/api/leaderboards/batted_ball/<string:player_id>', methods=['GET'])
+def get_player_batted_ball(player_id=None):
+    start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
-    bb_count = request.args.get('min_bb', '50')
+    limit = request.args.get('limit', type=int, default=100)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
@@ -1949,15 +2003,26 @@ def get_batted_ball_leaders():
                     LEFT JOIN ids_for_images i
                         ON p.Team = i.team_name
                     WHERE p.Division = ?
-                        AND bb.count >= ?
                         AND p.Season = ?
-                        AND bb.year = ?
+                        {0}
                     ORDER BY bb.count DESC
+                    {1}
                 )
                 SELECT * FROM battedball_query
             """
 
-            cursor.execute(query, (division, bb_count, year, year))
+            if player_id:
+                where_clause = "AND p.player_id = ?"
+                limit_clause = ""
+                params = (division, year, player_id)
+            else:
+                where_clause = ""
+                limit_clause = "LIMIT ?"
+                params = (division, year, limit)
+
+            formatted_query = query.format(where_clause, limit_clause)
+            cursor.execute(formatted_query, params)
+
             columns = [col[0] for col in cursor.description]
             year_results = [dict(zip(columns, row))
                             for row in cursor.fetchall()]

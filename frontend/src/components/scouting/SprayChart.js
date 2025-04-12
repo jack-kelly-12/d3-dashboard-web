@@ -29,21 +29,16 @@ const SprayChart = ({
       setLoading(true);
 
       try {
-        // Check if we have cached data that's still valid
         const cachedData = apiCache.get(cacheKey);
         const now = Date.now();
 
         if (cachedData && now - cachedData.timestamp < CACHE_EXPIRATION) {
-          // Use cached data if available and not expired
-          console.log("Using cached data for:", cacheKey);
           setPlayerData(cachedData.data);
           setError(null);
           setLoading(false);
           return;
         }
 
-        // If no cached data or expired, make the API call
-        console.log("Fetching fresh data for:", cacheKey);
         const data = await fetchAPI(
           `/spraychart-data/${playerId}?year=${year}&division=${division}`
         );
@@ -224,7 +219,6 @@ const SprayChart = ({
           ],
         };
 
-        // Cache the processed data with a timestamp
         apiCache.set(cacheKey, {
           data: processedData,
           timestamp: Date.now(),
@@ -850,7 +844,6 @@ const SprayChart = ({
       <svg
         ref={svgRef}
         width="100%"
-        height="auto"
         preserveAspectRatio="xMidYMid meet"
         className="spray-chart"
         style={{ display: "block", maxHeight: "570px" }}

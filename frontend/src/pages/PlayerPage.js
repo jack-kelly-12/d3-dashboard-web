@@ -84,19 +84,12 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
       setIsLoading(true);
       try {
         const response = await fetchAPI(
-          `/api/similar-batters/${playerId}?year=${year}&division=${division}`
+          `/api/similar-batters/${encodeURIComponent(
+            playerId
+          )}?year=${year}&division=${division}`
         );
-        // Filter out duplicates by player_id and year combination
-        const uniquePlayers = [];
-        const playerYearSet = new Set();
-        (response.similar_players || []).forEach((player) => {
-          const playerYearKey = `${player.player_id}-${player.year}`;
-          if (!playerYearSet.has(playerYearKey)) {
-            playerYearSet.add(playerYearKey);
-            uniquePlayers.push(player);
-          }
-        });
-        setSimilarPlayers(uniquePlayers);
+
+        setSimilarPlayers(response.similar_players || []);
       } catch (err) {
         console.error("Error fetching similar batters:", err);
         setError("Could not load similar batters");
@@ -110,21 +103,20 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
     }
   }, [playerId, year, division]);
 
-  if (isLoading)
-    return <div className="text-center py-4">Loading similar batters...</div>;
+  if (isLoading) return <div className="text-center py-4"></div>;
   if (error) return null;
   if (!similarPlayers.length) return null;
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
       <div className="flex items-center">
-        <span className="mr-1">
+        <span className="mr-1 text-xs">
           Similar Batters to {similarPlayers[0]?.player_name}:
         </span>
 
         {similarPlayers.slice(0, 5).map((player, idx) => (
           <a
-            key={`${player.player_id}-${player.year}`}
+            key={`${player.player_id}-${player.Year}`}
             href={`/player/${player.player_id}`}
             className="flex items-center mx-2"
           >
@@ -132,9 +124,10 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
               teamId={player.prev_team_id}
               conferenceId={player.conference_id}
               teamName={player.team}
+              className="h-8 w-8 mr-2"
             />
-            <span className="text-sm">
-              {player.year} - {player.player_name}
+            <span className="text-xs">
+              {player.Year} - {player.player_name}
             </span>
           </a>
         ))}
@@ -187,9 +180,8 @@ const PlayerContent = memo(
         STAT_TYPES.BATTED_BALL,
       ].includes(activeTab) && stats.length > 0;
 
-    const shouldShowSimilarBatters =
-      [STAT_TYPES.BATTING, STAT_TYPES.BATTED_BALL].includes(activeTab) &&
-      stats.length > 0;
+    // Update this condition to match the spray chart condition
+    const shouldShowSimilarBatters = shouldShowSprayChart;
 
     const currentYear = getMostRecentYear();
 
@@ -295,14 +287,12 @@ const PlayerPage = () => {
     async (statType) => {
       try {
         const response = await fetchAPI(
-          `/api/leaderboards/${statType}?start_year=2021&end_year=2025&division=${selectedDivision}`
+          `/api/leaderboards/${statType}/${encodeURIComponent(
+            playerId
+          )}?start_year=2021&end_year=2025&division=${selectedDivision}`
         );
 
-        const filteredStats = response.filter(
-          (stat) => stat.player_id === decodeURIComponent(playerId)
-        );
-
-        const enrichedStats = enrichStats(filteredStats);
+        const enrichedStats = enrichStats(response);
 
         setStatData((prev) => ({
           ...prev,
