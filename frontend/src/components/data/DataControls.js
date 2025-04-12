@@ -128,7 +128,7 @@ const DataControls = ({
           <label className="text-xs lg:text-sm font-medium text-gray-700 whitespace-nowrap">
             Player List:
           </label>
-          <div className="relative flex-1 lg:flex-none lg:w-44">
+          <div className="relative flex-1 lg:flex-none lg:w-60">
             <button
               onClick={() => setShowListDropdown(!showListDropdown)}
               className="w-full flex items-center justify-between px-3 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700

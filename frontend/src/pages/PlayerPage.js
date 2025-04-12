@@ -77,6 +77,7 @@ const renderTeamLogo = (
 const SimilarBatters = memo(({ playerId, year, division }) => {
   const [similarPlayers, setSimilarPlayers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [player, setPlayer] = useState("");
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -88,7 +89,7 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
             playerId
           )}?year=${year}&division=${division}`
         );
-
+        setPlayer(response.target_player.player_name || "");
         setSimilarPlayers(response.similar_players || []);
       } catch (err) {
         console.error("Error fetching similar batters:", err);
@@ -110,9 +111,7 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
   return (
     <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
       <div className="flex items-center">
-        <span className="mr-1 text-xs">
-          Similar Batters to {similarPlayers[0]?.player_name}:
-        </span>
+        <span className="mr-1 text-xs">Similar Batters to {player}:</span>
 
         {similarPlayers.slice(0, 5).map((player, idx) => (
           <a
