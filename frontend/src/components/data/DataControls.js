@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Search, BookOpen, ListPlus, FileBox, ChevronDown } from "lucide-react";
+import {
+  Search,
+  BookOpen,
+  ListPlus,
+  FileBox,
+  ChevronDown,
+  X,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 import PlayerListManager from "../../managers/PlayerListManager";
 import { useNavigate } from "react-router-dom";
@@ -57,6 +64,7 @@ const DataControls = ({
   const [playerLists, setPlayerLists] = useState([]);
   const [isLoadingLists, setIsLoadingLists] = useState(false);
   const [showListDropdown, setShowListDropdown] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -77,6 +85,21 @@ const DataControls = ({
     fetchPlayerLists();
   }, [dataType]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (showListDropdown) {
+      const handleClickOutside = (event) => {
+        if (!event.target.closest(".player-list-dropdown")) {
+          setShowListDropdown(false);
+        }
+      };
+
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showListDropdown]);
+
   const QualifierFilter = () => {
     if (!dataType.includes("player")) return null;
 
@@ -86,7 +109,7 @@ const DataControls = ({
     const qualifiers = isPitching ? pitchingQualifiers : hittingQualifiers;
 
     return (
-      <div className="w-full lg:w-auto">
+      <div className="w-full">
         <div className="flex items-center gap-2">
           <label className="text-xs lg:text-sm font-medium text-gray-700 whitespace-nowrap">
             {isPitching ? "IP Qualifier" : "PA Qualifier"}:
@@ -94,7 +117,7 @@ const DataControls = ({
           <select
             value={value}
             onChange={(e) => setValue(Number(e.target.value))}
-            className="flex-1 lg:flex-none lg:w-44 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
+            className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
               focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
               hover:border-gray-300 transition-colors"
           >
@@ -123,12 +146,12 @@ const DataControls = ({
     if (!dataType.includes("player")) return null;
 
     return (
-      <div className="w-full lg:w-auto relative">
+      <div className="w-full player-list-dropdown relative">
         <div className="flex items-center gap-2">
           <label className="text-xs lg:text-sm font-medium text-gray-700 whitespace-nowrap">
             Player List:
           </label>
-          <div className="relative flex-1 lg:flex-none lg:w-60">
+          <div className="relative flex-1">
             <button
               onClick={() => setShowListDropdown(!showListDropdown)}
               className="w-full flex items-center justify-between px-3 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
@@ -136,14 +159,14 @@ const DataControls = ({
                 hover:border-gray-300 transition-colors text-ellipsis truncate"
             >
               <div className="flex items-center gap-2">
-                <FileBox size={14} className="text-blue-600" />
+                <FileBox size={14} className="text-blue-600 flex-shrink-0" />
                 <span className="flex-1 text-ellipsis truncate">
                   {isLoadingLists ? "Loading lists..." : getSelectedListName()}
                 </span>
               </div>
               <ChevronDown
                 size={14}
-                className={`transition-transform ${
+                className={`transition-transform flex-shrink-0 ${
                   showListDropdown ? "rotate-180" : ""
                 }`}
               />
@@ -182,7 +205,7 @@ const DataControls = ({
                       >
                         <div className="flex items-center justify-between">
                           <span className="truncate">{list.name}</span>
-                          <span className="text-xs text-gray-500 ml-2">
+                          <span className="text-xs text-gray-500 ml-2 flex-shrink-0">
                             {list.playerIds?.length || 0} players
                           </span>
                         </div>
@@ -203,9 +226,9 @@ const DataControls = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 space-y-4 mb-4">
-      {/* Data Type Tabs */}
-      <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 lg:mx-0 lg:px-0 lg:pb-0">
+    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 space-y-4 mb-4">
+      {/* Data Type Tabs - Horizontally scrollable */}
+      <div className="flex gap-2 overflow-x-auto pb-2 -mx-3 px-3 sm:-mx-4 sm:px-4 sm:pb-2 md:mx-0 md:px-0 md:pb-0 scrollbar-hide">
         {dataTypes.map((type) => (
           <button
             key={type.id}
@@ -215,7 +238,7 @@ const DataControls = ({
                 setSelectedListId(""); // Clear player list when switching to team data
               }
             }}
-            className={`px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors whitespace-nowrap
+            className={`px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0
               ${
                 dataType === type.id
                   ? "bg-blue-600 text-white"
@@ -228,12 +251,12 @@ const DataControls = ({
       </div>
 
       {/* Years and Documentation */}
-      <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-2 lg:gap-3">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+        <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
           <span className="text-xs lg:text-sm font-medium text-gray-700">
             Years to include:
           </span>
-          <div className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-2 lg:mx-0 lg:px-0 lg:pb-0">
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-3 px-3 sm:-mx-4 sm:px-4 sm:pb-2 md:mx-0 md:px-0 md:pb-0 scrollbar-hide">
             {[2025, 2024, 2023, 2022, 2021].map((year) => (
               <button
                 key={year}
@@ -258,99 +281,129 @@ const DataControls = ({
 
         <Link
           to="/documentation"
-          className="flex items-center gap-2 text-xs lg:text-sm text-blue-600 hover:text-blue-700"
+          className="flex items-center gap-2 text-xs lg:text-sm text-blue-600 hover:text-blue-700 mt-1 md:mt-0 md:ml-auto"
         >
-          <BookOpen size={16} />
+          <BookOpen size={16} className="flex-shrink-0" />
           <span>View Statistics Guide</span>
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col lg:flex-row lg:items-center gap-4 lg:gap-6">
-        {/* Division Filter - Only shown for premium users */}
-        {isPremiumUser && (
-          <div className="w-full lg:w-auto">
+      {/* Mobile: Show/Hide filters toggle */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+          className="w-full flex justify-center items-center gap-2 py-2 bg-gray-50 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
+        >
+          {showMobileFilters ? (
+            <>
+              <X size={16} />
+              Hide Filters
+            </>
+          ) : (
+            <>
+              <Search size={16} />
+              Show Filters
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Filters section - conditionally shown on mobile */}
+      <div
+        className={`${
+          showMobileFilters ? "block" : "hidden"
+        } md:block space-y-3`}
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap items-start lg:items-center gap-3 lg:gap-6">
+          {/* Division Filter - Only shown for premium users */}
+          {isPremiumUser && (
+            <div className="w-full sm:col-span-1">
+              <div className="flex items-center gap-2">
+                <label className="text-xs lg:text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Division:
+                </label>
+                <select
+                  value={division}
+                  onChange={(e) => setDivision(Number(e.target.value))}
+                  className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
+                    focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
+                    hover:border-gray-300 transition-colors"
+                >
+                  {divisions.map((div) => (
+                    <option key={div.value} value={div.value}>
+                      {div.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Conference Filter */}
+          <div className="w-full sm:col-span-1">
             <div className="flex items-center gap-2">
               <label className="text-xs lg:text-sm font-medium text-gray-700 whitespace-nowrap">
-                Division:
+                Conference:
               </label>
               <select
-                value={division}
-                onChange={(e) => setDivision(Number(e.target.value))}
-                className="flex-1 lg:flex-none lg:w-32 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
+                value={conference}
+                onChange={(e) => setConference(e.target.value)}
+                className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
                   focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
                   hover:border-gray-300 transition-colors"
               >
-                {divisions.map((div) => (
-                  <option key={div.value} value={div.value}>
-                    {div.label}
+                <option value="">All Conferences</option>
+                {conferences.map((conf) => (
+                  <option key={conf} value={conf}>
+                    {conf}
                   </option>
                 ))}
               </select>
             </div>
           </div>
-        )}
 
-        {/* Conference Filter */}
-        <div className="w-full lg:w-auto">
-          <div className="flex items-center gap-2">
-            <label className="text-xs lg:text-sm font-medium text-gray-700 whitespace-nowrap">
-              Conference:
-            </label>
-            <select
-              value={conference}
-              onChange={(e) => setConference(e.target.value)}
-              className="flex-1 lg:flex-none lg:w-44 px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs lg:text-sm text-gray-700
-                focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-                hover:border-gray-300 transition-colors"
-            >
-              <option value="">All Conferences</option>
-              {conferences.map((conf) => (
-                <option key={conf} value={conf}>
-                  {conf}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+          {/* Qualifier Filter */}
+          <QualifierFilter />
 
-        {/* Qualifier Filter */}
-        <QualifierFilter />
-
-        {/* Search Input */}
-        <div className="w-full lg:w-auto lg:ml-auto">
-          <div className="relative">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-              size={16}
-            />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={`Search ${
-                dataType.includes("player") ? "players" : "teams"
-              }...`}
-              className="w-full lg:w-64 pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-            />
+          {/* Search Input - Full width on mobile, auto width on larger screens */}
+          <div className="w-full lg:flex-1 lg:max-w-md">
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+              />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={`Search ${
+                  dataType.includes("player") ? "players" : "teams"
+                }...`}
+                className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                  focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* View Player Lists Link for Player Data Types */}
+      {/* Player Lists Actions - Stack on mobile, row on larger screens */}
       {dataType.includes("player") && (
-        <div className="flex justify-end gap-5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-1">
+          {/* Player List Selector */}
+          <div className="sm:order-1 sm:flex-1 lg:flex-initial lg:min-w-64">
+            {renderPlayerListSelector()}
+          </div>
+
+          {/* Create Player List Button */}
           <button
             onClick={() => navigate("/player-lists")}
-            className="px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors whitespace-nowrap ml-auto
-        text-blue-600 hover:bg-blue-50 border border-blue-200 flex items-center gap-1"
+            className="px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors whitespace-nowrap
+              text-blue-600 hover:bg-blue-50 border border-blue-200 flex items-center justify-center sm:justify-start gap-1"
           >
-            <ListPlus size={16} />
+            <ListPlus size={16} className="flex-shrink-0" />
             Create Player List
           </button>
-          {/* Player List Selector */}
-          {renderPlayerListSelector()}
         </div>
       )}
     </div>
