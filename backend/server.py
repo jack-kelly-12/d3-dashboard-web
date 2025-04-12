@@ -1239,20 +1239,14 @@ def get_similar_batters(player_id):
     cursor = conn.cursor()
 
     try:
-        # Get target player data - direct query with indices
+        # Simplified target player query - only get what we need
         cursor.execute("""
             SELECT 
-                bb.*,
-                b.WAR,
-                b.GP,
-                (b.WAR / CASE WHEN b.PA = 0 THEN 1 ELSE b.PA END) as WAR_per_PA,
                 b.Player as player_name,
-                b.Team as team_name,
-                b.[K%],
-                b.[BB%]
-            FROM batted_ball bb
-            JOIN batting_war b ON bb.batter_id = b.player_id AND bb.year = b.Season AND bb.division = b.Division
-            WHERE bb.batter_id = ? AND bb.year = ? AND bb.division = ?
+                b.Team as team_name
+            FROM batting_war b
+            WHERE b.player_id = ? AND b.Season = ? AND b.Division = ?
+            LIMIT 1
         """, (player_id, year, division))
 
         target_player = cursor.fetchone()
@@ -1260,78 +1254,66 @@ def get_similar_batters(player_id):
         if not target_player:
             return jsonify({"error": "Player not found or no data available"}), 404
 
-        target_data = dict(target_player)
-        target_name = target_data.get('player_name', "Unknown Player")
+        target_name = target_player['player_name']
 
-        # Run a single optimized query with calculated similarity scores
-        # This avoids fetching all players and calculating in Python
         cursor.execute("""
             WITH target_metrics AS (
                 SELECT 
-                    gb_pct, fb_pct, ld_pct, 
-                    (WAR / CASE WHEN PA = 0 THEN 1 ELSE PA END) as WAR_per_PA,
-                    [K%], [BB%],
-                    WAR
-                FROM (
-                    SELECT 
-                        bb.*,
-                        b.WAR,
-                        b.[K%],
-                        b.[BB%],
-                        b.GP
-                    FROM batted_ball bb
-                    JOIN batting_war b ON bb.batter_id = b.player_id 
-                        AND bb.year = b.Season 
-                        AND bb.division = b.Division
-                    WHERE bb.batter_id = ? AND bb.year = ? AND bb.division = ?
-                )
+                    (CAST(HR as FLOAT) / NULLIF(PA, 0)) as hr_per_pa,
+                    (CAST(WAR as FLOAT) / NULLIF(PA, 0)) as war_per_pa,
+                    [K%], 
+                    [BB%],
+                    [OPS+]
+                FROM batting_war
+                WHERE player_id = ? AND Season = ? AND Division = ?
             ),
             similar_players AS (
                 SELECT 
-                    bb.*,
-                    b.WAR, 
-                    b.GP,
-                    (b.WAR / CASE WHEN b.PA = 0 THEN 1 ELSE PA END) as WAR_per_PA,
-                    b.[K%],
-                    b.[BB%],
-                    b.Player, 
-                    b.Team,
+                    b.player_id,
+                    b.Player as player_name, 
+                    b.Team as team,
                     b.Season as year,
                     i.prev_team_id,
                     i.conference_id,
-                    (
-                        (4 * POWER((bb.gb_pct - (SELECT gb_pct FROM target_metrics)), 2) + 
-                        4 * POWER((bb.fb_pct - (SELECT fb_pct FROM target_metrics)), 2) + 
-                        4 * POWER((bb.ld_pct - (SELECT ld_pct FROM target_metrics)), 2) + 
-                        4 * POWER((b.[K%] - (SELECT [K%] FROM target_metrics)), 2) + 
-                        4 * POWER((b.[BB%] - (SELECT [BB%] FROM target_metrics)), 2) + 
-                        5 * POWER(
-                             ((b.WAR / CASE WHEN b.GP = 0 THEN 1 ELSE b.GP END) - 
-                             (SELECT WAR_per_PA FROM target_metrics)), 2)
-                        ) / (4 + 4 + 4 + 4 + 4 + 5)
-                    ) as distance_score
-                FROM batted_ball bb
-                JOIN batting_war b ON bb.batter_id = b.player_id 
-                    AND bb.year = b.Season 
-                    AND bb.division = b.Division
-                LEFT JOIN ids_for_images i ON bb.bat_team = i.team_name
-                WHERE bb.division = ? AND (bb.batter_id != ? OR bb.year != ?)
-                ORDER BY distance_score ASC
-                LIMIT 50
+                    b.WAR,
+                    b.PA,
+                    b.HR,
+                    (CAST(b.HR as FLOAT) / NULLIF(b.PA, 0)) as hr_per_pa,
+                    (CAST(b.WAR as FLOAT) / NULLIF(b.PA, 0)) as war_per_pa,
+                    -- Calculate a raw distance (smaller is better)
+                    SQRT(
+                        (8 * POWER(((CAST(b.HR as FLOAT) / NULLIF(b.PA, 0)) - (SELECT hr_per_pa FROM target_metrics)), 2)) + 
+                        (10 * POWER(((CAST(b.WAR as FLOAT) / NULLIF(b.PA, 0)) - (SELECT war_per_pa FROM target_metrics)), 2)) +
+                        (3 * POWER((b.[K%] - (SELECT [K%] FROM target_metrics)), 2)) + 
+                        (3 * POWER((b.[BB%] - (SELECT [BB%] FROM target_metrics)), 2)) +
+                        (4 * POWER((b.[OPS+] - (SELECT [OPS+] FROM target_metrics)), 2))
+                    ) / SQRT(8 + 10 + 3 + 3 + 4) as distance_score
+                FROM batting_war b
+                LEFT JOIN ids_for_images i ON b.Team = i.team_name
+                WHERE b.Division = ? 
+                    AND b.PA >= 50
+                    AND (b.player_id != ? OR b.Season != ?)
+            ),
+            -- Find the maximum distance to normalize scores
+            max_dist AS (
+                SELECT MAX(distance_score) as max_distance 
+                FROM similar_players
             )
             SELECT 
-                batter_id as player_id,
-                Player as player_name,
-                Team as team,
+                player_id,
+                player_name,
+                team,
                 year,
-                ROUND(MAX(0, 100 - (distance_score * 15))) as similarity_score,
-                ROUND(WAR, 1) as war,
-                ROUND(WAR_per_PA, 3) as war_per_PA,
                 prev_team_id,
-                conference_id
+                conference_id,
+                ROUND(war, 1) as war,
+                ROUND(hr_per_pa * 600, 1) as projected_hr_600,
+                ROUND(war_per_pa * 600, 1) as projected_war_600,
+                -- Convert distance to similarity score (0-100)
+                -- Scale inversely: closer distance = higher score
+                ROUND(100 * (1 - (distance_score / NULLIF((SELECT max_distance FROM max_dist) * 1.1, 0)))) as similarity_score
             FROM similar_players
-            GROUP BY batter_id
-            ORDER BY similarity_score DESC
+            ORDER BY distance_score ASC
             LIMIT ?
         """, (player_id, year, division, division, player_id, year, count))
 
@@ -1473,7 +1455,6 @@ def get_player_baserunning(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
-    limit = request.args.get('limit', type=int, default=100)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
@@ -1518,8 +1499,9 @@ def get_player_baserunning(player_id=None):
                     FROM baserunning b
                     LEFT JOIN ids_for_images i
                         ON b.Team = i.team_name
-                    WHERE b.Division = ? AND b.Year = ?
-                    {0}
+                    WHERE b.Division = ? 
+                        AND b.Year = ?
+                        {0}
                     ORDER BY b.Baserunning DESC
                     {1}
                 )
@@ -1532,8 +1514,8 @@ def get_player_baserunning(player_id=None):
                 params = (division, year, player_id)
             else:
                 where_clause = ""
-                limit_clause = "LIMIT ?"
-                params = (division, year, limit)
+                limit_clause = ""
+                params = (division, year)
 
             formatted_query = query.format(where_clause, limit_clause)
             cursor.execute(formatted_query, params)
@@ -1559,7 +1541,7 @@ def get_player_situational(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
-    limit = request.args.get('limit', type=int, default=100)
+    min_pa = request.args.get('min_pa', type=int, default=50)
 
     try:
         start_year = int(start_year)
@@ -1618,6 +1600,7 @@ def get_player_situational(player_id=None):
                         ON p.Team = i.team_name
                     WHERE p.Division = ?
                         AND p.Season = ?
+                        AND s.PA_Overall >= ?  -- Filter by minimum PA
                         {0}
                     ORDER BY s.wOBA_Overall DESC
                     {1}
@@ -1628,11 +1611,11 @@ def get_player_situational(player_id=None):
             if player_id:
                 where_clause = "AND p.player_id = ?"
                 limit_clause = ""
-                params = (division, year, player_id)
+                params = (division, year, min_pa, player_id)
             else:
                 where_clause = ""
-                limit_clause = "LIMIT ?"
-                params = (division, year, limit)
+                limit_clause = ""  # Removed LIMIT clause
+                params = (division, year, min_pa)
 
             formatted_query = query.format(where_clause, limit_clause)
             cursor.execute(formatted_query, params)
@@ -1658,7 +1641,8 @@ def get_player_situational_pitcher(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
-    limit = request.args.get('limit', type=int, default=100)
+    # Renamed from min_pa to min_bf
+    min_bf = request.args.get('min_bf', type=int, default=100)
 
     try:
         start_year = int(start_year)
@@ -1717,6 +1701,7 @@ def get_player_situational_pitcher(player_id=None):
                         ON p.Team = i.team_name
                     WHERE p.Division = ?
                         AND p.Season = ?
+                        AND s.PA_Overall >= ?  -- Filter by minimum PA (batters faced)
                         {0}
                     ORDER BY s.wOBA_Overall ASC
                     {1}
@@ -1727,11 +1712,11 @@ def get_player_situational_pitcher(player_id=None):
             if player_id:
                 where_clause = "AND p.player_id = ?"
                 limit_clause = ""
-                params = (division, year, player_id)
+                params = (division, year, min_bf, player_id)
             else:
                 where_clause = ""
-                limit_clause = "LIMIT ?"
-                params = (division, year, limit)
+                limit_clause = ""  # Removed LIMIT clause
+                params = (division, year, min_bf)
 
             formatted_query = query.format(where_clause, limit_clause)
             cursor.execute(formatted_query, params)
@@ -1757,7 +1742,8 @@ def get_player_splits(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
-    limit = request.args.get('limit', type=int, default=100)
+    min_pa = request.args.get(
+        'min_pa', type=int, default=50)  # Renamed for clarity
 
     try:
         start_year = int(start_year)
@@ -1814,6 +1800,7 @@ def get_player_splits(player_id=None):
                         ON p.Team = i.team_name
                     WHERE p.Division = ?
                         AND p.Season = ?
+                        AND s.[PA_Overall] >= ?  -- Filter by minimum PA
                         {0}
                     ORDER BY s.[wOBA_Overall] DESC
                     {1}
@@ -1824,11 +1811,11 @@ def get_player_splits(player_id=None):
             if player_id:
                 where_clause = "AND p.player_id = ?"
                 limit_clause = ""
-                params = (division, year, player_id)
+                params = (division, year, min_pa, player_id)
             else:
                 where_clause = ""
-                limit_clause = "LIMIT ?"
-                params = (division, year, limit)
+                limit_clause = ""
+                params = (division, year, min_pa)
 
             formatted_query = query.format(where_clause, limit_clause)
             cursor.execute(formatted_query, params)
@@ -1854,7 +1841,7 @@ def get_player_splits_pitcher(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
-    limit = request.args.get('limit', type=int, default=100)
+    min_bf = request.args.get('min_bf', type=int, default=100)
 
     try:
         start_year = int(start_year)
@@ -1911,6 +1898,7 @@ def get_player_splits_pitcher(player_id=None):
                         ON p.Team = i.team_name
                     WHERE p.Division = ?
                         AND p.Season = ?
+                        AND s.[PA_Overall] >= ?  -- Filter by minimum PA (batters faced)
                         {0}
                     ORDER BY s.[wOBA_Overall] ASC
                     {1}
@@ -1921,11 +1909,12 @@ def get_player_splits_pitcher(player_id=None):
             if player_id:
                 where_clause = "AND p.player_id = ?"
                 limit_clause = ""
-                params = (division, year, player_id)
+                # Added min_bf to params
+                params = (division, year, min_bf, player_id)
             else:
                 where_clause = ""
-                limit_clause = "LIMIT ?"
-                params = (division, year, limit)
+                limit_clause = ""  # Removed LIMIT clause
+                params = (division, year, min_bf)  # Only 3 params now
 
             formatted_query = query.format(where_clause, limit_clause)
             cursor.execute(formatted_query, params)
@@ -1951,7 +1940,8 @@ def get_player_batted_ball(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
     division = request.args.get('division', type=int, default=3)
-    limit = request.args.get('limit', type=int, default=100)
+    # Already correctly named
+    min_bb = request.args.get('min_bb', type=int, default=100)
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
@@ -2004,6 +1994,7 @@ def get_player_batted_ball(player_id=None):
                         ON p.Team = i.team_name
                     WHERE p.Division = ?
                         AND p.Season = ?
+                        AND bb.count >= ?  -- Filter by minimum batted ball count
                         {0}
                     ORDER BY bb.count DESC
                     {1}
@@ -2014,11 +2005,12 @@ def get_player_batted_ball(player_id=None):
             if player_id:
                 where_clause = "AND p.player_id = ?"
                 limit_clause = ""
-                params = (division, year, player_id)
+                # Added min_bb to params
+                params = (division, year, min_bb, player_id)
             else:
                 where_clause = ""
-                limit_clause = "LIMIT ?"
-                params = (division, year, limit)
+                limit_clause = ""  # Removed LIMIT clause
+                params = (division, year, min_bb)  # Only 3 params now
 
             formatted_query = query.format(where_clause, limit_clause)
             cursor.execute(formatted_query, params)

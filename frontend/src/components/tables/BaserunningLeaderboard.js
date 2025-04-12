@@ -42,7 +42,6 @@ const BaserunningLeaderboard = ({
   useEffect(() => {
     let isMounted = true;
 
-    // If isPremiumUserProp is provided, use it
     if (isPremiumUserProp !== undefined) {
       setIsPremiumUser(isPremiumUserProp);
       setIsAuthReady(true);
@@ -51,7 +50,6 @@ const BaserunningLeaderboard = ({
       };
     }
 
-    // Otherwise, fetch the subscription status
     const initializeAuth = async () => {
       const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
         if (!isMounted) return;
@@ -104,7 +102,6 @@ const BaserunningLeaderboard = ({
     };
   }, [isPremiumUserProp]);
 
-  // Update URL when division changes
   useEffect(() => {
     if (isPremiumUser) {
       const url = new URL(window.location);
@@ -129,7 +126,11 @@ const BaserunningLeaderboard = ({
         `/api/leaderboards/baserunning?start_year=${startYear}&end_year=${endYear}&division=${division}`
       );
 
-      const transformedData = rawData.map((row, index) => ({
+      const sortedData = [...rawData].sort(
+        (a, b) => b.Baserunning - a.Baserunning
+      );
+
+      const transformedData = sortedData.map((row, index) => ({
         ...row,
         rank: index + 1,
         renderedTeam: (
@@ -179,7 +180,6 @@ const BaserunningLeaderboard = ({
   );
 
   const filteredData = useMemo(() => {
-    // First apply the standard filters (search and conference)
     let filtered = data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
       const nameMatch = player.Player?.toLowerCase().includes(searchStr);
@@ -190,7 +190,6 @@ const BaserunningLeaderboard = ({
       return (nameMatch || teamMatch) && conferenceMatch;
     });
 
-    // Then apply the player list filter if selected
     if (
       selectedListId &&
       selectedListPlayerIds &&
@@ -200,8 +199,6 @@ const BaserunningLeaderboard = ({
         const playerId = player.player_id || player.Player_ID;
         if (!playerId) return false;
 
-        // Check if the player ID is in the selected list
-        // Handle both string and number comparisons
         return selectedListPlayerIds.some(
           (id) =>
             id === playerId.toString() ||
@@ -223,7 +220,6 @@ const BaserunningLeaderboard = ({
 
   const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
 
-  // Generate a filename for export that includes list information if present
   const generateFilename = () => {
     let filename = `baserunning_${startYear}`;
     if (startYear !== endYear) {

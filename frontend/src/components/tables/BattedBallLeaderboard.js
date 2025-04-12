@@ -154,7 +154,11 @@ const BattedBallLeaderboard = ({
         `/api/leaderboards/batted_ball?start_year=${startYear}&end_year=${endYear}&division=${division}&min_bb=${minBBCount}`
       );
 
-      const transformedData = rawData.map((row, index) => ({
+      // Sort the data by batted ball count in descending order
+      const sortedData = [...rawData].sort((a, b) => b.count - a.count);
+
+      // Assign ranks based on the sorted order
+      const transformedData = sortedData.map((row, index) => ({
         ...row,
         rank: index + 1,
         ...Object.fromEntries(

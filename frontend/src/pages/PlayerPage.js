@@ -116,7 +116,7 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
 
         {similarPlayers.slice(0, 5).map((player, idx) => (
           <a
-            key={`${player.player_id}-${player.Year}`}
+            key={`${player.player_id}-${player.year}`}
             href={`/player/${player.player_id}`}
             className="flex items-center mx-2"
           >
@@ -127,7 +127,7 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
               className="h-8 w-8 mr-2"
             />
             <span className="text-xs">
-              {player.Year} - {player.player_name}
+              {player.year} - {player.player_name}
             </span>
           </a>
         ))}

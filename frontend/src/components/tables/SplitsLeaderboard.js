@@ -131,14 +131,21 @@ const SplitsLeaderboard = ({
           ? `/api/leaderboards/splits`
           : `/api/leaderboards/splits_pitcher`;
 
-      // Use the appropriate parameter name based on view type
       const countParam = viewType === "batters" ? "min_pa" : "min_bf";
 
       const rawData = await fetchAPI(
         `${endpoint}?start_year=${startYear}&end_year=${endYear}&${countParam}=${minCount}&division=${division}`
       );
 
-      const transformedData = rawData.map((row, index) => ({
+      const sortField = "wOBA_Overall";
+
+      const sortedData = [...rawData].sort((a, b) => {
+        return viewType === "batters"
+          ? b[sortField] - a[sortField] // Descending for batters (higher wOBA is better)
+          : a[sortField] - b[sortField]; // Ascending for pitchers (lower wOBA against is better)
+      });
+
+      const transformedData = sortedData.map((row, index) => ({
         ...row,
         rank: index + 1,
         renderedTeam: (
