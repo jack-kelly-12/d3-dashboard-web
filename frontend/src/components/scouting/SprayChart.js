@@ -421,12 +421,11 @@ const SprayChart = ({
       const textX = centerX + Math.sin(textAngle) * textRadius;
       const textY = centerY - Math.cos(textAngle) * textRadius;
 
-      // Increased percentage font size
       const percentageFontSize = isVerySmallScreen
-        ? "22px"
+        ? "12px"
         : isSmallScreen
-        ? "26px"
-        : "32px";
+        ? "16px"
+        : "28px";
 
       field
         .append("text")
@@ -521,7 +520,7 @@ const SprayChart = ({
 
       if (percentage > 0) {
         const infieldFontSize = isVerySmallScreen
-          ? "10px"
+          ? "8px"
           : isSmallScreen
           ? "14px"
           : "14px";
