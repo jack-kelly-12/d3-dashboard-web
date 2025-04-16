@@ -88,7 +88,6 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
       selector: (row) => `${row.batter_name || ""} / ${row.pitcher_name || ""}`,
       sortable: false,
       width: "10rem",
-      grow: true,
       cell: (row) => (
         <div className="text-gray-600 truncate">
           <div className="flex items-start gap-1">

@@ -259,11 +259,9 @@ const SprayChart = ({
     const outfieldZoneData = playerData.outfieldZones || [];
     const infieldZoneData = playerData.infieldZones || [];
 
-    // Determine screen size
     const isVerySmallScreen = chartWidth < 400;
     const isSmallScreen = chartWidth < 600;
 
-    // Adjust margins based on screen size - smaller bottom margin when no tables
     const margin =
       isVerySmallScreen || isSmallScreen
         ? { top: 80, right: 10, bottom: 30, left: 10 }
@@ -301,16 +299,15 @@ const SprayChart = ({
         `translate(${margin.left}, ${isVerySmallScreen ? 15 : 20})`
       );
 
-    // Increased font sizes
     const titleFontSize = isVerySmallScreen
-      ? "18px"
-      : isSmallScreen
-      ? "20px"
-      : "22px";
-    const subtitleFontSize = isVerySmallScreen
       ? "14px"
       : isSmallScreen
       ? "16px"
+      : "20px";
+    const subtitleFontSize = isVerySmallScreen
+      ? "12px"
+      : isSmallScreen
+      ? "14px"
       : "18px";
 
     header
@@ -332,7 +329,7 @@ const SprayChart = ({
 
     header
       .append("g")
-      .attr("transform", `translate(${innerWidth - 60}, 0)`) // Position in top right
+      .attr("transform", `translate(${innerWidth - 60}, 0)`)
       .call((g) => {
         const gradient = svg
           .append("defs")

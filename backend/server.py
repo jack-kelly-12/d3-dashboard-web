@@ -1239,7 +1239,6 @@ def get_similar_batters(player_id):
     cursor = conn.cursor()
 
     try:
-        # Simplified target player query - only get what we need
         cursor.execute("""
             SELECT 
                 b.Player as player_name,
@@ -1259,13 +1258,18 @@ def get_similar_batters(player_id):
         cursor.execute("""
             WITH target_metrics AS (
                 SELECT 
-                    (CAST(HR as FLOAT) / NULLIF(PA, 0)) as hr_per_pa,
-                    (CAST(WAR as FLOAT) / NULLIF(PA, 0)) as war_per_pa,
-                    [K%], 
-                    [BB%],
-                    [OPS+]
-                FROM batting_war
-                WHERE player_id = ? AND Season = ? AND Division = ?
+                    (CAST(bw.HR as FLOAT) / NULLIF(bw.PA, 0)) as hr_per_pa,
+                    (CAST(bw.WAR as FLOAT) / NULLIF(bw.PA, 0)) as war_per_pa,
+                    (CAST(bw.K as FLOAT) / NULLIF(bw.PA, 0)) as k_per_pa,
+                    (CAST(bw.BB as FLOAT) / NULLIF(bw.PA, 0)) as bb_per_pa,
+                    bb.gb_pct,
+                    bb.fb_pct,
+                    bb.ld_pct,
+                    bb.pop_pct,
+                    bw.[OPS+]
+                FROM batting_war bw
+                LEFT JOIN batted_ball bb ON bw.player_id = bb.batter_id AND bw.Season = bb.season
+                WHERE bw.player_id = ? AND bw.Season = ? AND bw.Division = ?
             ),
             similar_players AS (
                 SELECT 
@@ -1278,17 +1282,26 @@ def get_similar_batters(player_id):
                     b.WAR,
                     b.PA,
                     b.HR,
+                    b.K,
+                    b.BB,
                     (CAST(b.HR as FLOAT) / NULLIF(b.PA, 0)) as hr_per_pa,
                     (CAST(b.WAR as FLOAT) / NULLIF(b.PA, 0)) as war_per_pa,
+                    (CAST(b.K as FLOAT) / NULLIF(b.PA, 0)) as k_per_pa,
+                    (CAST(b.BB as FLOAT) / NULLIF(b.PA, 0)) as bb_per_pa,
                     -- Calculate a raw distance (smaller is better)
                     SQRT(
                         (8 * POWER(((CAST(b.HR as FLOAT) / NULLIF(b.PA, 0)) - (SELECT hr_per_pa FROM target_metrics)), 2)) + 
                         (10 * POWER(((CAST(b.WAR as FLOAT) / NULLIF(b.PA, 0)) - (SELECT war_per_pa FROM target_metrics)), 2)) +
-                        (3 * POWER((b.[K%] - (SELECT [K%] FROM target_metrics)), 2)) + 
-                        (3 * POWER((b.[BB%] - (SELECT [BB%] FROM target_metrics)), 2)) +
+                        (3 * POWER(((CAST(b.K as FLOAT) / NULLIF(b.PA, 0)) - (SELECT k_per_pa FROM target_metrics)), 2)) + 
+                        (3 * POWER(((CAST(b.BB as FLOAT) / NULLIF(b.PA, 0)) - (SELECT bb_per_pa FROM target_metrics)), 2)) +
+                        (4 * POWER((bb.gb_pct - (SELECT gb_pct FROM target_metrics)), 2)) +
+                        (4 * POWER((bb.fb_pct - (SELECT fb_pct FROM target_metrics)), 2)) +
+                        (4 * POWER((bb.ld_pct - (SELECT ld_pct FROM target_metrics)), 2)) +
+                        (4 * POWER((bb.pop_pct - (SELECT pop_pct FROM target_metrics)), 2)) +
                         (4 * POWER((b.[OPS+] - (SELECT [OPS+] FROM target_metrics)), 2))
-                    ) / SQRT(8 + 10 + 3 + 3 + 4) as distance_score
+                    ) / SQRT(8 + 10 + 3 + 3 + 4 + 4 + 4 + 4 + 4) as distance_score
                 FROM batting_war b
+                LEFT JOIN batted_ball bb ON b.player_id = bb.batter_id AND b.Season = bb.season
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
                 WHERE b.Division = ? 
                     AND b.PA >= 50
@@ -1307,8 +1320,10 @@ def get_similar_batters(player_id):
                 prev_team_id,
                 conference_id,
                 ROUND(war, 1) as war,
-                ROUND(hr_per_pa * 600, 1) as projected_hr_600,
-                ROUND(war_per_pa * 600, 1) as projected_war_600,
+                ROUND(hr_per_pa * 200, 1) as projected_hr_200,
+                ROUND(war_per_pa * 200, 1) as projected_war_200,
+                ROUND(k_per_pa * 200, 1) as projected_k_200,
+                ROUND(bb_per_pa * 200, 1) as projected_bb_200,
                 -- Convert distance to similarity score (0-100)
                 -- Scale inversely: closer distance = higher score
                 ROUND(100 * (1 - (distance_score / NULLIF((SELECT max_distance FROM max_dist) * 1.1, 0)))) as similarity_score

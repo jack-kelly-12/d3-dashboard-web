@@ -143,7 +143,6 @@ export const BaseballTable = ({
     () =>
       columns.map((column, index) => ({
         ...column,
-        grow: stickyColumns.includes(index) ? 0 : column.grow || 1,
         width: stickyColumns.includes(index)
           ? column.width || "9.5rem"
           : column.width || "auto",

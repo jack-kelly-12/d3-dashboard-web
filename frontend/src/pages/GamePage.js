@@ -243,6 +243,8 @@ const GameContent = ({ gameData, handleBack }) => {
             <WinExpectancyChart
               homeTeam={gameData.home_team}
               awayTeam={gameData.away_team}
+              homeTeamId={gameData.home_team_id}
+              awayTeamId={gameData.away_team_id}
               plays={gameData.plays || []}
             />
           </div>
