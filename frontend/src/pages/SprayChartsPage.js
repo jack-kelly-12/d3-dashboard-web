@@ -518,7 +518,7 @@ const SprayChartsPage = () => {
 
             {batters.length === 0 ? (
               <div className="text-center py-10">
-                <div className="bg-gray-50 p-6 rounded-xl inline-flex flex-col items-center">
+                <div className="bg-white-50 p-6 rounded-xl inline-flex flex-col items-center">
                   <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
                     <ArrowLeft size={24} />
                   </div>
