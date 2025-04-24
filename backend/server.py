@@ -20,6 +20,9 @@ import json
 from firebase_admin import firestore, auth, credentials
 from functools import wraps
 import uuid
+import numpy as np
+from collections import defaultdict
+import time
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
@@ -1268,7 +1271,7 @@ def get_similar_batters(player_id):
                     bb.pop_pct,
                     bw.[OPS+]
                 FROM batting_war bw
-                LEFT JOIN batted_ball bb ON bw.player_id = bb.batter_id AND bw.Season = bb.season
+                LEFT JOIN batted_ball bb ON bw.player_id = bb.batter_id AND bw.Season = bb.Year
                 WHERE bw.player_id = ? AND bw.Season = ? AND bw.Division = ?
             ),
             similar_players AS (
@@ -1301,7 +1304,7 @@ def get_similar_batters(player_id):
                         (4 * POWER((b.[OPS+] - (SELECT [OPS+] FROM target_metrics)), 2))
                     ) / SQRT(8 + 10 + 3 + 3 + 4 + 4 + 4 + 4 + 4) as distance_score
                 FROM batting_war b
-                LEFT JOIN batted_ball bb ON b.player_id = bb.batter_id AND b.Season = bb.season
+                LEFT JOIN batted_ball bb ON b.player_id = bb.batter_id AND b.Season = bb.Year
                 LEFT JOIN ids_for_images i ON b.Team = i.team_name
                 WHERE b.Division = ? 
                     AND b.PA >= 50
@@ -1546,6 +1549,84 @@ def get_player_baserunning(player_id=None):
         print(f"Database error: {e}")
         return jsonify({"error": f"Database error: {str(e)}"}), 500
 
+    finally:
+        conn.close()
+
+
+@app.route('/api/leaderboards/rolling', methods=['GET'])
+def get_rolling_leaderboard():
+    start_time = time.time()
+
+    division = request.args.get('division', type=int, default=3)
+    window = request.args.get('window', type=int, default=50)
+    sort_order = request.args.get('sort_order', default='desc')
+    player_type = request.args.get('player_type', default='batter')
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+    if window not in [25, 50, 100]:
+        return jsonify({"error": "Invalid window value. Must be 25, 50, or 100."}), 400
+    if sort_order.lower() not in ['asc', 'desc']:
+        return jsonify({"error": "Invalid sort_order. Must be 'asc' or 'desc'."}), 400
+    if player_type.lower() not in ['batter', 'pitcher']:
+        return jsonify({"error": "Invalid player_type. Must be 'batter' or 'pitcher'."}), 400
+
+    # Determine tables and fields based on player_type
+    rolling_table = "rolling" if player_type.lower() == 'batter' else "rolling_pitcher"
+    id_field = "batter_id" if player_type.lower() == 'batter' else "pitcher_id"
+    stats_table = "batting_war" if player_type.lower() == 'batter' else "pitching_war"
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        query = f"""
+        SELECT 
+            r.{id_field} as player_id,
+            s.Player as playerName,
+            s.Team as team,
+            i.prev_team_id as teamId,
+            i.conference_id as conferenceId,
+            s.Conference,
+            ROUND(r.[{window}_now], 3) as wobaNow,
+            ROUND(r.[{window}_then], 3) as wobaThen,
+            ROUND(r.[{window}_delta], 3) as wobaChange
+        FROM {rolling_table} r
+        JOIN {stats_table} s ON r.{id_field} = s.player_id
+        LEFT JOIN ids_for_images i ON s.team = i.team_name
+        WHERE r.{id_field} IS NOT NULL
+        AND s.division = ?
+        AND s.Season = 2025
+        AND r.[{window}_now] IS NOT NULL 
+        AND r.[{window}_then] IS NOT NULL
+        ORDER BY r.[{window}_delta] {'DESC' if sort_order.lower() == 'desc' else 'ASC'}
+        """
+
+        cursor.execute(query, (division,))
+
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                'player_id': row[0],
+                'playerName': row[1],
+                'team': row[2],
+                'teamId': row[3],
+                'conferenceId': row[4],
+                'conference': row[5],
+                'wobaNow': row[6],
+                'wobaThen': row[7],
+                'wobaChange': row[8]
+            })
+
+        return jsonify({
+            "items": results,
+            "window": window,
+            "player_type": player_type
+        })
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": f"Error: {str(e)}"}), 500
     finally:
         conn.close()
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
-import { Search, Users, User, FileBox } from "lucide-react";
+import { Search, FileBox } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
@@ -333,7 +333,6 @@ const SituationalLeaderboard = ({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  <User size={16} className="mr-1.5" />
                   Batters
                 </button>
                 <button
@@ -345,7 +344,6 @@ const SituationalLeaderboard = ({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  <Users size={16} className="mr-1.5" />
                   Pitchers
                 </button>
               </div>

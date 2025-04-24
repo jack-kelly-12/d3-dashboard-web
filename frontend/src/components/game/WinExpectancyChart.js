@@ -186,7 +186,7 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
                 }
               >
                 <div className="font-medium mb-0.5 sm:mb-1 text-xs">
-                  Key Moment {index + 1}
+                  Key Moment
                 </div>
                 <div className="line-clamp-2 text-xs">{swing.description}</div>
               </button>
