@@ -730,27 +730,38 @@ def search_players():
         starts_with_term = f"{query.lower()}%"
         contains_term = f"%{query.lower()}%"
 
-        # Optimized query with LIMIT applied earlier
+        # First get distinct player_ids that match the search criteria
         cursor.execute("""
-            SELECT DISTINCT
-                player_id,
-                player_name as playerName,
-                team_name as team,
-                conference as conference
-            FROM rosters
-            WHERE player_id LIKE 'd3d-%'
-              AND (
-                  LOWER(player_name) = ? 
-                  OR LOWER(player_name) LIKE ? 
-                  OR LOWER(player_name) LIKE ?
-              )
+            WITH matched_players AS (
+                SELECT DISTINCT
+                    player_id,
+                    player_name
+                FROM rosters
+                WHERE player_id LIKE 'd3d-%'
+                  AND (
+                      LOWER(player_name) = ? 
+                      OR LOWER(player_name) LIKE ? 
+                      OR LOWER(player_name) LIKE ?
+                  )
+            )
+            SELECT 
+                mp.player_id,
+                mp.player_name as playerName,
+                -- Get the most recent team and conference for each player
+                (SELECT team_name FROM rosters r 
+                 WHERE r.player_id = mp.player_id 
+                 ORDER BY Year DESC LIMIT 1) as team,
+                (SELECT conference FROM rosters r
+                 WHERE r.player_id = mp.player_id
+                 ORDER BY Year DESC LIMIT 1) as conference
+            FROM matched_players mp
             ORDER BY
                 CASE
-                    WHEN LOWER(player_name) = ? THEN 1
-                    WHEN LOWER(player_name) LIKE ? THEN 2
+                    WHEN LOWER(mp.player_name) = ? THEN 1
+                    WHEN LOWER(mp.player_name) LIKE ? THEN 2
                     ELSE 3
                 END,
-                player_name
+                mp.player_name
             LIMIT 5
         """, (
             exact_term,
@@ -1541,10 +1552,101 @@ def get_player_baserunning(player_id=None):
         conn.close()
 
 
+@app.route('/api/rolling/<string:player_id>', methods=['GET'])
+def get_player_rolling_data(player_id):
+    window = request.args.get('window', type=int, default=25)
+    player_type = request.args.get('player_type', default='batter')
+
+    if window < 1:
+        return jsonify({"error": "Window size must be at least 1."}), 400
+    if player_type.lower() not in ['batter', 'pitcher']:
+        return jsonify({"error": "Invalid player_type. Must be 'batter' or 'pitcher'."}), 400
+
+    # Determine ID field based on player_type
+    id_field = "batter_id" if player_type.lower() == 'batter' else "pitcher_id"
+
+    conn = get_db_connection()
+    # Add round function to SQLite if needed
+    conn.create_function("round", 2, round)
+    cursor = conn.cursor()
+
+    try:
+        # Use a window function to calculate rolling average directly in SQL
+        # This is much more efficient than fetching all data and processing in Python
+        query = f"""
+        WITH ranked_data AS (
+            SELECT 
+                date,
+                game_id,
+                woba,
+                DENSE_RANK() OVER (ORDER BY date, game_id) as pa_number
+            FROM pbp
+            WHERE {id_field} = ?
+            AND woba IS NOT NULL
+        )
+        SELECT 
+            r1.pa_number,
+            r1.date as game_date,
+            round(AVG(r2.woba), 3) as rolling_woba,
+            r2.woba as raw_woba_value
+        FROM ranked_data r1
+        JOIN ranked_data r2 ON 
+            r2.pa_number <= r1.pa_number AND 
+            r2.pa_number > r1.pa_number - ?
+        WHERE r1.pa_number >= ?
+        GROUP BY r1.pa_number, r1.date
+        ORDER BY r1.pa_number
+        """
+
+        cursor.execute(query, (player_id, window, window))
+
+        rolling_data = []
+        for row in cursor.fetchall():
+            rolling_data.append({
+                'pa_number': row[0],
+                'game_date': row[1],
+                'rolling_woba': row[2],
+                'raw_woba_value': row[3]
+            })
+
+        # Calculate career wOBA
+        career_query = f"""
+        SELECT AVG(woba) as career_woba
+        FROM pbp
+        WHERE {id_field} = ?
+        AND woba IS NOT NULL
+        """
+
+        cursor.execute(career_query, (player_id,))
+        career_woba = cursor.fetchone()[0]
+
+        # Count total PAs
+        count_query = f"""
+        SELECT COUNT(*) 
+        FROM pbp
+        WHERE {id_field} = ?
+        AND woba IS NOT NULL
+        """
+
+        cursor.execute(count_query, (player_id,))
+        total_pas = cursor.fetchone()[0]
+
+        return jsonify({
+            "rolling_data": rolling_data,
+            "window": window,
+            "total_pas": total_pas,
+            "career_woba": career_woba
+        })
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({"error": f"Error: {str(e)}"}), 500
+    finally:
+        conn.close()
+
+
 @app.route('/api/leaderboards/rolling', methods=['GET'])
 def get_rolling_leaderboard():
-    start_time = time.time()
-
     division = request.args.get('division', type=int, default=3)
     window = request.args.get('window', type=int, default=50)
     sort_order = request.args.get('sort_order', default='desc')

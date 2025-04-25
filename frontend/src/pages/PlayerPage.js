@@ -7,6 +7,7 @@ import StatTable from "../components/player/StatTable";
 import PlayerHeader from "../components/player/PlayerHeader";
 import TeamLogo from "../components/data/TeamLogo";
 import SprayChart from "../components/scouting/SprayChart";
+import RollingChart from "../components/player/RollingChart";
 
 const LoadingState = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 via-white to-white">
@@ -33,9 +34,10 @@ const MemoizedStatTable = memo(StatTable);
 const TabButton = memo(({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 font-medium text-sm sm:text-xs rounded-lg transition-colors ${
+    className={`px-3 py-2 font-medium text-xs rounded-lg transition-colors whitespace-nowrap flex-shrink-0 ${
       active ? "bg-blue-50 text-blue-600" : "text-gray-600 hover:text-blue-600"
     }`}
+    style={{ minWidth: "max-content", padding: "0.5rem 0.75rem" }}
   >
     {children}
   </button>
@@ -43,7 +45,7 @@ const TabButton = memo(({ active, onClick, children }) => (
 
 const TabNavigation = memo(({ activeTab, onTabChange, availableTabs }) => (
   <div className="border-b border-gray-100">
-    <div className="px-6 py-4 flex gap-4 overflow-x-auto">
+    <div className="px-4 py-3 flex gap-2 overflow-x-auto scrollbar-hide">
       {availableTabs.map((tab) => (
         <TabButton
           key={tab.id}
@@ -160,9 +162,25 @@ const enrichStats = (stats) => {
 };
 
 const PlayerContent = memo(
-  ({ activeTab, statCategories, selectedDivision, playerId }) => {
+  ({ activeTab, statCategories, selectedDivision, playerId, playerData }) => {
+    const [isRollingChartLoading, setIsRollingChartLoading] = useState({
+      batter: false,
+      pitcher: false,
+    });
+
     const stats = statCategories[activeTab]?.stats || [];
     const statType = statCategories[activeTab]?.type || activeTab;
+
+    // Determine player type based on active tab
+    const playerType = [
+      STAT_TYPES.BATTING,
+      STAT_TYPES.BASERUNNING,
+      STAT_TYPES.SITUATIONAL,
+      STAT_TYPES.SPLITS,
+      STAT_TYPES.BATTED_BALL,
+    ].includes(activeTab)
+      ? "batter"
+      : "pitcher";
 
     const getMostRecentYear = () => {
       if (stats.length === 0) return new Date().getFullYear();
@@ -183,10 +201,47 @@ const PlayerContent = memo(
 
     const currentYear = getMostRecentYear();
 
+    // Get player name from playerData if available
+    const playerName = playerData?.name || "";
+
+    // Create a clear label for the wOBA chart based on the current tab
+    const chartLabel =
+      playerType === "batter" ? "Batting wOBA" : "Pitching wOBA";
+
+    // Handler function to set loading state
+    const handleRollingChartLoadingState = (type, isLoading) => {
+      setIsRollingChartLoading((prev) => ({
+        ...prev,
+        [type]: isLoading,
+      }));
+    };
+
     return (
       <div className="p-6">
         {stats.length > 0 && (
           <MemoizedStatTable stats={stats} type={statType} />
+        )}
+
+        {/* Rolling wOBA Chart for Pitchers - Show immediately after stats table */}
+        {playerType === "pitcher" && stats.length > 0 && (
+          <div>
+            {isRollingChartLoading.pitcher ? (
+              <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow-sm mt-4">
+                <div className="w-8 h-8 border-3 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <RollingChart
+                playerId={playerId}
+                playerType={playerType}
+                window={25}
+                playerName={playerName}
+                chartTitle={chartLabel}
+                onLoadingStateChange={(isLoading) =>
+                  handleRollingChartLoadingState("pitcher", isLoading)
+                }
+              />
+            )}
+          </div>
         )}
 
         {shouldShowSimilarBatters && (
@@ -206,6 +261,28 @@ const PlayerContent = memo(
               height={600}
               width={700}
             />
+          </div>
+        )}
+
+        {/* Rolling wOBA Chart for Batters - Show after spray chart */}
+        {playerType === "batter" && shouldShowSprayChart && (
+          <div>
+            {isRollingChartLoading.batter ? (
+              <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow-sm mt-4">
+                <div className="w-8 h-8 border-3 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+              </div>
+            ) : (
+              <RollingChart
+                playerId={playerId}
+                playerType={playerType}
+                window={25}
+                playerName={playerName}
+                chartTitle={chartLabel}
+                onLoadingStateChange={(isLoading) =>
+                  handleRollingChartLoadingState("batter", isLoading)
+                }
+              />
+            )}
           </div>
         )}
       </div>
@@ -669,6 +746,7 @@ const PlayerPage = () => {
               statCategories={statCategories}
               selectedDivision={selectedDivision}
               playerId={playerId}
+              playerData={playerData}
             />
           </div>
         </div>

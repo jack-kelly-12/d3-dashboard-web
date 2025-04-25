@@ -204,9 +204,6 @@ const Sidebar = () => {
       return true;
     }
 
-    // For other paths, check if the current path starts with the route path
-    // But make sure it's a complete segment match to avoid partial matches
-    // e.g. "/scouting" should match "/scouting/123" but not "/scoutingextra"
     if (path === "/") return false; // Skip the root path in this check
 
     const currentPath = location.pathname;
