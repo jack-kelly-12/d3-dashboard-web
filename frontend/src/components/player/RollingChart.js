@@ -11,13 +11,97 @@ import {
 } from "recharts";
 import { fetchAPI } from "../../config/api";
 
+// Skeleton loader component for the chart
+const ChartSkeleton = () => {
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-5 animate-pulse">
+      {/* Header skeleton */}
+      <div className="mb-4 pb-3 border-b border-gray-100">
+        <div className="h-6 bg-gray-200 rounded w-1/3 mb-3"></div>
+        <div className="flex flex-wrap mt-2 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex flex-col">
+              <div className="h-3 bg-gray-200 rounded w-20 mb-1"></div>
+              <div className="h-6 bg-gray-300 rounded w-16"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Controls skeleton */}
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex bg-gray-200 rounded-lg h-9 w-64"></div>
+      </div>
+
+      {/* Chart title skeleton */}
+      <div className="mb-3">
+        <div className="h-4 bg-gray-200 rounded w-48"></div>
+      </div>
+
+      {/* Chart area skeleton */}
+      <div className="h-72 bg-gray-100 rounded-md flex items-center justify-center">
+        <svg className="w-full h-full" viewBox="0 0 400 200">
+          {/* Y-axis */}
+          <line
+            x1="40"
+            y1="20"
+            x2="40"
+            y2="180"
+            stroke="#e5e5e5"
+            strokeWidth="2"
+          />
+          {/* X-axis */}
+          <line
+            x1="40"
+            y1="180"
+            x2="380"
+            y2="180"
+            stroke="#e5e5e5"
+            strokeWidth="2"
+          />
+          {/* Grid lines */}
+          {[40, 80, 120, 160].map((y, i) => (
+            <line
+              key={i}
+              x1="40"
+              y1={y}
+              x2="380"
+              y2={y}
+              stroke="#e5e5e5"
+              strokeDasharray="5,5"
+            />
+          ))}
+          {/* Chart line placeholder */}
+          <path
+            d="M40,120 C80,140 120,90 160,100 C200,110 240,80 280,90 C320,100 360,60 380,80"
+            fill="none"
+            stroke="#e5e5e5"
+            strokeWidth="3"
+          />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+// Empty state component with customizable messages
+const EmptyState = ({ message, suggestion }) => {
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6 text-center h-64 flex flex-col justify-center">
+      <div className="text-gray-600 mb-2">{message}</div>
+      {suggestion && <div className="text-sm text-gray-500">{suggestion}</div>}
+    </div>
+  );
+};
+
 const RollingChart = memo(
   ({
     playerId,
     playerType = "batter",
-    initialWindow = 100,
+    initialWindow = 25,
     playerName = "",
     chartTitle = "",
+    minRequiredDataPoints = 10, // Minimum data points required for meaningful visualization
   }) => {
     const [rollingData, setRollingData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -26,14 +110,20 @@ const RollingChart = memo(
     const [lastPA, setLastPA] = useState("");
     const [currentWoba, setCurrentWoba] = useState(0);
     const [careerWoba, setCareerWoba] = useState(0);
+    const [isDataSufficient, setIsDataSufficient] = useState(true);
 
     const leagueAvgWoba = 0.39;
 
     useEffect(() => {
       const fetchRollingData = async () => {
-        if (!playerId) return;
+        if (!playerId) {
+          setIsLoading(false);
+          return;
+        }
 
         setIsLoading(true);
+        setError(null);
+
         try {
           const response = await fetchAPI(
             `/api/rolling/${encodeURIComponent(
@@ -42,6 +132,9 @@ const RollingChart = memo(
           );
 
           const data = response.rolling_data || [];
+
+          // Check if we have sufficient data
+          setIsDataSufficient(data.length >= minRequiredDataPoints);
 
           if (response.career_woba) {
             setCareerWoba(response.career_woba);
@@ -70,7 +163,7 @@ const RollingChart = memo(
       };
 
       fetchRollingData();
-    }, [playerId, window, playerType]);
+    }, [playerId, window, playerType, minRequiredDataPoints]);
 
     const formatDate = (dateString) => {
       const date = new Date(dateString);
@@ -119,66 +212,81 @@ const RollingChart = memo(
       return null;
     };
 
-    // Loading state with professional spinner
+    // Handle various states
     if (isLoading) {
-      return (
-        <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow-sm">
-          <div className="w-8 h-8 border-3 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
-        </div>
-      );
+      return <ChartSkeleton />;
     }
 
-    // Error state with action button
     if (error) {
       return (
-        <div className="bg-white rounded-lg shadow-sm p-6 text-center h-64 flex flex-col justify-center items-center">
-          <div className="text-gray-600 mb-3">{error}</div>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
+        <EmptyState
+          message={error}
+          suggestion={
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mt-3"
+            >
+              Retry
+            </button>
+          }
+        />
       );
     }
 
-    // No data state
+    if (!playerId) {
+      return (
+        <EmptyState
+          message="No player selected."
+          suggestion="Please select a player to view their performance data."
+        />
+      );
+    }
+
     if (!rollingData.length) {
       return (
-        <div className="bg-white rounded-lg shadow-sm p-6 text-center h-64 flex flex-col justify-center">
-          <div className="text-gray-600">
-            No performance data available for this player.
-          </div>
-        </div>
+        <EmptyState
+          message="No performance data available for this player."
+          suggestion="This player may be new or hasn't recorded enough plate appearances yet."
+        />
       );
     }
 
-    return (
-      <div className="bg-white rounded-lg shadow-md p-5 mt-4">
-        {/* Header section with player name and current stats */}
-        {playerName && (
+    if (!isDataSufficient) {
+      return (
+        <div className="bg-white rounded-lg shadow-md p-5 mt-4">
+          {/* Limited data warning */}
           <div className="mb-4 pb-3 border-b border-gray-100">
             <h3 className="text-lg font-bold text-gray-800">{playerName}</h3>
-            <div className="flex flex-wrap mt-2 gap-4">
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">CURRENT wOBA</span>
-                <span
-                  className={`text-lg font-semibold ${
-                    currentWoba > leagueAvgWoba
-                      ? "text-green-600"
-                      : "text-red-600"
-                  }`}
-                >
-                  {currentWoba.toFixed(3)}
-                </span>
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-3">
+              <div className="flex">
+                <div className="ml-3">
+                  <p className="text-sm text-yellow-700">
+                    Limited data available ({rollingData.length} PAs). At least{" "}
+                    {minRequiredDataPoints} PAs are recommended for a meaningful
+                    rolling wOBA chart.
+                  </p>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">CAREER wOBA</span>
-                <span className="text-lg font-semibold text-gray-800">
-                  {careerWoba.toFixed(3)}
-                </span>
-              </div>
+            </div>
+
+            {/* Still show available stats */}
+            <div className="flex flex-wrap mt-3 gap-4">
+              {rollingData.length > 0 && (
+                <>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500">CURRENT wOBA</span>
+                    <span className="text-lg font-semibold text-gray-800">
+                      {currentWoba.toFixed(3)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500">CAREER wOBA</span>
+                    <span className="text-lg font-semibold text-gray-800">
+                      {careerWoba.toFixed(3)}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500">LEAGUE AVG</span>
                 <span className="text-lg font-semibold text-gray-600">
@@ -195,8 +303,71 @@ const RollingChart = memo(
               )}
             </div>
           </div>
-        )}
 
+          {/* Show a simple table of available data */}
+          <div className="mb-3">
+            <h4 className="text-sm font-bold text-gray-800 mb-2">
+              Available Performance Data
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      PA #
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      Date
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    >
+                      wOBA
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {rollingData.slice(0, 10).map((item) => (
+                    <tr key={item.pa_number}>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-800">
+                        {item.pa_number}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                        {formatDate(item.game_date)}
+                      </td>
+                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
+                        {item.raw_woba_value.toFixed(3)}
+                      </td>
+                    </tr>
+                  ))}
+                  {rollingData.length > 10 && (
+                    <tr>
+                      <td
+                        colSpan="3"
+                        className="px-3 py-2 text-sm text-gray-500 text-center"
+                      >
+                        ...and {rollingData.length - 10} more
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Main chart view
+    return (
+      <div className="bg-white rounded-lg shadow-md p-5 mt-4">
         {/* Controls section */}
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center space-x-2">
@@ -207,31 +378,49 @@ const RollingChart = memo(
                   window === 25
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-transparent text-gray-700 hover:bg-gray-200"
+                } ${
+                  rollingData.length < 25 ? "opacity-50 cursor-not-allowed" : ""
                 }`}
+                disabled={rollingData.length < 25}
               >
                 25 PAs
               </button>
               <button
-                onClick={() => handleWindowChange(50)}
+                onClick={() =>
+                  rollingData.length >= 50 && handleWindowChange(50)
+                }
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
                   window === 50
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-transparent text-gray-700 hover:bg-gray-200"
+                } ${
+                  rollingData.length < 50 ? "opacity-50 cursor-not-allowed" : ""
                 }`}
+                disabled={rollingData.length < 50}
               >
                 50 PAs
               </button>
               <button
-                onClick={() => handleWindowChange(100)}
+                onClick={() =>
+                  rollingData.length >= 100 && handleWindowChange(100)
+                }
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-all ${
                   window === 100
                     ? "bg-blue-600 text-white shadow-sm"
                     : "bg-transparent text-gray-700 hover:bg-gray-200"
+                } ${
+                  rollingData.length < 100
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
                 }`}
+                disabled={rollingData.length < 100}
               >
                 100 PAs
               </button>
             </div>
+          </div>
+          <div className="text-xs text-gray-500">
+            {rollingData.length} total PAs
           </div>
         </div>
 
@@ -281,7 +470,7 @@ const RollingChart = memo(
               <Line
                 type="monotone"
                 dataKey="rolling_woba"
-                stroke={playerType === "batter" ? "#1E88E5" : "#43A047"}
+                stroke="#1E88E5"
                 strokeWidth={2.5}
                 dot={false}
                 activeDot={{

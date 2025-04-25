@@ -730,7 +730,6 @@ def search_players():
         starts_with_term = f"{query.lower()}%"
         contains_term = f"%{query.lower()}%"
 
-        # First get distinct player_ids that match the search criteria
         cursor.execute("""
             WITH matched_players AS (
                 SELECT DISTINCT
@@ -747,7 +746,6 @@ def search_players():
             SELECT 
                 mp.player_id,
                 mp.player_name as playerName,
-                -- Get the most recent team and conference for each player
                 (SELECT team_name FROM rosters r 
                  WHERE r.player_id = mp.player_id 
                  ORDER BY Year DESC LIMIT 1) as team,
@@ -1571,31 +1569,53 @@ def get_player_rolling_data(player_id):
     cursor = conn.cursor()
 
     try:
-        # Use a window function to calculate rolling average directly in SQL
-        # This is much more efficient than fetching all data and processing in Python
+        # First, verify data exists for this player
+        check_query = f"""
+        SELECT COUNT(*) 
+        FROM pbp
+        WHERE {id_field} = ?
+        AND woba IS NOT NULL
+        """
+
+        cursor.execute(check_query, (player_id,))
+        data_count = cursor.fetchone()[0]
+
+        if data_count == 0:
+            return jsonify({
+                "error": f"No wOBA data found for {player_type} with ID {player_id}",
+                "player_type": player_type,
+                "id_field": id_field
+            }), 404
+
+        # Get all plate appearances for this player, ordered chronologically
         query = f"""
-        WITH ranked_data AS (
+        WITH player_pas AS (
             SELECT 
                 date,
                 game_id,
                 woba,
-                DENSE_RANK() OVER (ORDER BY date, game_id) as pa_number
+                ROW_NUMBER() OVER (ORDER BY date, game_id) as pa_number
             FROM pbp
             WHERE {id_field} = ?
             AND woba IS NOT NULL
+            ORDER BY date, game_id
+        ),
+        rolling_window AS (
+            SELECT 
+                p1.pa_number,
+                p1.date as game_date,
+                round(AVG(p2.woba), 3) as rolling_woba,
+                p1.woba as raw_woba_value,
+                COUNT(p2.woba) as window_size
+            FROM player_pas p1
+            JOIN player_pas p2 ON 
+                p2.pa_number <= p1.pa_number AND 
+                p2.pa_number > p1.pa_number - ?
+            GROUP BY p1.pa_number, p1.date, p1.woba
+            HAVING window_size = ?  -- Only return rows with complete windows
+            ORDER BY p1.pa_number
         )
-        SELECT 
-            r1.pa_number,
-            r1.date as game_date,
-            round(AVG(r2.woba), 3) as rolling_woba,
-            r2.woba as raw_woba_value
-        FROM ranked_data r1
-        JOIN ranked_data r2 ON 
-            r2.pa_number <= r1.pa_number AND 
-            r2.pa_number > r1.pa_number - ?
-        WHERE r1.pa_number >= ?
-        GROUP BY r1.pa_number, r1.date
-        ORDER BY r1.pa_number
+        SELECT * FROM rolling_window
         """
 
         cursor.execute(query, (player_id, window, window))
@@ -1611,7 +1631,7 @@ def get_player_rolling_data(player_id):
 
         # Calculate career wOBA
         career_query = f"""
-        SELECT AVG(woba) as career_woba
+        SELECT round(AVG(woba), 3) as career_woba
         FROM pbp
         WHERE {id_field} = ?
         AND woba IS NOT NULL
@@ -1635,12 +1655,18 @@ def get_player_rolling_data(player_id):
             "rolling_data": rolling_data,
             "window": window,
             "total_pas": total_pas,
-            "career_woba": career_woba
+            "career_woba": career_woba,
+            "player_type": player_type
         })
 
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"error": f"Error: {str(e)}"}), 500
+        return jsonify({
+            "error": f"Error: {str(e)}",
+            "player_type": player_type,
+            "id_field": id_field,
+            "player_id": player_id
+        }), 500
     finally:
         conn.close()
 
@@ -1648,7 +1674,7 @@ def get_player_rolling_data(player_id):
 @app.route('/api/leaderboards/rolling', methods=['GET'])
 def get_rolling_leaderboard():
     division = request.args.get('division', type=int, default=3)
-    window = request.args.get('window', type=int, default=50)
+    window = request.args.get('window', type=int, default=25)
     sort_order = request.args.get('sort_order', default='desc')
     player_type = request.args.get('player_type', default='batter')
 
