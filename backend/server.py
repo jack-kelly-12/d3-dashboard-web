@@ -103,7 +103,6 @@ def require_premium(f):
 
 
 @app.route('/api/batting_war/<int:year>', methods=['GET'])
-@require_premium
 def get_batting_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -131,7 +130,6 @@ def get_batting_war(year):
 
 
 @app.route('/api/pitching_war/<int:year>', methods=['GET'])
-@require_premium
 def get_pitching_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -159,7 +157,6 @@ def get_pitching_war(year):
 
 
 @app.route('/api/batting_team_war/<int:year>', methods=['GET'])
-@require_premium
 def get_batting_team_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -187,7 +184,6 @@ def get_batting_team_war(year):
 
 
 @app.route('/api/pitching_team_war/<int:year>', methods=['GET'])
-@require_premium
 def get_pitching_team_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -215,7 +211,6 @@ def get_pitching_team_war(year):
 
 
 @app.route('/api/guts', methods=['GET'])
-@require_premium
 def get_guts():
     division = request.args.get('division', default=3, type=int)
     if division not in [1, 2, 3]:
@@ -230,7 +225,6 @@ def get_guts():
 
 
 @app.route('/api/park-factors', methods=['GET'])
-@require_premium
 def get_pf():
     division = request.args.get('division', default=3, type=int)
     if division not in [1, 2, 3]:
@@ -246,7 +240,6 @@ def get_pf():
 
 
 @app.route('/api/teams', methods=['GET'])
-@require_premium
 def get_teams():
     division = request.args.get('division', 3, type=int)
     year = request.args.get('year', 2024, type=int)
@@ -269,7 +262,6 @@ def get_teams():
 
 
 @app.route('/api/players-hit/<team_name>', methods=['GET'])
-@require_premium
 def get_team_players(team_name):
     try:
         division = request.args.get('division')
@@ -333,7 +325,6 @@ def get_team_players(team_name):
 
 
 @app.route('/api/players-pitch/<team_name>', methods=['GET'])
-@require_premium
 def get_team_pitchers(team_name):
     division = request.args.get('division', type=int)
     year = request.args.get('year', '2025')
@@ -374,7 +365,6 @@ def get_team_pitchers(team_name):
 
 
 @app.route('/api/expected-runs', methods=['GET'])
-@require_premium
 def get_expected_runs():
     year = request.args.get('year', '2025')
     division = request.args.get('division', default=3, type=int)
@@ -505,7 +495,6 @@ def get_player_percentiles(player_id, year, division):
 
 
 @app.route('/api/spraychart-data/<player_id>', methods=['GET'])
-@require_premium
 def get_spraychart_data(player_id):
     try:
         year = int(request.args.get('year', '2025'))
@@ -1354,7 +1343,6 @@ def get_similar_batters(player_id):
 
 
 @app.route('/api/leaderboards/value', methods=['GET'])
-@require_premium
 def get_value_leaderboard():
     start_year = request.args.get('start_year', '2025')
     end_year = request.args.get('end_year', '2025')
@@ -2127,7 +2115,6 @@ def get_player_batted_ball(player_id=None):
 
 
 @app.route('/api/games/<int:year>/<game_id>', methods=['GET'])
-@require_premium
 def get_game(year, game_id):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -2174,7 +2161,6 @@ def get_game(year, game_id):
 
 
 @app.route('/api/games', methods=['GET'])
-@require_premium
 def get_games_by_date():
     month = request.args.get('month')
     day = request.args.get('day')
