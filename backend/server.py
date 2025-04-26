@@ -1597,33 +1597,43 @@ def get_player_rolling_data(player_id):
 
         # Get all plate appearances for this player, ordered chronologically
         query = f"""
-        WITH player_pas AS (
-            SELECT 
-                date,
-                game_id,
-                woba,
-                ROW_NUMBER() OVER (ORDER BY date, game_id) as pa_number
-            FROM pbp
-            WHERE {id_field} = ?
-            AND woba IS NOT NULL
-            ORDER BY date, game_id
-        ),
-        rolling_window AS (
-            SELECT 
-                p1.pa_number,
-                p1.date as game_date,
-                round(AVG(p2.woba), 3) as rolling_woba,
-                p1.woba as raw_woba_value,
-                COUNT(p2.woba) as window_size
-            FROM player_pas p1
-            JOIN player_pas p2 ON 
-                p2.pa_number <= p1.pa_number AND 
-                p2.pa_number > p1.pa_number - ?
-            GROUP BY p1.pa_number, p1.date, p1.woba
-            ORDER BY p1.pa_number
-        )
-        SELECT * FROM rolling_window
-        WHERE window_size >= ?  -- Changed from HAVING to WHERE and using >= instead of =
+            WITH player_pas AS (
+    SELECT 
+        date,
+        game_id,
+        woba,
+        ROW_NUMBER() OVER (
+            ORDER BY 
+                substr(date, 7, 4), -- Year part (YYYY)
+                substr(date, 1, 2), -- Month part (MM)
+                substr(date, 4, 2), -- Day part (DD)
+                game_id
+        ) as pa_number
+    FROM pbp
+    WHERE {id_field} = ?
+    AND woba IS NOT NULL
+    ORDER BY 
+        substr(date, 7, 4), -- Year part (YYYY)
+        substr(date, 1, 2), -- Month part (MM)
+        substr(date, 4, 2), -- Day part (DD)
+        game_id
+),
+rolling_window AS (
+    SELECT 
+        p1.pa_number,
+        p1.date as game_date,
+        round(AVG(p2.woba), 3) as rolling_woba,
+        p1.woba as raw_woba_value,
+        COUNT(p2.woba) as window_size
+    FROM player_pas p1
+    JOIN player_pas p2 ON 
+        p2.pa_number <= p1.pa_number AND 
+        p2.pa_number > p1.pa_number - ?
+    GROUP BY p1.pa_number, p1.date, p1.woba
+    ORDER BY p1.pa_number
+)
+SELECT * FROM rolling_window
+WHERE window_size >= ?
         """
 
         cursor.execute(query, (player_id, window, window))
@@ -1635,7 +1645,6 @@ def get_player_rolling_data(player_id):
                 'game_date': row[1],
                 'rolling_woba': row[2],
                 'raw_woba_value': row[3],
-                # Added window_size to output for debugging
                 'window_size': row[4]
             })
 
