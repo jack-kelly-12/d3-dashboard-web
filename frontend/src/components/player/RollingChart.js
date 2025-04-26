@@ -447,7 +447,7 @@ const RollingChart = memo(
               <YAxis
                 tickFormatter={formatYAxis}
                 domain={["auto", "auto"]}
-                ticks={[300, 350, 400, 450, 500, 550, 600]}
+                ticks={[100, 200, 300, 350, 400, 450, 500, 550, 600, 700, 800]}
                 axisLine={false}
                 tickLine={false}
                 stroke="#9ca3af"

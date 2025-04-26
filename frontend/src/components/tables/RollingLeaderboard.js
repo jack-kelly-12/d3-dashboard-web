@@ -7,9 +7,15 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  FileBox,
 } from "lucide-react";
 
-const RollingLeaderboard = ({ isPremiumUser = false }) => {
+const RollingLeaderboard = ({
+  isPremiumUser = false,
+  selectedListId,
+  selectedListPlayerIds,
+  isLoadingPlayerList,
+}) => {
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState({});
   const [error, setError] = useState(null);
@@ -23,6 +29,8 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
   const windowSizes = useMemo(() => [25, 50, 100], []);
 
   const fetchData = useCallback(async () => {
+    if (isLoadingPlayerList) return;
+
     setIsLoading(true);
     setError(null);
 
@@ -47,7 +55,7 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [division, playerType, windowSizes]);
+  }, [division, playerType, windowSizes, isLoadingPlayerList]);
 
   const fetchConferences = useCallback(async () => {
     try {
@@ -79,10 +87,38 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
     setExpandedWindows({});
   };
 
+  const filterDataWithPlayerList = useCallback(
+    (dataArray) => {
+      if (
+        !selectedListId ||
+        !selectedListPlayerIds ||
+        selectedListPlayerIds.length === 0
+      ) {
+        return dataArray;
+      }
+
+      return dataArray.filter((player) => {
+        const playerId = player.player_id || player.Player_ID;
+        if (!playerId) return false;
+
+        // Check if the player ID is in the selected list
+        // Handle both string and number comparisons
+        return selectedListPlayerIds.some(
+          (id) =>
+            id === playerId.toString() ||
+            id === playerId ||
+            (playerId.toString().includes("d3d-") &&
+              id === playerId.toString().replace("d3d-", ""))
+        );
+      });
+    },
+    [selectedListId, selectedListPlayerIds]
+  );
+
   const renderLeaderboardSection = (window) => {
     if (!data[window]) return null;
 
-    const filteredData = data[window].filter((player) => {
+    const initialFiltered = data[window].filter((player) => {
       const searchMatch =
         searchTerm === "" ||
         player.playerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -94,6 +130,9 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
 
       return searchMatch && conferenceMatch;
     });
+
+    // Apply player list filtering
+    const filteredData = filterDataWithPlayerList(initialFiltered);
 
     const sortedData = [...filteredData].sort((a, b) => {
       if (playerType === "pitcher") {
@@ -128,6 +167,34 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
     const isExpanded = expandedWindows[window];
     const displayData = isExpanded ? sortedData : null;
 
+    // No data state
+    if (filteredData.length === 0) {
+      return (
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex justify-between items-center p-3 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700">
+              {window} {playerType === "pitcher" ? "BF" : "PA"} wOBA
+            </h3>
+          </div>
+          <div className="p-6 text-center">
+            <p className="text-gray-600 mb-4">
+              No data found for the current filters.
+            </p>
+            {selectedListId && (
+              <div className="mt-4 flex flex-col items-center">
+                <FileBox size={32} className="text-blue-500 mb-2" />
+                <p className="text-gray-500 text-sm">
+                  {selectedListPlayerIds.length === 0
+                    ? "The selected player list is empty."
+                    : "None of the players in the selected list match the current criteria."}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     // Helper function to determine text color for delta
     const getDeltaColor = (player) => {
       if (playerType === "pitcher") {
@@ -143,20 +210,27 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
           <h3 className="text-sm font-semibold text-gray-700">
             {window} {playerType === "pitcher" ? "BF" : "PA"} wOBA
           </h3>
-          <button
-            onClick={() => toggleWindow(window)}
-            className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center"
-          >
-            {isExpanded ? (
-              <>
-                Show Top 5 <ChevronUp size={14} className="ml-1" />
-              </>
-            ) : (
-              <>
-                Show All <ChevronDown size={14} className="ml-1" />
-              </>
+          <div className="flex items-center gap-2">
+            {selectedListId && (
+              <span className="text-xs text-blue-600">
+                {filteredData.length}/{data[window].length} players
+              </span>
             )}
-          </button>
+            <button
+              onClick={() => toggleWindow(window)}
+              className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center"
+            >
+              {isExpanded ? (
+                <>
+                  Show Top 5 <ChevronUp size={14} className="ml-1" />
+                </>
+              ) : (
+                <>
+                  Show All <ChevronDown size={14} className="ml-1" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="p-2">
@@ -311,7 +385,7 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
     );
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingPlayerList) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
@@ -380,6 +454,13 @@ const RollingLeaderboard = ({ isPremiumUser = false }) => {
                 </button>
               </div>
             </div>
+
+            {/* Player List Filter Status */}
+            {selectedListId && selectedListPlayerIds && (
+              <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
+                Player list filter active
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">

@@ -1587,6 +1587,14 @@ def get_player_rolling_data(player_id):
                 "id_field": id_field
             }), 404
 
+        # Check if we have enough PAs for the specified window
+        if data_count < window:
+            return jsonify({
+                "error": f"Not enough plate appearances for window size {window}. Player has {data_count} PAs.",
+                "player_type": player_type,
+                "total_pas": data_count
+            }), 400
+
         # Get all plate appearances for this player, ordered chronologically
         query = f"""
         WITH player_pas AS (
@@ -1612,10 +1620,10 @@ def get_player_rolling_data(player_id):
                 p2.pa_number <= p1.pa_number AND 
                 p2.pa_number > p1.pa_number - ?
             GROUP BY p1.pa_number, p1.date, p1.woba
-            HAVING window_size = ?  -- Only return rows with complete windows
             ORDER BY p1.pa_number
         )
         SELECT * FROM rolling_window
+        WHERE window_size >= ?  -- Changed from HAVING to WHERE and using >= instead of =
         """
 
         cursor.execute(query, (player_id, window, window))
@@ -1626,7 +1634,9 @@ def get_player_rolling_data(player_id):
                 'pa_number': row[0],
                 'game_date': row[1],
                 'rolling_woba': row[2],
-                'raw_woba_value': row[3]
+                'raw_woba_value': row[3],
+                # Added window_size to output for debugging
+                'window_size': row[4]
             })
 
         # Calculate career wOBA
