@@ -12,7 +12,6 @@ import io
 from flask import Response
 import os
 import logging
-from llm_insights import InsightsProcessor
 from dotenv import load_dotenv
 import stripe
 import firebase_admin
@@ -222,6 +221,65 @@ def get_guts():
     data = [dict(row) for row in cursor.fetchall()]
     conn.close()
     return jsonify(data)
+
+
+@app.route('/api/rankings', methods=['GET'])
+def get_rankings():
+    division = request.args.get('division', default=3, type=int)
+    year = request.args.get('year', default=2025, type=int)
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3"}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            WITH team_ids AS (
+                SELECT DISTINCT r.team_id, r.team_name 
+                FROM rosters r 
+                WHERE r.division = ? AND r.year = ?
+            ),
+            team_wins AS (
+                SELECT 
+                    t.team_id,
+                    t.team_name,
+                    COUNT(CASE WHEN (s.home_team_id = t.team_id AND s.home_team_score > s.away_team_score) OR 
+                                   (s.away_team_id = t.team_id AND s.away_team_score > s.home_team_score) 
+                              THEN 1 END) as wins,
+                    COUNT(CASE WHEN (s.home_team_id = t.team_id AND s.home_team_score < s.away_team_score) OR 
+                                   (s.away_team_id = t.team_id AND s.away_team_score < s.home_team_score) 
+                              THEN 1 END) as losses,
+                    COUNT(CASE WHEN (s.home_team_id = t.team_id OR s.away_team_id = t.team_id) 
+                              THEN 1 END) as total_games
+                FROM team_ids t
+                LEFT JOIN schedules s ON (s.home_team_id = t.team_id OR s.away_team_id = t.team_id)
+                    AND s.year = ?
+                GROUP BY t.team_id, t.team_name
+            )
+            
+            SELECT 
+                r.*,
+                COALESCE(tw.wins, 0) as wins,
+                COALESCE(tw.losses, 0) as losses,
+                COALESCE(tw.total_games, 0) as total_games,
+                CASE WHEN tw.total_games > 0 
+                     THEN ROUND(CAST(tw.wins AS FLOAT) / tw.total_games, 3) 
+                     ELSE 0 
+                END as win_pct
+            FROM rankings r
+            LEFT JOIN team_wins tw ON r.team = tw.team_name
+            WHERE r.division = ?
+        """, (division, year, year, division))
+
+        data = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(data)
+
+    except Exception as e:
+        print(f"Error in get_rankings: {str(e)}")
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 
 @app.route('/api/park-factors', methods=['GET'])

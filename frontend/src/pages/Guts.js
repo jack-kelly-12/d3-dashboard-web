@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import GutsTable from "../components/tables/GutsTable";
 import ParkFactorsTable from "../components/tables/ParkFactorsTable";
 import ExpectedRunsTable from "../components/tables/ExpectedRunsTable";
+import RankingsTable from "../components/tables/RankingsTable";
 import { fetchAPI } from "../config/api";
 import InfoBanner from "../components/data/InfoBanner";
 import { useSubscription } from "../contexts/SubscriptionContext";
@@ -15,11 +16,13 @@ const divisions = [
 
 const Guts = () => {
   const [gutsData, setGutsData] = useState([]);
+  const [rankingsData, setRankingsData] = useState([]);
   const [pfData, setPFData] = useState([]);
   const [erData, setERData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [rankingsSearchTerm, setRankingsSearchTerm] = useState("");
+  const [pfSearchTerm, setPfSearchTerm] = useState("");
   const [selectedYear, setSelectedYear] = useState("2025");
   const [selectedDivision, setSelectedDivision] = useState(3);
   const { isPremiumUser, isLoadingPremium } = useSubscription();
@@ -62,22 +65,26 @@ const Guts = () => {
 
       setIsLoading(true);
       try {
-        const [gutsResults, pfResults, erResults] = await Promise.all([
-          fetchAPI(`/api/guts?division=${selectedDivision}`),
-          fetchAPI(`/api/park-factors?division=${selectedDivision}`),
-          fetchAPI(
-            `/api/expected-runs?year=${selectedYear}&division=${selectedDivision}`
-          ),
-        ]);
+        const [gutsResults, pfResults, erResults, rankingsResults] =
+          await Promise.all([
+            fetchAPI(`/api/guts?division=${selectedDivision}`),
+            fetchAPI(`/api/park-factors?division=${selectedDivision}`),
+            fetchAPI(
+              `/api/expected-runs?year=${selectedYear}&division=${selectedDivision}`
+            ),
+            fetchAPI(`/api/rankings?division=${selectedDivision}`),
+          ]);
 
         setGutsData(Array.isArray(gutsResults) ? gutsResults : []);
         setPFData(Array.isArray(pfResults) ? pfResults : []);
         setERData(Array.isArray(erResults) ? erResults : []);
+        setRankingsData(Array.isArray(rankingsResults) ? rankingsResults : []);
       } catch (error) {
         console.error("Error fetching data:", error);
         setGutsData([]);
         setPFData([]);
         setERData([]);
+        setRankingsData([]);
       } finally {
         setIsLoading(false);
       }
@@ -133,6 +140,13 @@ const Guts = () => {
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <DivisionSelector />
             <div className="space-y-6">
+              <RankingsTable
+                data={rankingsData}
+                division={selectedDivision}
+                searchTerm={rankingsSearchTerm}
+                onSearchChange={setRankingsSearchTerm}
+              />
+
               <GutsTable data={gutsData} />
 
               <ExpectedRunsTable
@@ -144,8 +158,8 @@ const Guts = () => {
 
               <ParkFactorsTable
                 data={pfData}
-                searchTerm={searchTerm}
-                onSearchChange={setSearchTerm}
+                searchTerm={pfSearchTerm}
+                onSearchChange={setPfSearchTerm}
               />
             </div>
           </div>

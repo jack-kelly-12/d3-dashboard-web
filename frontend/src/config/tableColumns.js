@@ -131,6 +131,79 @@ export const columnsGuts = [
   },
 ];
 
+export const columnsRankings = [
+  {
+    name: "",
+    selector: (row) => row.adjusted_rank,
+    sortable: true,
+    className: "px-4 py-3 text-center font-medium",
+    width: "8rem",
+  },
+  {
+    name: "Team",
+    selector: (row) => row.team,
+    sortable: true,
+    className: "px-4 py-3 font-medium",
+    width: "12rem",
+  },
+  {
+    name: "W",
+    selector: (row) => row.wins,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "3rem",
+  },
+  {
+    name: "L",
+    selector: (row) => row.losses,
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "3rem",
+  },
+  {
+    name: "Win%",
+    selector: (row) => roundTo(row.win_pct, 3),
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "5rem",
+  },
+  {
+    name: "Off",
+    selector: (row) => roundTo(row.off_rating, 2),
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "7rem",
+  },
+  {
+    name: "Def",
+    selector: (row) => roundTo(row.def_rating, 2),
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "7rem",
+  },
+  {
+    name: "Rating",
+    selector: (row) => roundTo(row.adjusted_rating, 2),
+    sortable: true,
+    className: "px-4 py-3 text-center font-medium",
+    width: "7rem",
+  },
+  {
+    name: "SOS",
+    selector: (row) => roundTo(row.sos_rating, 2),
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "7rem",
+  },
+  {
+    name: "HFA",
+    selector: (row) => roundTo(row.hfa, 2),
+    sortable: true,
+    className: "px-4 py-3 text-center",
+    width: "6rem",
+  },
+];
+
 export const columnsValue = [
   {
     name: "#",
