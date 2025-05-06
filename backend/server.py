@@ -1346,10 +1346,10 @@ def get_similar_batters(player_id):
                         (10 * POWER(((CAST(b.WAR as FLOAT) / NULLIF(b.PA, 0)) - (SELECT war_per_pa FROM target_metrics)), 2)) +
                         (3 * POWER(((CAST(b.K as FLOAT) / NULLIF(b.PA, 0)) - (SELECT k_per_pa FROM target_metrics)), 2)) + 
                         (3 * POWER(((CAST(b.BB as FLOAT) / NULLIF(b.PA, 0)) - (SELECT bb_per_pa FROM target_metrics)), 2)) +
-                        (4 * POWER((bb.gb_pct - (SELECT gb_pct FROM target_metrics)), 2)) +
-                        (4 * POWER((bb.fb_pct - (SELECT fb_pct FROM target_metrics)), 2)) +
-                        (4 * POWER((bb.ld_pct - (SELECT ld_pct FROM target_metrics)), 2)) +
-                        (4 * POWER((bb.pop_pct - (SELECT pop_pct FROM target_metrics)), 2)) +
+                        (4 * POWER((COALESCE(bb.gb_pct, 0) - COALESCE((SELECT gb_pct FROM target_metrics), 0)), 2)) +
+                        (4 * POWER((COALESCE(bb.fb_pct, 0) - COALESCE((SELECT fb_pct FROM target_metrics), 0)), 2)) +
+                        (4 * POWER((COALESCE(bb.ld_pct, 0) - COALESCE((SELECT ld_pct FROM target_metrics), 0)), 2)) +
+                        (4 * POWER((COALESCE(bb.pop_pct, 0) - COALESCE((SELECT pop_pct FROM target_metrics), 0)), 2)) +
                         (4 * POWER((b.[OPS+] - (SELECT [OPS+] FROM target_metrics)), 2))
                     ) / SQRT(8 + 10 + 3 + 3 + 4 + 4 + 4 + 4 + 4) as distance_score
                 FROM batting_war b
