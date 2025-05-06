@@ -23,6 +23,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useSubscription } from "./contexts/SubscriptionContext";
 import BaseballSpraychart from "./components/scouting/SprayChart";
 import SprayChartsPage from "./pages/SprayChartsPage.js";
+import GamePrediction from "./pages/Simulation.js";
 
 export const ProtectedRoute = ({ children, requiresPremium = false }) => {
   const { isLoading, isPremium } = useSubscription();
@@ -73,6 +74,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Guts />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/simulation"
+                element={
+                  <ProtectedRoute>
+                    <GamePrediction />
                   </ProtectedRoute>
                 }
               />
