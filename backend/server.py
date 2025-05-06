@@ -22,6 +22,8 @@ import uuid
 import numpy as np
 from collections import defaultdict
 import time
+from functools import lru_cache
+import hashlib
 
 
 app = Flask(__name__, static_folder='../frontend/build/', static_url_path='/')
@@ -1135,45 +1137,6 @@ def get_conferences():
         conn.close()
 
 
-@app.route('/api/teams/logos/<team_id>.png')
-def get_team_logo(team_id):
-    try:
-        image_path = os.path.join(app.root_path, 'images', f'{team_id}.gif')
-
-        if not os.path.exists(image_path):
-            return '', 404
-
-        with Image.open(image_path) as img:
-            img = img.convert('RGBA')
-
-            data = img.getdata()
-            new_data = []
-            for item in data:
-                if item[0] > 245 and item[1] > 245 and item[2] > 245:
-                    new_data.append((255, 255, 255, 0))
-                else:
-                    new_data.append(item)
-
-            img.putdata(new_data)
-
-            img_io = io.BytesIO()
-            img.save(img_io, 'PNG')
-            img_io.seek(0)
-
-            return Response(
-                img_io.getvalue(),
-                mimetype='image/png',
-                headers={
-                    'Cache-Control': 'public, max-age= 31536000',
-                    'Content-Type': 'image/png'
-                }
-            )
-
-    except Exception as e:
-        print(f"Error serving logo: {e}")
-        return '', 404
-
-
 @app.route('/api/players')
 def get_players():
     conn = get_db_connection()
@@ -1214,17 +1177,14 @@ def get_players():
         for row in cursor.fetchall():
             player_dict = dict(row)
 
-            # Capitalize the position field
             if player_dict.get('position'):
                 player_dict['position'] = player_dict['position'].upper()
 
-            # Parse the years JSON array
             try:
                 if isinstance(player_dict.get('years'), str):
                     import json
                     player_dict['years'] = json.loads(player_dict['years'])
             except:
-                # Fallback if JSON parsing fails
                 player_dict['years'] = [
                     player_dict['minYear'], player_dict['maxYear']]
 
@@ -1241,43 +1201,76 @@ def get_players():
         conn.close()
 
 
+@app.route('/api/teams/logos/<team_id>.png')
+def get_team_logo(team_id):
+    return serve_logo(team_id, 'team')
+
+
 @app.route('/api/conferences/logos/<conference_id>.png')
 def get_conference_logo(conference_id):
+    return serve_logo(conference_id, 'conference')
+
+
+@lru_cache(maxsize=128)
+def get_processed_logo(image_path):
+    with Image.open(image_path) as img:
+        img = img.convert('RGBA')
+
+        data = img.getdata()
+        new_data = []
+        for item in data:
+            if item[0] > 245 and item[1] > 245 and item[2] > 245:
+                new_data.append((255, 255, 255, 0))
+            else:
+                new_data.append(item)
+
+        img.putdata(new_data)
+
+        img_io = io.BytesIO()
+        img.save(img_io, 'PNG')
+        img_io.seek(0)
+
+        return img_io.getvalue()
+
+
+def serve_logo(entity_id, entity_type):
     try:
-        image_path = os.path.join(
-            app.root_path, 'images', f'{conference_id}.gif')
+        image_path = os.path.join(app.root_path, 'images', f'{entity_id}.png')
 
         if not os.path.exists(image_path):
-            return '', 404
+            image_path = os.path.join(
+                app.root_path, 'images', f'{entity_id}.gif')
 
-        with Image.open(image_path) as img:
-            img = img.convert('RGBA')
+            if not os.path.exists(image_path):
+                return '', 404
 
-            data = img.getdata()
-            new_data = []
-            for item in data:
-                if item[0] > 245 and item[1] > 245 and item[2] > 245:
-                    new_data.append((255, 255, 255, 0))
-                else:
-                    new_data.append(item)
-
-            img.putdata(new_data)
-
-            img_io = io.BytesIO()
-            img.save(img_io, 'PNG')
-            img_io.seek(0)
+        if image_path.lower().endswith('.png'):
+            with open(image_path, 'rb') as f:
+                image_data = f.read()
 
             return Response(
-                img_io.getvalue(),
+                image_data,
                 mimetype='image/png',
                 headers={
-                    'Cache-Control': 'public, max-age= 31536000',
-                    'Content-Type': 'image/png'
+                    'Cache-Control': 'public, max-age=31536000',
+                    'Content-Type': 'image/png',
+                    'ETag': hashlib.md5(image_data).hexdigest()
                 }
             )
 
+        image_data = get_processed_logo(image_path)
+
+        return Response(
+            image_data,
+            mimetype='image/png',
+            headers={
+                'Cache-Control': 'public, max-age=31536000',
+                'Content-Type': 'image/png',
+                'ETag': hashlib.md5(image_data).hexdigest()
+            }
+        )
     except Exception as e:
-        print(f"Error serving conference logo: {e}")
+        print(f"Error serving {entity_type} logo: {e}")
         return '', 404
 
 
