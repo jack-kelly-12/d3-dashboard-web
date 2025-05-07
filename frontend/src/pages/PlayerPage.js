@@ -137,6 +137,67 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
   );
 });
 
+const SimilarPitchers = memo(({ playerId, year, division }) => {
+  const [similarPlayers, setSimilarPlayers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [player, setPlayer] = useState("");
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSimilarPitchers = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchAPI(
+          `/api/similar-pitchers/${encodeURIComponent(
+            playerId
+          )}?year=${year}&division=${division}`
+        );
+        setPlayer(response.target_player.player_name || "");
+        setSimilarPlayers(response.similar_players || []);
+      } catch (err) {
+        console.error("Error fetching similar pitchers:", err);
+        setError("Could not load similar pitchers");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (playerId && year && division) {
+      fetchSimilarPitchers();
+    }
+  }, [playerId, year, division]);
+
+  if (isLoading) return <div className="text-center py-4"></div>;
+  if (error) return null;
+  if (!similarPlayers.length) return null;
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
+      <h3 className="text-sm font-medium mb-3">Similar Pitchers to {player}:</h3>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+        {similarPlayers.slice(0, 5).map((player, idx) => (
+          <a
+            key={`${player.player_id}-${player.year}`}
+            href={`/player/${player.player_id}`}
+            className="flex items-center p-2 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <TeamLogo
+              teamId={player.prev_team_id}
+              conferenceId={player.conference_id}
+              teamName={player.team}
+              className="h-8 w-8 flex-shrink-0 mr-2"
+            />
+            <span className="text-xs truncate">
+              {player.year} - {player.player_name}
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+});
+
 const enrichStats = (stats) => {
   if (!stats || !Array.isArray(stats)) return [];
 
@@ -198,6 +259,7 @@ const PlayerContent = memo(
       ].includes(activeTab) && stats.length > 0;
 
     const shouldShowSimilarBatters = shouldShowSprayChart;
+    const shouldShowSimilarPitchers = playerType === "pitcher" && stats.length > 0;
 
     const currentYear = getMostRecentYear();
 
@@ -246,6 +308,14 @@ const PlayerContent = memo(
 
         {shouldShowSimilarBatters && (
           <SimilarBatters
+            playerId={playerId}
+            year={currentYear}
+            division={selectedDivision}
+          />
+        )}
+
+        {shouldShowSimilarPitchers && (
+          <SimilarPitchers
             playerId={playerId}
             year={currentYear}
             division={selectedDivision}

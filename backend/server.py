@@ -397,10 +397,10 @@ def get_team_pitchers(team_name):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    cursor.execute(
-        "SELECT DISTINCT Team FROM pitching_war WHERE Division = ? AND Season = ? AND Team = ?",
-        (division, year, team_name)
-    )
+    cursor.execute("""
+        SELECT DISTINCT Team FROM pitching_war WHERE Division = ? AND Season = ? AND Team = ?
+    """, (division, year, team_name))
+
     if not cursor.fetchone():
         return jsonify({"error": "Invalid team name"}), 404
 
@@ -786,51 +786,62 @@ def search_players():
     cursor = conn.cursor()
 
     try:
-        exact_term = query.lower()
-        starts_with_term = f"{query.lower()}%"
-        contains_term = f"%{query.lower()}%"
-
+        # Pre-compute search terms
+        search_term = query.lower()
+        
+        # Use a more efficient query with UNION ALL for better performance
         cursor.execute("""
-            WITH matched_players AS (
-                SELECT DISTINCT
+            WITH search_results AS (
+                -- Exact matches first
+                SELECT 
                     player_id,
-                    player_name
+                    player_name as playerName,
+                    team_name as team,
+                    conference,
+                    1 as match_rank
                 FROM rosters
-                WHERE player_id LIKE 'd3d-%'
-                  AND (
-                      LOWER(player_name) = ? 
-                      OR LOWER(player_name) LIKE ? 
-                      OR LOWER(player_name) LIKE ?
-                  )
+                WHERE LOWER(player_name) = ?
+                AND player_id LIKE 'd3d-%'
+                
+                UNION ALL
+                
+                -- Starts with matches second
+                SELECT 
+                    player_id,
+                    player_name as playerName,
+                    team_name as team,
+                    conference,
+                    2 as match_rank
+                FROM rosters
+                WHERE LOWER(player_name) LIKE ? || '%'
+                AND player_id LIKE 'd3d-%'
+                AND LOWER(player_name) != ?
+                
+                UNION ALL
+                
+                -- Contains matches last
+                SELECT 
+                    player_id,
+                    player_name as playerName,
+                    team_name as team,
+                    conference,
+                    3 as match_rank
+                FROM rosters
+                WHERE LOWER(player_name) LIKE '%' || ? || '%'
+                AND player_id LIKE 'd3d-%'
+                AND LOWER(player_name) NOT LIKE ? || '%'
             )
-            SELECT 
-                mp.player_id,
-                mp.player_name as playerName,
-                (SELECT team_name FROM rosters r 
-                 WHERE r.player_id = mp.player_id 
-                 ORDER BY Year DESC LIMIT 1) as team,
-                (SELECT conference FROM rosters r
-                 WHERE r.player_id = mp.player_id
-                 ORDER BY Year DESC LIMIT 1) as conference
-            FROM matched_players mp
-            ORDER BY
-                CASE
-                    WHEN LOWER(mp.player_name) = ? THEN 1
-                    WHEN LOWER(mp.player_name) LIKE ? THEN 2
-                    ELSE 3
-                END,
-                mp.player_name
+            SELECT DISTINCT
+                player_id,
+                playerName,
+                team,
+                conference
+            FROM search_results
+            ORDER BY match_rank, playerName
             LIMIT 5
-        """, (
-            exact_term,
-            starts_with_term,
-            contains_term,
-            exact_term,
-            starts_with_term
-        ))
+        """, (search_term, search_term, search_term, search_term, search_term))
 
         results = [dict(row) for row in cursor.fetchall()]
-
         return jsonify(results)
 
     except Exception as e:
@@ -1378,6 +1389,152 @@ def get_similar_batters(player_id):
                 ROUND(bb_per_pa * 200, 1) as projected_bb_200,
                 -- Convert distance to similarity score (0-100)
                 -- Scale inversely: closer distance = higher score
+                ROUND(100 * (1 - (distance_score / NULLIF((SELECT max_distance FROM max_dist) * 1.1, 0)))) as similarity_score
+            FROM similar_players
+            ORDER BY distance_score ASC
+            LIMIT ?
+        """, (player_id, year, division, division, player_id, year, count))
+
+        similar_players = [dict(row) for row in cursor.fetchall()]
+
+        return jsonify({
+            'target_player': {
+                'player_id': player_id,
+                'player_name': target_name,
+                'year': year
+            },
+            'similar_players': similar_players
+        })
+
+    except sqlite3.Error as e:
+        print(f"Database error: {e}")
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/similar-pitchers/<string:player_id>', methods=['GET'])
+def get_similar_pitchers(player_id):
+    year = request.args.get('year', type=int, default=2025)
+    division = request.args.get('division', type=int, default=3)
+    count = request.args.get('count', type=int, default=5)
+
+    if year < 2021 or year > 2025:
+        return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
+
+    if division not in [1, 2, 3]:
+        return jsonify({"error": "Invalid division. Must be 1, 2, or 3."}), 400
+
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    try:
+        # First get the target pitcher's info
+        cursor.execute("""
+            SELECT 
+                p.Player as player_name,
+                p.Team as team_name
+            FROM pitching_war p
+            WHERE p.player_id = ? AND p.Season = ? AND p.Division = ?
+            LIMIT 1
+        """, (player_id, year, division))
+
+        target_player = cursor.fetchone()
+
+        if not target_player:
+            return jsonify({"error": "Player not found or no data available"}), 404
+
+        target_name = target_player['player_name']
+
+        # Get similar pitchers using relevant pitching metrics
+        cursor.execute("""
+            WITH target_metrics AS (
+                SELECT 
+                    COALESCE(p.ERA, 0) as ERA,
+                    COALESCE(p.FIP, 0) as FIP,
+                    COALESCE(p.xFIP, 0) as xFIP,
+                    COALESCE(p.[K%], 0) as [K%],
+                    COALESCE(p.[BB%], 0) as [BB%],
+                    COALESCE(p.[K-BB%], 0) as [K-BB%],
+                    COALESCE(p.[HR/FB], 0) as [HR/FB],
+                    COALESCE(p.WAR, 0) as WAR,
+                    COALESCE(p.IP, 0) as IP,
+                    COALESCE(p.RA9, 0) as RA9,
+                    COALESCE(p.[pWPA], 0) as [pWPA],
+                    COALESCE(p.[pWPA/LI], 0) as [pWPA/LI],
+                    COALESCE(p.[pREA], 0) as [pREA],
+                    COALESCE(p.Clutch, 0) as Clutch
+                FROM pitching_war p
+                WHERE p.player_id = ? AND p.Season = ? AND p.Division = ?
+            ),
+            similar_players AS (
+                SELECT 
+                    p.player_id,
+                    p.Player as player_name, 
+                    p.Team as team,
+                    p.Season as year,
+                    i.prev_team_id,
+                    i.conference_id,
+                    COALESCE(p.ERA, 0) as ERA,
+                    COALESCE(p.FIP, 0) as FIP,
+                    COALESCE(p.xFIP, 0) as xFIP,
+                    COALESCE(p.[K%], 0) as [K%],
+                    COALESCE(p.[BB%], 0) as [BB%],
+                    COALESCE(p.[K-BB%], 0) as [K-BB%],
+                    COALESCE(p.[HR/FB], 0) as [HR/FB],
+                    COALESCE(p.WAR, 0) as WAR,
+                    COALESCE(p.IP, 0) as IP,
+                    COALESCE(p.RA9, 0) as RA9,
+                    COALESCE(p.[pWPA], 0) as [pWPA],
+                    COALESCE(p.[pWPA/LI], 0) as [pWPA/LI],
+                    COALESCE(p.[pREA], 0) as [pREA],
+                    COALESCE(p.Clutch, 0) as Clutch,
+                    SQRT(
+                        (5 * POWER((COALESCE(p.ERA, 0) - (SELECT ERA FROM target_metrics)), 2)) +
+                        (5 * POWER((COALESCE(p.FIP, 0) - (SELECT FIP FROM target_metrics)), 2)) +
+                        (5 * POWER((COALESCE(p.xFIP, 0) - (SELECT xFIP FROM target_metrics)), 2)) +
+                        (4 * POWER((COALESCE(p.[K%], 0) - (SELECT [K%] FROM target_metrics)), 2)) +
+                        (4 * POWER((COALESCE(p.[BB%], 0) - (SELECT [BB%] FROM target_metrics)), 2)) +
+                        (4 * POWER((COALESCE(p.[K-BB%], 0) - (SELECT [K-BB%] FROM target_metrics)), 2)) +
+                        (3 * POWER((COALESCE(p.[HR/FB], 0) - (SELECT [HR/FB] FROM target_metrics)), 2)) +
+                        (3 * POWER((COALESCE(p.RA9, 0) - (SELECT RA9 FROM target_metrics)), 2)) +
+                        (2 * POWER((COALESCE(p.[pWPA], 0) - (SELECT [pWPA] FROM target_metrics)), 2)) +
+                        (2 * POWER((COALESCE(p.[pWPA/LI], 0) - (SELECT [pWPA/LI] FROM target_metrics)), 2)) +
+                        (2 * POWER((COALESCE(p.[pREA], 0) - (SELECT [pREA] FROM target_metrics)), 2)) +
+                        (1 * POWER((COALESCE(p.Clutch, 0) - (SELECT Clutch FROM target_metrics)), 2))
+                    ) / SQRT(5 + 5 + 5 + 4 + 4 + 4 + 3 + 3 + 2 + 2 + 2 + 1) as distance_score
+                FROM pitching_war p
+                LEFT JOIN ids_for_images i ON p.Team = i.team_name
+                WHERE p.Division = ? 
+                    AND p.IP >= 50
+                    AND (p.player_id != ? OR p.Season != ?)
+            ),
+            max_dist AS (
+                SELECT MAX(distance_score) as max_distance 
+                FROM similar_players
+            )
+            SELECT 
+                player_id,
+                player_name,
+                team,
+                year,
+                prev_team_id,
+                conference_id,
+                ROUND(ERA, 2) as era,
+                ROUND(FIP, 2) as fip,
+                ROUND(xFIP, 2) as xfip,
+                ROUND([K%], 1) as k_pct,
+                ROUND([BB%], 1) as bb_pct,
+                ROUND([K-BB%], 1) as k_bb_pct,
+                ROUND([HR/FB], 1) as hr_fb_pct,
+                ROUND(WAR, 1) as war,
+                ROUND(IP, 1) as ip,
+                ROUND(RA9, 2) as ra9,
+                ROUND([pWPA], 2) as pWPA,
+                ROUND([pWPA/LI], 2) as pWPA_LI,
+                ROUND([pREA], 2) as pREA,
+                ROUND(Clutch, 2) as clutch,
                 ROUND(100 * (1 - (distance_score / NULLIF((SELECT max_distance FROM max_dist) * 1.1, 0)))) as similarity_score
             FROM similar_players
             ORDER BY distance_score ASC
