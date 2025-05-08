@@ -295,169 +295,262 @@ const Leaderboards = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container max-w-full lg:max-w-6xl mx-auto px-4 py-4 sm:py-8">
-        {/* Main container that keeps everything the same width */}
-        <div className="rounded-lg overflow-hidden">
-          {/* Header Section */}
-          <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            {/* Left side - Title */}
-            <h1 className="text-3xl font-bold text-blue-600">
-              {getCurrentLeaderboardName()}
-            </h1>
-
-            {/* Right side - Controls */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-              {/* Leaderboard Selection Dropdown */}
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-2 min-w-[180px] text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  aria-expanded={isDropdownOpen}
-                >
-                  <div className="flex items-center gap-2">
-                    <svg
-                      className="w-4 h-4 text-blue-500"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M8 13H12M8 17H16M8 9H16M18 21H6C4.89543 21 4 20.1046 4 19V5C4 3.89543 4.89543 3 6 3H14L20 9V19C20 20.1046 19.1046 21 18 21Z"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                    <span>Select Leaderboard</span>
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    className={`transition-transform duration-200 ${
-                      isDropdownOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {/* Dropdown content */}
-                <div
-                  className={`absolute right-0 mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-10 overflow-hidden ${
-                    isDropdownOpen
-                      ? "opacity-100"
-                      : "opacity-0 pointer-events-none"
-                  } transition-opacity duration-150`}
-                >
-                  {Object.entries(LEADERBOARD_CATEGORIES).map(
-                    ([categoryKey, category]) => (
-                      <div
-                        key={categoryKey}
-                        className="border-b border-gray-100 last:border-0"
-                      >
-                        <div className="px-4 py-2 bg-gray-50 flex items-center">
-                          {category.icon}
-                          <span className="ml-2 font-medium text-gray-700">
-                            {category.name}
-                          </span>
-                        </div>
-                        <div className="divide-y divide-gray-100">
-                          {Object.values(category.leaderboards).map(
-                            (leaderboard) => (
-                              <button
-                                key={leaderboard.id}
-                                onClick={() => {
-                                  setSelectedType(leaderboard.id);
-                                  setIsDropdownOpen(false);
-                                }}
-                                className={`w-full px-4 py-2 text-left text-sm hover:bg-blue-50 transition-colors ${
-                                  selectedType === leaderboard.id
-                                    ? "bg-blue-50 border-l-4 border-blue-500"
-                                    : ""
-                                }`}
-                              >
-                                <div className="font-medium text-gray-900">
-                                  {leaderboard.label}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {leaderboard.description}
-                                </div>
-                              </button>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
+      <div className="container max-w-full lg:max-w-7xl mx-auto px-4 py-6 sm:py-10">
+        {/* Main container with improved spacing and shadow */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+          {/* Header Section with improved layout */}
+          <div className="p-6 border-b border-gray-100">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+              {/* Left side - Title with improved typography */}
+              <div>
+                <h1 className="text-3xl font-bold text-blue-600">
+                  {getCurrentLeaderboardName()}
+                </h1>
               </div>
 
-              {/* Player List Selection */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                  Player List:
-                </span>
-                <div className="relative" ref={listDropdownRef}>
+              {/* Right side - Controls with improved layout */}
+              <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+                {/* Leaderboard Selection Dropdown */}
+                <div className="relative" ref={dropdownRef}>
                   <button
-                    onClick={() => setShowListDropdown(!showListDropdown)}
-                    className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-2 min-w-[140px] text-sm text-gray-700 hover:bg-gray-50"
-                    aria-expanded={showListDropdown}
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-2.5 min-w-[200px] text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                    aria-expanded={isDropdownOpen}
                   >
-                    <span className="truncate max-w-[100px]">
-                      {getSelectedListName()}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <svg
+                        className="w-4 h-4 text-blue-500"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M8 13H12M8 17H16M8 9H16M18 21H6C4.89543 21 4 20.1046 4 19V5C4 3.89543 4.89543 3 6 3H14L20 9V19C20 20.1046 19.1046 21 18 21Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <span>Select Leaderboard</span>
+                    </div>
                     <ChevronDown
-                      size={14}
+                      size={16}
                       className={`transition-transform duration-200 ${
-                        showListDropdown ? "rotate-180" : ""
+                        isDropdownOpen ? "rotate-180" : ""
                       }`}
                     />
                   </button>
 
-                  {/* Dropdown content */}
+                  {/* Desktop dropdown content */}
                   <div
-                    className={`absolute right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 max-h-64 overflow-y-auto ${
-                      showListDropdown
-                        ? "opacity-100"
-                        : "opacity-0 pointer-events-none"
-                    } transition-opacity duration-150`}
+                    className={
+                      `${isDropdownOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-visible absolute right-0 mt-2 w-80 hidden lg:block`
+                    }
                   >
-                    <div className="p-2">
-                      <button
-                        onClick={clearListSelection}
-                        className={`w-full text-left px-3 py-2 text-sm rounded-md ${
-                          !selectedListId
-                            ? "bg-blue-50 text-blue-700"
-                            : "hover:bg-gray-50"
-                        }`}
-                      >
-                        All Players
-                      </button>
-
-                      {playerLists.length > 0 ? (
-                        playerLists.map((list) => (
-                          <button
-                            key={list.id}
-                            onClick={() => handleListSelection(list.id)}
-                            className={`w-full text-left px-3 py-2 text-sm rounded-md ${
-                              selectedListId === list.id
-                                ? "bg-blue-50 text-blue-700"
-                                : "hover:bg-gray-50"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="truncate max-w-[150px]">
-                                {list.name}
-                              </span>
-                              <span className="text-xs text-gray-500 ml-2">
-                                {list.playerIds?.length || 0} players
-                              </span>
-                            </div>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="p-2 text-xs text-gray-500 text-center">
-                          No player lists found
+                    {Object.entries(LEADERBOARD_CATEGORIES).map(
+                      ([categoryKey, category]) => (
+                        <div
+                          key={categoryKey}
+                          className="border-b border-gray-100 last:border-0"
+                        >
+                          <div className="px-4 py-2.5 bg-gray-50 flex items-center">
+                            {category.icon}
+                            <span className="ml-2 font-medium text-gray-700">
+                              {category.name}
+                            </span>
+                          </div>
+                          <div className="divide-y divide-gray-100">
+                            {Object.values(category.leaderboards).map(
+                              (leaderboard) => (
+                                <button
+                                  key={leaderboard.id}
+                                  onClick={() => {
+                                    setSelectedType(leaderboard.id);
+                                    setIsDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-4 py-3 text-left text-sm hover:bg-blue-50 transition-colors ${
+                                    selectedType === leaderboard.id
+                                      ? "bg-blue-50 border-l-4 border-blue-500"
+                                      : ""
+                                  }`}
+                                >
+                                  <div className="font-medium text-gray-900">
+                                    {leaderboard.label}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {leaderboard.description}
+                                  </div>
+                                </button>
+                              )
+                            )}
+                          </div>
                         </div>
-                      )}
+                      )
+                    )}
+                  </div>
+                  {/* Mobile dropdown: fixed, full width, visible only on small screens */}
+                  <div
+                    className={
+                      `${isDropdownOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-visible fixed left-4 right-4 top-20 w-auto block lg:hidden`
+                    }
+                  >
+                    {Object.entries(LEADERBOARD_CATEGORIES).map(
+                      ([categoryKey, category]) => (
+                        <div
+                          key={categoryKey}
+                          className="border-b border-gray-100 last:border-0"
+                        >
+                          <div className="px-4 py-2.5 bg-gray-50 flex items-center">
+                            {category.icon}
+                            <span className="ml-2 font-medium text-gray-700">
+                              {category.name}
+                            </span>
+                          </div>
+                          <div className="divide-y divide-gray-100">
+                            {Object.values(category.leaderboards).map(
+                              (leaderboard) => (
+                                <button
+                                  key={leaderboard.id}
+                                  onClick={() => {
+                                    setSelectedType(leaderboard.id);
+                                    setIsDropdownOpen(false);
+                                  }}
+                                  className={`w-full px-4 py-3 text-left text-sm hover:bg-blue-50 transition-colors ${
+                                    selectedType === leaderboard.id
+                                      ? "bg-blue-50 border-l-4 border-blue-500"
+                                      : ""
+                                  }`}
+                                >
+                                  <div className="font-medium text-gray-900">
+                                    {leaderboard.label}
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {leaderboard.description}
+                                  </div>
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                {/* Player List Selection with improved styling */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                    Player List:
+                  </span>
+                  <div className="relative" ref={listDropdownRef}>
+                    <button
+                      onClick={() => setShowListDropdown(!showListDropdown)}
+                      className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-4 py-2.5 min-w-[160px] text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                      aria-expanded={showListDropdown}
+                    >
+                      <span className="truncate max-w-[120px]">
+                        {getSelectedListName()}
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 ${
+                          showListDropdown ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {/* Desktop player list dropdown content */}
+                    <div
+                      className={
+                        `${showListDropdown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto absolute right-0 mt-2 w-72 hidden lg:block`
+                      }
+                    >
+                      <div className="p-2">
+                        <button
+                          onClick={clearListSelection}
+                          className={`w-full text-left px-3 py-2.5 text-sm rounded-md ${
+                            !selectedListId
+                              ? "bg-blue-50 text-blue-700"
+                              : "hover:bg-gray-50"
+                          }`}
+                        >
+                          All Players
+                        </button>
+
+                        {playerLists.length > 0 ? (
+                          playerLists.map((list) => (
+                            <button
+                              key={list.id}
+                              onClick={() => handleListSelection(list.id)}
+                              className={`w-full text-left px-3 py-2.5 text-sm rounded-md ${
+                                selectedListId === list.id
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="truncate max-w-[180px]">
+                                  {list.name}
+                                </span>
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {list.playerIds?.length || 0} players
+                                </span>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-3 text-sm text-gray-500 text-center">
+                            No player lists found
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {/* Mobile player list dropdown: fixed, full width, visible only on small screens */}
+                    <div
+                      className={
+                        `${showListDropdown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto fixed left-4 right-4 top-32 w-auto block lg:hidden`
+                      }
+                    >
+                      <div className="p-2">
+                        <button
+                          onClick={clearListSelection}
+                          className={`w-full text-left px-3 py-2.5 text-sm rounded-md ${
+                            !selectedListId
+                              ? "bg-blue-50 text-blue-700"
+                              : "hover:bg-gray-50"
+                          }`}
+                        >
+                          All Players
+                        </button>
+
+                        {playerLists.length > 0 ? (
+                          playerLists.map((list) => (
+                            <button
+                              key={list.id}
+                              onClick={() => handleListSelection(list.id)}
+                              className={`w-full text-left px-3 py-2.5 text-sm rounded-md ${
+                                selectedListId === list.id
+                                  ? "bg-blue-50 text-blue-700"
+                                  : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="truncate max-w-[180px]">
+                                  {list.name}
+                                </span>
+                                <span className="text-xs text-gray-500 ml-2">
+                                  {list.playerIds?.length || 0} players
+                                </span>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="p-3 text-sm text-gray-500 text-center">
+                            No player lists found
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -465,9 +558,9 @@ const Leaderboards = () => {
             </div>
           </div>
 
-          {/* Filter indicator (always visible when a list is selected) */}
+          {/* Filter indicator with improved styling */}
           {selectedListId && (
-            <div className="bg-white border-x border-b border-blue-100 py-3 px-4 flex items-center justify-between">
+            <div className="bg-blue-50 border-b border-blue-100 py-3 px-6 flex items-center justify-between">
               <div className="flex items-center">
                 <span className="font-medium text-sm text-blue-700 mr-2">
                   Filtered:
@@ -481,7 +574,7 @@ const Leaderboards = () => {
               </div>
               <button
                 onClick={clearListSelection}
-                className="p-1 rounded-full hover:bg-blue-100 text-blue-600 transition-colors duration-150"
+                className="p-1.5 rounded-full hover:bg-blue-100 text-blue-600 transition-colors duration-150"
                 aria-label="Clear filter"
               >
                 <X size={16} />
@@ -489,8 +582,8 @@ const Leaderboards = () => {
             </div>
           )}
 
-          {/* Leaderboard Content - this is now contained in the same parent as the header */}
-          <div className="rounded-b-lg overflow-x-auto">
+          {/* Leaderboard Content with improved container */}
+          <div className="rounded-b-xl overflow-x-auto bg-white">
             {isLoadingPlayerList ? (
               <LoadingFallback />
             ) : (

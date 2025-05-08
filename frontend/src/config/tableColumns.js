@@ -2523,10 +2523,17 @@ export const getDataColumns = (dataType) => {
     case "team_hitting":
       return [
         {
-          name: "Team",
-          width: "4.5rem",
+          name: "",
+          width: "3rem",
           selector: (row) => row.Team,
           cell: (row) => row.renderedTeam,
+          sortable: true,
+        },
+        {
+          name: "Team",
+          width: "10rem",
+          selector: (row) => row.Team,
+          cell: (row) => row.Team,
           sortable: true,
         },
         {
@@ -2718,10 +2725,17 @@ export const getDataColumns = (dataType) => {
     case "team_pitching":
       return [
         {
-          name: "Team",
-          width: "4.5rem",
+          name: "",
+          width: "3rem",
           selector: (row) => row.Team,
           cell: (row) => row.renderedTeam,
+          sortable: true,
+        },
+        {
+          name: "Team",
+          width: "10rem",
+          selector: (row) => row.Team,
+          cell: (row) => row.Team,
           sortable: true,
         },
         {
