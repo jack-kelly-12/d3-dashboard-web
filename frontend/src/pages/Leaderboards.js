@@ -295,9 +295,9 @@ const Leaderboards = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container max-w-full lg:max-w-7xl mx-auto px-4 py-6 sm:py-10">
+      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Main container with improved spacing and shadow */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div>
           {/* Header Section with improved layout */}
           <div className="p-6 border-b border-gray-100">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
@@ -344,9 +344,11 @@ const Leaderboards = () => {
 
                   {/* Desktop dropdown content */}
                   <div
-                    className={
-                      `${isDropdownOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-visible absolute right-0 mt-2 w-80 hidden lg:block`
-                    }
+                    className={`${
+                      isDropdownOpen
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-2 pointer-events-none"
+                    } transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-visible absolute right-0 mt-2 w-80 hidden lg:block`}
                   >
                     {Object.entries(LEADERBOARD_CATEGORIES).map(
                       ([categoryKey, category]) => (
@@ -391,9 +393,11 @@ const Leaderboards = () => {
                   </div>
                   {/* Mobile dropdown: fixed, full width, visible only on small screens */}
                   <div
-                    className={
-                      `${isDropdownOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-visible fixed left-4 right-4 top-20 w-auto block lg:hidden`
-                    }
+                    className={`${
+                      isDropdownOpen
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-2 pointer-events-none"
+                    } transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg overflow-visible fixed left-4 right-4 top-20 w-auto block lg:hidden`}
                   >
                     {Object.entries(LEADERBOARD_CATEGORIES).map(
                       ([categoryKey, category]) => (
@@ -462,9 +466,11 @@ const Leaderboards = () => {
 
                     {/* Desktop player list dropdown content */}
                     <div
-                      className={
-                        `${showListDropdown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto absolute right-0 mt-2 w-72 hidden lg:block`
-                      }
+                      className={`${
+                        showListDropdown
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-2 pointer-events-none"
+                      } transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-80 overflow-y-auto absolute right-0 mt-2 w-72 hidden lg:block`}
                     >
                       <div className="p-2">
                         <button
@@ -508,9 +514,11 @@ const Leaderboards = () => {
                     </div>
                     {/* Mobile player list dropdown: fixed, full width, visible only on small screens */}
                     <div
-                      className={
-                        `${showListDropdown ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"} transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto fixed left-4 right-4 top-32 w-auto block lg:hidden`
-                      }
+                      className={`${
+                        showListDropdown
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-2 pointer-events-none"
+                      } transition-all duration-200 z-50 bg-white border border-gray-200 rounded-lg shadow-lg max-h-96 overflow-y-auto fixed left-4 right-4 top-32 w-auto block lg:hidden`}
                     >
                       <div className="p-2">
                         <button
@@ -583,7 +591,7 @@ const Leaderboards = () => {
           )}
 
           {/* Leaderboard Content with improved container */}
-          <div className="rounded-b-xl overflow-x-auto bg-white">
+          <div className="rounded-b-xl overflow-x-auto">
             {isLoadingPlayerList ? (
               <LoadingFallback />
             ) : (
