@@ -56,6 +56,7 @@ logger = logging.getLogger(__name__)
 
 DB_PATH = 'ncaa.db'
 
+
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -454,8 +455,6 @@ def get_expected_runs():
 
 @app.route('/api/player-percentiles/<string:player_id>/<int:year>/<int:division>', methods=['GET'])
 def get_player_percentiles(player_id, year, division):
-    conference = request.args.get('conference', None)
-    
     conn = get_db_connection()
     cursor = conn.cursor()
     response = {"batting": None, "pitching": None}
@@ -469,7 +468,6 @@ def get_player_percentiles(player_id, year, division):
         player = cursor.fetchone()
 
         if player:
-            # Get division-based percentiles
             cursor.execute("""
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
                        "Baserunning", "WPA/LI", WAR, PA, "wRC+", "WPA", "REA", "K%", "BB%"
@@ -494,40 +492,14 @@ def get_player_percentiles(player_id, year, division):
                     percentiles[f"{stat}Percentile"] = percentile
                     percentiles[stat] = player_value
 
-            # Get conference-based percentiles if conference is provided
-            conference_percentiles = {}
-            if conference:
-                cursor.execute("""
-                    SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
-                           "Baserunning", "WPA/LI", WAR, PA, "wRC+", "WPA", "REA", "K%", "BB%"
-                    FROM batting_war
-                    WHERE PA > 25 AND Division = ? AND Season = ? AND Conference = ?
-                    ORDER BY PA DESC
-                """, (division, year, conference))
-                conference_players = cursor.fetchall()
-                
-                for stat in ['BA', 'OBPct', 'SlgPct', 'wOBA', 'OPS+', 'Batting',
-                             'Baserunning', 'WPA/LI', 'WAR', 'wRC+', 'WPA', 'REA', 'K%', 'BB%']:
-                    values = [p[stat] for p in conference_players if p[stat] is not None]
-                    reverse_stats = ['K%']
-                    player_value = player_stats[stat]
-                    if values and player_value is not None:
-                        values.sort()
-                        index = sum(1 for x in values if (
-                            x >= player_value if stat in reverse_stats else x <= player_value))
-                        percentile = round((index / len(values)) * 100)
-                        conference_percentiles[f"{stat}ConferencePercentile"] = percentile
-
             response["batting"] = {
                 "type": "batting",
                 "stats": percentiles,
-                "conferenceStats": conference_percentiles if conference else None,
                 "qualified": player_stats['PA'] > 25,
                 "paThreshold": 25,
                 "playerPA": player_stats['PA'],
                 "season": year,
-                "division": division,
-                "conference": conference
+                "division": division
             }
 
         cursor.execute("""
@@ -537,7 +509,6 @@ def get_player_percentiles(player_id, year, division):
         player = cursor.fetchone()
 
         if player:
-            # Get division-based percentiles
             cursor.execute("""
                 SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9, "pWPA", "pREA", "pWPA/LI"
                 FROM pitching_war
@@ -561,37 +532,14 @@ def get_player_percentiles(player_id, year, division):
                     percentiles[f"{stat}Percentile"] = percentile
                     percentiles[stat] = player_value
 
-            # Get conference-based percentiles if conference is provided
-            conference_percentiles = {}
-            if conference:
-                cursor.execute("""
-                    SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9, "pWPA", "pREA", "pWPA/LI"
-                    FROM pitching_war
-                    WHERE IP > 10 AND Division = ? AND Season = ? AND Conference = ?
-                    ORDER BY IP DESC
-                """, (division, year, conference))
-                conference_players = cursor.fetchall()
-                
-                for stat in ['ERA', 'FIP', 'xFIP', 'K%', 'BB%', 'K-BB%', 'RA9', 'WAR', 'pREA', 'pWPA', 'pWPA/LI']:
-                    values = [p[stat] for p in conference_players if p[stat] is not None]
-                    player_value = player_stats[stat]
-                    if values and player_value is not None:
-                        values.sort(reverse=stat in reverse_stats)
-                        index = sum(1 for x in values if (
-                            x >= player_value if stat in reverse_stats else x <= player_value))
-                        percentile = round((index / len(values)) * 100)
-                        conference_percentiles[f"{stat}ConferencePercentile"] = percentile
-
             response["pitching"] = {
                 "type": "pitching",
                 "stats": percentiles,
-                "conferenceStats": conference_percentiles if conference else None,
                 "qualified": player_stats['IP'] > 10,
                 "ipThreshold": 10,
                 "playerIP": player_stats['IP'],
                 "season": year,
-                "division": division,
-                "conference": conference
+                "division": division
             }
 
         if response["batting"] is None and response["pitching"] is None:
@@ -838,8 +786,10 @@ def search_players():
     cursor = conn.cursor()
 
     try:
+        # Pre-compute search terms
         search_term = query.lower()
         
+        # Use a more efficient query with UNION ALL for better performance
         cursor.execute("""
             WITH search_results AS (
                 -- Exact matches first

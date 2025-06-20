@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useRef, useEffect, useCallback } from "react";
+=======
+import React, { useState, useRef, useEffect } from "react";
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
 import { ReactComponent as BatterIconSVG } from "./batter.svg";
 import { ReactComponent as TrophyIconSVG } from "./trophy.svg";
 import { ReactComponent as PitcherIconSVG } from "./pitcher.svg";
@@ -8,12 +12,18 @@ const StatBar = ({
   label,
   value,
   percentile,
+<<<<<<< HEAD
   conferencePercentile,
+=======
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
   format = "decimal",
   decimals = 1,
   suffix = "",
   qualified = true,
+<<<<<<< HEAD
   showConference = false,
+=======
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
 }) => {
   const formatValue = (val) => {
     if (val === undefined || val === null) return "-";
@@ -35,6 +45,7 @@ const StatBar = ({
     return "bg-blue-600";
   };
 
+<<<<<<< HEAD
   const getConferenceBarColor = (pct) => {
     if (!qualified) return "bg-gray-200";
     if (pct >= 90) return "bg-purple-600";
@@ -44,6 +55,8 @@ const StatBar = ({
     return "bg-green-600";
   };
 
+=======
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
   return (
     <div className="relative mb-3">
       <div className="flex flex-col sm:flex-row sm:items-center text-sm mb-1">
@@ -60,9 +73,14 @@ const StatBar = ({
           </span>
         </div>
 
+<<<<<<< HEAD
         {/* Progress bars and percentile badges */}
         <div className="flex items-center w-full mt-1 sm:mt-0">
           {/* Division percentile */}
+=======
+        {/* Progress bar and percentile badge in a flex container */}
+        <div className="flex items-center w-full mt-1 sm:mt-0">
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
           <div className="flex-1 relative h-2.5 mx-2">
             <div className="absolute inset-0 bg-gray-100 rounded-full" />
             <div
@@ -73,11 +91,16 @@ const StatBar = ({
             />
           </div>
 
+<<<<<<< HEAD
           {/* Division percentile badge */}
+=======
+          {/* Percentile badge */}
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
           <div
             className={`w-8 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
               percentile
             )}`}
+<<<<<<< HEAD
             title="Division percentile"
           >
             {percentile || 0}
@@ -107,13 +130,22 @@ const StatBar = ({
               </div>
             </>
           )}
+=======
+          >
+            {percentile || 0}
+          </div>
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
         </div>
       </div>
     </div>
   );
 };
 
+<<<<<<< HEAD
 const CategorySection = ({ title, stats, currentPercentiles, isQualified, showConference }) => (
+=======
+const CategorySection = ({ title, stats, currentPercentiles, isQualified }) => (
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
   <div className="mb-8">
     <div className="flex items-center gap-2 mb-4">
       <CategoryIcon className="w-5 h-5 text-gray-400" category={title} />
@@ -126,11 +158,17 @@ const CategorySection = ({ title, stats, currentPercentiles, isQualified, showCo
           label={label}
           value={currentPercentiles.stats[key]}
           percentile={currentPercentiles.stats[`${key}Percentile`]}
+<<<<<<< HEAD
           conferencePercentile={currentPercentiles.conferenceStats?.[`${key}ConferencePercentile`]}
           decimals={decimals}
           suffix={suffix}
           qualified={isQualified}
           showConference={showConference}
+=======
+          decimals={decimals}
+          suffix={suffix}
+          qualified={isQualified}
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
         />
       ))}
     </div>
@@ -141,19 +179,32 @@ export const PercentileSection = ({
   playerData,
   initialPercentiles,
   activeTab,
+<<<<<<< HEAD
   selectedYear,
   onYearChange,
   selectedDivision,
   onDivisionChange,
   onConferenceChange,
   isLoading,
+=======
+  onYearChange,
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
 }) => {
   const availableYears = playerData?.yearsPlayed || [];
   const sortedYears = [...availableYears].sort((a, b) => Number(b) - Number(a)); // Sort descending
 
+<<<<<<< HEAD
   const [isYearDropdownOpen, setYearDropdownOpen] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showConference, setShowConference] = useState(false);
+=======
+  const [selectedYear, setSelectedYear] = useState(
+    sortedYears[0]?.toString() || ""
+  );
+  const [isYearDropdownOpen, setYearDropdownOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
   const dropdownRef = useRef(null);
   const animationTimer = useRef(null);
 
@@ -161,6 +212,7 @@ export const PercentileSection = ({
     (a, b) => Number(a) - Number(b)
   );
 
+<<<<<<< HEAD
   const getPlayerConference = useCallback(() => {
     if (!playerData || !selectedYear || !selectedDivision) return null;
     
@@ -217,6 +269,35 @@ export const PercentileSection = ({
     }
     
     setIsPlaying(false);
+=======
+  const handleYearChange = async (year) => {
+    setSelectedYear(year);
+    setIsLoading(true);
+    await onYearChange(year);
+    setIsLoading(false);
+    setYearDropdownOpen(false);
+  };
+
+  const playAnimation = async () => {
+    setIsPlaying(true);
+    await handleYearChange(chronologicalYears[0]);
+
+    const playNextYear = async (index) => {
+      if (index >= chronologicalYears.length - 1) {
+        setIsPlaying(false);
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+
+      const nextIndex = index + 1;
+      await handleYearChange(chronologicalYears[nextIndex]);
+
+      playNextYear(nextIndex);
+    };
+
+    playNextYear(0);
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
   };
 
   useEffect(() => {
@@ -387,6 +468,7 @@ export const PercentileSection = ({
           </div>
         </div>
 
+<<<<<<< HEAD
         {/* Conference toggle and selector */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -432,6 +514,8 @@ export const PercentileSection = ({
           </div>
         )}
 
+=======
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
         {!isQualified && (
           <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full self-start">
             Below threshold ({appearances}/{threshold}{" "}
@@ -448,7 +532,10 @@ export const PercentileSection = ({
             stats={category.stats}
             currentPercentiles={currentPercentiles}
             isQualified={isQualified}
+<<<<<<< HEAD
             showConference={showConference}
+=======
+>>>>>>> 15885cba13132ba317c4cc0427c10760041432d4
           />
         ))}
       </div>

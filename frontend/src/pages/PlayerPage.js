@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { useParams } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import { fetchAPI } from "../config/api";
@@ -397,8 +397,6 @@ const PlayerPage = () => {
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(STAT_TYPES.BATTING);
   const [selectedDivision, setSelectedDivision] = useState(3);
-  const [selectedConference, setSelectedConference] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null);
   const [statData, setStatData] = useState({
     [STAT_TYPES.BASERUNNING]: [],
     [STAT_TYPES.BATTED_BALL]: [],
@@ -407,7 +405,63 @@ const PlayerPage = () => {
     [STAT_TYPES.SITUATIONAL]: [],
     [STAT_TYPES.SITUATIONAL_PITCHER]: [],
   });
-  const isInitialMount = useRef(true);
+  const [initialized, setInitialized] = useState(false);
+
+  const fetchPercentiles = useCallback(
+    async (year, division, statType) => {
+      try {
+        const baseStatType = getBaseStatType(statType);
+        const response = await fetchAPI(
+          `/api/player-percentiles/${decodeURIComponent(
+            playerId
+          )}/${year}/${division}`
+        );
+
+        setPercentiles((prev) => ({
+          ...prev,
+          [baseStatType]: response[baseStatType],
+        }));
+      } catch (err) {
+        console.error(`Error fetching ${statType} percentiles:`, err);
+      }
+    },
+    [playerId]
+  );
+
+  const fetchStatsForType = useCallback(
+    async (statType) => {
+      try {
+        const response = await fetchAPI(
+          `/api/leaderboards/${statType}/${encodeURIComponent(
+            playerId
+          )}?start_year=2021&end_year=2025&division=${selectedDivision}`
+        );
+
+        const enrichedStats = enrichStats(response);
+
+        setStatData((prev) => ({
+          ...prev,
+          [statType]: enrichedStats,
+        }));
+      } catch (err) {
+        console.error(`Error fetching ${statType} stats:`, err);
+      }
+    },
+    [playerId, selectedDivision]
+  );
+
+  const fetchAllStats = useCallback(() => {
+    const statTypes = [
+      STAT_TYPES.BASERUNNING,
+      STAT_TYPES.BATTED_BALL,
+      STAT_TYPES.SPLITS,
+      STAT_TYPES.SPLITS_PITCHER,
+      STAT_TYPES.SITUATIONAL,
+      STAT_TYPES.SITUATIONAL_PITCHER,
+    ];
+
+    return Promise.all(statTypes.map((type) => fetchStatsForType(type)));
+  }, [fetchStatsForType]);
 
   const enhancePlayerData = useCallback((data) => {
     if (!data) return null;
@@ -431,54 +485,7 @@ const PlayerPage = () => {
         : null,
       battingStats: enrichStats(data.battingStats),
       pitchingStats: enrichStats(data.pitchingStats),
-      yearsPlayed: [
-        ...new Set([
-          ...(data.battingStats || []).map(s => s.Season),
-          ...(data.pitchingStats || []).map(s => s.Season),
-        ])
-      ]
     };
-  }, []);
-
-  const fetchStatsForType = useCallback(async (statType, division) => {
-    try {
-      const response = await fetchAPI(
-        `/api/leaderboards/${statType}/${encodeURIComponent(playerId)}?start_year=2021&end_year=2025&division=${division}`
-      );
-      return { [statType]: enrichStats(response) };
-    } catch (err) {
-      console.error(`Error fetching ${statType} stats:`, err);
-      return { [statType]: [] };
-    }
-  }, [playerId]);
-
-  const fetchAllStats = useCallback(async (division) => {
-    const statTypes = [
-      STAT_TYPES.BASERUNNING,
-      STAT_TYPES.BATTED_BALL,
-      STAT_TYPES.SPLITS,
-      STAT_TYPES.SPLITS_PITCHER,
-      STAT_TYPES.SITUATIONAL,
-      STAT_TYPES.SITUATIONAL_PITCHER,
-    ];
-    const results = await Promise.all(statTypes.map(type => fetchStatsForType(type, division)));
-    setStatData(results.reduce((acc, result) => ({ ...acc, ...result }), {}));
-  }, [fetchStatsForType]);
-  
-  const determineDivision = useCallback((playerData) => {
-    const getMaxSeason = (stats) => stats?.length ? Math.max(...stats.map(s => s.Season || s.Year || 0)) : 0;
-    const maxBattingSeason = getMaxSeason(playerData.battingStats);
-    const maxPitchingSeason = getMaxSeason(playerData.pitchingStats);
-
-    let division = 3;
-    if (maxBattingSeason > 0) {
-      const stat = playerData.battingStats.find(s => s.Season === maxBattingSeason);
-      if (stat?.Division) division = stat.Division;
-    } else if (maxPitchingSeason > 0) {
-      const stat = playerData.pitchingStats.find(s => s.Season === maxPitchingSeason);
-      if (stat?.Division) division = stat.Division;
-    }
-    return division;
   }, []);
 
   const determineInitialActiveTab = useCallback((playerData) => {
@@ -488,61 +495,59 @@ const PlayerPage = () => {
     return STAT_TYPES.BATTING;
   }, []);
 
-  const fetchPercentiles = useCallback(
-    async (year, division, conference) => {
-      if (!year || !division) return;
-      setIsLoading(true);
-      try {
-        let url = `/api/player-percentiles/${decodeURIComponent(
-          playerId
-        )}/${year}/${division}`;
-        
-        if (conference) {
-          url += `?conference=${encodeURIComponent(conference)}`;
-        }
-        
-        const response = await fetchAPI(url);
-        
-        setPercentiles(response);
+  const determineDivision = useCallback((playerData) => {
+    const getMaxSeason = (stats) =>
+      stats?.length
+        ? Math.max(...stats.map((s) => s.Season || s.Year || 0))
+        : 0;
 
-      } catch (err) {
-        console.error(`Error fetching percentiles:`, err);
-        // Do not set error here to avoid blocking the whole page for just this part
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [playerId]
-  );
-  
-  // This useEffect handles UPDATES to percentiles when filters change.
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-    } else {
-      fetchPercentiles(selectedYear, selectedDivision, selectedConference);
+    const maxBattingSeason = getMaxSeason(playerData.battingStats);
+    const maxPitchingSeason = getMaxSeason(playerData.pitchingStats);
+
+    let division = 3;
+
+    if (maxBattingSeason > 0) {
+      const stat = playerData.battingStats.find(
+        (s) => s.Season === maxBattingSeason
+      );
+      if (stat?.Division) division = stat.Division;
+    } else if (maxPitchingSeason > 0) {
+      const stat = playerData.pitchingStats.find(
+        (s) => s.Season === maxPitchingSeason
+      );
+      if (stat?.Division) division = stat.Division;
     }
-  }, [selectedYear, selectedDivision, selectedConference, fetchPercentiles]);
-  
-  const handleYearChange = useCallback((year) => {
-    setSelectedYear(year);
+
+    return division;
   }, []);
 
-  const handleDivisionChange = useCallback((division) => {
-    setSelectedDivision(division);
-    setSelectedConference(null); // Reset conference when division changes
-  }, []);
+  const initializePercentiles = useCallback(
+    async (playerData, division) => {
+      const promises = [];
 
-  const handleConferenceChange = useCallback((conference) => {
-    setSelectedConference(conference);
-  }, []);
+      if (playerData.battingStats?.length) {
+        const maxSeason = Math.max(
+          ...playerData.battingStats.map((s) => s.Season)
+        );
+        promises.push(
+          fetchPercentiles(maxSeason, division, STAT_TYPES.BATTING)
+        );
+      }
 
-  const handleTabChange = useCallback((newTab) => {
-      if (newTab === activeTab) return;
-      setActiveTab(newTab);
-  }, [activeTab]);
+      if (playerData.pitchingStats?.length) {
+        const maxSeason = Math.max(
+          ...playerData.pitchingStats.map((s) => s.Season)
+        );
+        promises.push(
+          fetchPercentiles(maxSeason, division, STAT_TYPES.PITCHING)
+        );
+      }
 
-  // This useEffect handles the INITIAL page load.
+      return Promise.all(promises);
+    },
+    [fetchPercentiles]
+  );
+
   useEffect(() => {
     const loadPlayerData = async () => {
       setIsLoading(true);
@@ -556,31 +561,13 @@ const PlayerPage = () => {
         const division = determineDivision(enhancedData);
         setSelectedDivision(division);
 
-        const years = enhancedData?.yearsPlayed || [];
-        const initialYear = years.length > 0 ? Math.max(...years) : null;
-        if (initialYear) {
-          setSelectedYear(initialYear);
-        }
-
-        const percentilePromise = (async () => {
-          if (initialYear && division) {
-            try {
-              const url = `/api/player-percentiles/${decodeURIComponent(playerId)}/${initialYear}/${division}`;
-              const percentileResponse = await fetchAPI(url);
-              setPercentiles(percentileResponse);
-            } catch (err) {
-              console.error(`Error fetching initial percentiles:`, err);
-            }
-          }
-        })();
-        
         await Promise.all([
-          fetchAllStats(division),
-          percentilePromise
+          initializePercentiles(enhancedData, division),
+          fetchAllStats(),
         ]);
 
         setActiveTab(determineInitialActiveTab(enhancedData));
-        
+        setInitialized(true);
       } catch (err) {
         setError(err.message || "Failed to load player data");
       } finally {
@@ -589,7 +576,72 @@ const PlayerPage = () => {
     };
 
     loadPlayerData();
-  }, [playerId, enhancePlayerData, determineDivision, fetchAllStats, determineInitialActiveTab]);
+  }, [
+    playerId,
+    enhancePlayerData,
+    determineDivision,
+    initializePercentiles,
+    fetchAllStats,
+    determineInitialActiveTab,
+  ]);
+
+  useEffect(() => {
+    if (initialized) {
+      fetchAllStats();
+    }
+  }, [initialized, selectedDivision, fetchAllStats]);
+
+  const handleTabChange = useCallback(
+    (newTab) => {
+      if (newTab === activeTab) return;
+      setActiveTab(newTab);
+
+      const baseType = getBaseStatType(newTab);
+
+      if (
+        baseType === STAT_TYPES.BATTING &&
+        percentiles.batting === null &&
+        playerData?.battingStats?.length > 0
+      ) {
+        const maxSeason = Math.max(
+          ...playerData.battingStats.map((s) => s.Season)
+        );
+        fetchPercentiles(maxSeason, selectedDivision, baseType);
+      } else if (
+        baseType === STAT_TYPES.PITCHING &&
+        percentiles.pitching === null &&
+        playerData?.pitchingStats?.length > 0
+      ) {
+        const maxSeason = Math.max(
+          ...playerData.pitchingStats.map((s) => s.Season)
+        );
+        fetchPercentiles(maxSeason, selectedDivision, baseType);
+      }
+    },
+    [activeTab, playerData, percentiles, selectedDivision, fetchPercentiles]
+  );
+
+  const handleDivisionChange = useCallback(
+    (division) => {
+      setSelectedDivision(division);
+
+      const baseType = getBaseStatType(activeTab);
+      const currentPercentiles = percentiles[baseType];
+
+      if (currentPercentiles?.season) {
+        fetchPercentiles(currentPercentiles.season, division, baseType);
+      }
+    },
+    [activeTab, percentiles, fetchPercentiles]
+  );
+
+  const handleYearChange = useCallback(
+    (year) => {
+      const baseType = getBaseStatType(activeTab);
+      fetchPercentiles(year, selectedDivision, baseType);
+    },
+    [activeTab, selectedDivision, fetchPercentiles]
+  );
 
   const getAvailableYears = useCallback(
     (type = null) => {
@@ -673,7 +725,7 @@ const PlayerPage = () => {
 
     return tabs;
   }, [playerData, statData]);
-  
+
   const statCategories = useMemo(
     () => ({
       [STAT_TYPES.BATTING]: {
@@ -719,8 +771,6 @@ const PlayerPage = () => {
       ...playerData,
       yearsPlayed: getAvailableYears(activeTab),
       divisionsPlayed: getAvailableDivisions(),
-      battingStats: playerData.battingStats,
-      pitchingStats: playerData.pitchingStats,
     };
   }, [playerData, getAvailableYears, getAvailableDivisions, activeTab]);
 
@@ -731,7 +781,7 @@ const PlayerPage = () => {
     };
   }, [activeTab, percentiles]);
 
-  if (isLoading && isInitialMount.current) return <LoadingState />;
+  if (isLoading) return <LoadingState />;
   if (error) return <ErrorState error={error} />;
   if (!playerData) return null;
 
@@ -748,12 +798,9 @@ const PlayerPage = () => {
                 playerData={enhancedPlayerDataForPercentile}
                 initialPercentiles={currentPercentiles}
                 activeTab={getBaseStatType(activeTab)}
-                selectedYear={selectedYear}
                 onYearChange={handleYearChange}
                 selectedDivision={selectedDivision}
                 onDivisionChange={handleDivisionChange}
-                onConferenceChange={handleConferenceChange}
-                isLoading={isLoading}
               />
             </div>
           </div>
