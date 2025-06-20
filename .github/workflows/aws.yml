@@ -1,0 +1,87 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+
+      - name: Install Dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Create .env file frontend
+        working-directory: ./frontend
+        run: |
+          echo "REACT_APP_STRIPE_MONTHLY_URL=${{ secrets.REACT_APP_STRIPE_MONTHLY_URL }}" >> .env
+          echo "REACT_APP_STRIPE_YEARLY_URL=${{ secrets.REACT_APP_STRIPE_YEARLY_URL }}" >> .env
+          echo "REACT_APP_FIREBASE_API_KEY=${{ secrets.REACT_APP_FIREBASE_API_KEY }}" >> .env
+          echo "REACT_APP_FIREBASE_AUTH_DOMAIN=${{ secrets.REACT_APP_FIREBASE_AUTH_DOMAIN }}" >> .env
+          echo "REACT_APP_FIREBASE_PROJECT_ID=${{ secrets.REACT_APP_FIREBASE_PROJECT_ID }}" >> .env
+          echo "REACT_APP_FIREBASE_STORAGE_BUCKET=${{ secrets.REACT_APP_FIREBASE_STORAGE_BUCKET }}" >> .env
+          echo "REACT_APP_FIREBASE_MESSAGING_SENDER_ID=${{ secrets.REACT_APP_FIREBASE_MESSAGING_SENDER_ID }}" >> .env
+          echo "REACT_APP_FIREBASE_APP_ID=${{ secrets.REACT_APP_FIREBASE_APP_ID }}" >> .env
+          echo "REACT_APP_FIREBASE_MEASUREMENT_ID=${{ secrets.REACT_APP_FIREBASE_MEASUREMENT_ID }}" >> .env
+
+      - name: Create .env file backend
+        working-directory: ./backend
+        run: |
+          echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}" >> .env
+          echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}" >> .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "FIREBASE_SERVICE_ACCOUNT_KEY_PATH=${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY_PATH }}" >> .env
+
+      - name: Build React App
+        working-directory: ./frontend
+        run: npm run build
+
+      - name: Cleanup
+        working-directory: ./frontend
+        run: rm .env
+
+      - name: List directory structure
+        run: ls -R frontend/
+
+      - name: Deploy Frontend Build to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "frontend/build/"
+          target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/frontend/build"
+          strip_components: 2
+
+      - name: Deploy Backend to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "backend/*"
+          target: "/home/${{ secrets.EC2_USERNAME }}/d3_dashboard/backend"
+          strip_components: 1
+
+      - name: Execute Remote Commands
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USERNAME }}/d3_dashboard/backend
+            venv/bin/activate
+            python3 -m pip install -r requirements.txt
+
+            sudo systemctl restart nginx
+            sudo systemctl restart app

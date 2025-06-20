@@ -1,0 +1,44 @@
+# Dependencies
+/frontend/node_modules
+/frontend/build
+/backend/__pycache__
+/backend/venv
+*.pyc
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
+# IDE
+.vscode
+.idea
+
+# Misc
+.DS_Store
+*.log
+
+.ipynb_checkpoints/
+
+backend/data/*.csv
+notebooks/
+
+backend/images
+backend/data/*/
+backend/scrapers/.Rhistory
+
+github-actions-key
+github-actions-key.pub
+github-actions-keys/
+
+backend/ncaa*
+
+.venv/
+
+d3-dash-13dc4-firebase-adminsdk-5y2t3-802c0a4b99.json
