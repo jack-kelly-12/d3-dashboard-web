@@ -757,27 +757,80 @@ const SprayChart = ({
       </div>
     );
   }
+  
+  const containerWidth = svgRef.current?.parentElement?.clientWidth || width;
 
   return (
-    <div
-      className="w-full"
-      style={{
-        maxWidth: "800px",
-        margin: "0 auto",
-        border: "1px solid #90CAF9",
-        borderRadius: "8px",
-        boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
-        backgroundColor: "#F5FBFF",
-        padding: "8px",
-      }}
-    >
-      <svg
-        ref={svgRef}
-        width="100%"
-        preserveAspectRatio="xMidYMid meet"
-        className="spray-chart"
-        style={{ display: "block", maxHeight: "570px" }}
-      />
+    <div className="w-full">
+      {/* Mobile stats summary - only show on very small screens */}
+      {containerWidth < 400 && playerData && (
+        <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="space-y-1">
+              <div className="font-semibold text-gray-600">Overall Stats</div>
+              <div>PA: {playerData.stats.PA || 0}</div>
+              <div>BA: .{((playerData.stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}</div>
+              <div>wOBA: .{((playerData.stats.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}</div>
+            </div>
+            <div className="space-y-1">
+              <div className="font-semibold text-gray-600">Spray Pattern</div>
+              <div>Pull: {playerData.stats.batted?.pull || 0}%</div>
+              <div>Middle: {playerData.stats.batted?.middle || 0}%</div>
+              <div>Oppo: {playerData.stats.batted?.oppo || 0}%</div>
+            </div>
+          </div>
+        </div>
+      )}
+  
+      <div
+        className="w-full"
+        style={{
+          maxWidth: "800px",
+          margin: "0 auto",
+          border: "1px solid #90CAF9",
+          borderRadius: "8px",
+          boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+          backgroundColor: "#F5FBFF",
+          padding: containerWidth < 400 ? "4px" : "8px",
+        }}
+      >
+        <svg
+          ref={svgRef}
+          width="100%"
+          preserveAspectRatio="xMidYMid meet"
+          className="spray-chart"
+          style={{ 
+            display: "block", 
+            maxHeight: containerWidth < 400 ? "350px" : "570px",
+            height: "auto"
+          }}
+        />
+      </div>
+  
+      {/* Mobile legend - only show on very small screens */}
+      {containerWidth < 400 && (
+        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+          <div className="text-xs font-semibold text-gray-600 mb-2">Field Zones</div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="inline-block w-3 h-3 bg-red-400 rounded mr-2"></span>
+              High frequency (40%+)
+            </div>
+            <div>
+              <span className="inline-block w-3 h-3 bg-red-200 rounded mr-2"></span>
+              Medium frequency (17-39%)
+            </div>
+            <div>
+              <span className="inline-block w-3 h-3 bg-red-100 rounded mr-2"></span>
+              Low frequency (&lt;17%)
+            </div>
+            <div>
+              <span className="inline-block w-3 h-3 bg-blue-100 border border-blue-600 rounded-full mr-2"></span>
+              Home run count
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

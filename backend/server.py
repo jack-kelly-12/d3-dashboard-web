@@ -452,14 +452,43 @@ def get_expected_runs():
     conn.close()
     return jsonify(data)
 
-
 @app.route('/api/player-percentiles/<string:player_id>/<int:year>/<int:division>', methods=['GET'])
 def get_player_percentiles(player_id, year, division):
     conn = get_db_connection()
     cursor = conn.cursor()
     response = {"batting": None, "pitching": None}
 
+    # Get optional conference filter from query params
+    conference_filter = request.args.get('conference')
+
     try:
+        # First, get the player's conference for this year/division
+        player_conference = None
+        cursor.execute("""
+            SELECT DISTINCT Conference 
+            FROM batting_war 
+            WHERE player_id = ? AND Division = ? AND Season = ?
+            UNION
+            SELECT DISTINCT Conference 
+            FROM pitching_war 
+            WHERE player_id = ? AND Division = ? AND Season = ?
+            LIMIT 1
+        """, (player_id, division, year, player_id, division, year))
+        
+        conference_result = cursor.fetchone()
+        if conference_result:
+            player_conference = conference_result[0]
+
+        # Determine target conference based on filter
+        target_conference = None
+        if conference_filter == 'auto' or conference_filter == 'conference':
+            # Use player's conference
+            target_conference = player_conference
+        elif conference_filter and conference_filter not in ['auto', 'conference']:
+            # Use specific conference provided
+            target_conference = conference_filter
+        # If no conference_filter, target_conference stays None (division-wide)
+
         # Check batting stats
         cursor.execute("""
             SELECT * FROM batting_war
@@ -468,13 +497,22 @@ def get_player_percentiles(player_id, year, division):
         player = cursor.fetchone()
 
         if player:
-            cursor.execute("""
+            # Build the query with optional conference filter
+            base_query = """
                 SELECT BA, OBPct, SlgPct, "wOBA", "OPS+", "Batting",
                        "Baserunning", "WPA/LI", WAR, PA, "wRC+", "WPA", "REA", "K%", "BB%"
                 FROM batting_war
                 WHERE PA > 25 AND Division = ? AND Season = ?
-                ORDER BY PA DESC
-            """, (division, year))
+            """
+            params = [division, year]
+            
+            if target_conference:
+                base_query += " AND Conference = ?"
+                params.append(target_conference)
+            
+            base_query += " ORDER BY PA DESC"
+            
+            cursor.execute(base_query, params)
             all_players = cursor.fetchall()
             player_stats = dict(player)
 
@@ -499,9 +537,13 @@ def get_player_percentiles(player_id, year, division):
                 "paThreshold": 25,
                 "playerPA": player_stats['PA'],
                 "season": year,
-                "division": division
+                "division": division,
+                "conference": target_conference,
+                "isConferenceFiltered": bool(target_conference),
+                "playerCount": len(all_players)
             }
 
+        # Check pitching stats
         cursor.execute("""
             SELECT * FROM pitching_war
             WHERE player_id = ? AND Division = ? AND Season = ?
@@ -509,12 +551,21 @@ def get_player_percentiles(player_id, year, division):
         player = cursor.fetchone()
 
         if player:
-            cursor.execute("""
+            # Build the query with optional conference filter
+            base_query = """
                 SELECT ERA, FIP, xFIP, "K%", "BB%", "K-BB%", "HR/FB", WAR, IP, RA9, "pWPA", "pREA", "pWPA/LI"
                 FROM pitching_war
                 WHERE IP > 10 AND Division = ? AND Season = ?
-                ORDER BY IP DESC
-            """, (division, year))
+            """
+            params = [division, year]
+            
+            if target_conference:
+                base_query += " AND Conference = ?"
+                params.append(target_conference)
+            
+            base_query += " ORDER BY IP DESC"
+            
+            cursor.execute(base_query, params)
             all_players = cursor.fetchall()
             player_stats = dict(player)
 
@@ -539,7 +590,10 @@ def get_player_percentiles(player_id, year, division):
                 "ipThreshold": 10,
                 "playerIP": player_stats['IP'],
                 "season": year,
-                "division": division
+                "division": division,
+                "conference": target_conference,
+                "isConferenceFiltered": bool(target_conference),
+                "playerCount": len(all_players)
             }
 
         if response["batting"] is None and response["pitching"] is None:

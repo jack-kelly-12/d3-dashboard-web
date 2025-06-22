@@ -34,16 +34,16 @@ const StatBar = ({
   };
 
   return (
-    <div className="relative mb-3">
-      <div className="flex flex-col sm:flex-row sm:items-center text-sm mb-1">
+    <div className="relative mb-2 sm:mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center text-xs sm:text-sm mb-1">
         <div className="flex justify-between items-center mb-1 sm:mb-0">
           {/* Label */}
-          <span className="text-gray-600 font-medium sm:w-24 md:w-32 flex-shrink-0">
+          <span className="text-gray-600 font-medium sm:w-24 md:w-32 flex-shrink-0 text-xs sm:text-sm">
             {label}
           </span>
 
           {/* Value */}
-          <span className="font-mono text-gray-800 sm:w-16 flex-shrink-0 sm:ml-2">
+          <span className="font-mono text-gray-800 sm:w-16 flex-shrink-0 sm:ml-2 text-xs sm:text-sm">
             {formatValue(value)}
             {suffix}
           </span>
@@ -51,7 +51,7 @@ const StatBar = ({
 
         {/* Progress bar and percentile badge in a flex container */}
         <div className="flex items-center w-full mt-1 sm:mt-0">
-          <div className="flex-1 relative h-2.5 mx-2">
+          <div className="flex-1 relative h-2 sm:h-2.5 mx-2">
             <div className="absolute inset-0 bg-gray-100 rounded-full" />
             <div
               className={`absolute h-full rounded-full transition-all duration-300 ${getBarColor(
@@ -63,7 +63,7 @@ const StatBar = ({
 
           {/* Percentile badge */}
           <div
-            className={`w-8 h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
+            className={`w-7 h-4 sm:w-8 sm:h-5 rounded-full flex items-center justify-center text-xs font-medium text-white ${getBarColor(
               percentile
             )}`}
           >
@@ -76,12 +76,12 @@ const StatBar = ({
 };
 
 const CategorySection = ({ title, stats, currentPercentiles, isQualified }) => (
-  <div className="mb-8">
-    <div className="flex items-center gap-2 mb-4">
-      <CategoryIcon className="w-5 h-5 text-gray-400" category={title} />
-      <h3 className="text-lg font-bold text-gray-800">{title}</h3>
+  <div className="mb-6 sm:mb-8">
+    <div className="flex items-center gap-2 mb-3 sm:mb-4">
+      <CategoryIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" category={title} />
+      <h3 className="text-base sm:text-lg font-bold text-gray-800">{title}</h3>
     </div>
-    <div className="space-y-2">
+    <div className="space-y-1.5 sm:space-y-2">
       {stats.map(({ key, label, decimals, suffix = "" }) => (
         <StatBar
           key={key}
@@ -101,17 +101,19 @@ export const PercentileSection = ({
   playerData,
   initialPercentiles,
   activeTab,
+  selectedYear,
+  selectedDivision,
   onYearChange,
+  onDivisionChange,
+  onConferenceChange,
+  isLoading
 }) => {
   const availableYears = playerData?.yearsPlayed || [];
-  const sortedYears = [...availableYears].sort((a, b) => Number(b) - Number(a)); // Sort descending
+  const sortedYears = [...availableYears].sort((a, b) => Number(b) - Number(a));
 
-  const [selectedYear, setSelectedYear] = useState(
-    sortedYears[0]?.toString() || ""
-  );
   const [isYearDropdownOpen, setYearDropdownOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [conferenceOnly, setConferenceOnly] = useState(false);
   const dropdownRef = useRef(null);
   const animationTimer = useRef(null);
 
@@ -120,11 +122,16 @@ export const PercentileSection = ({
   );
 
   const handleYearChange = async (year) => {
-    setSelectedYear(year);
-    setIsLoading(true);
     await onYearChange(year);
-    setIsLoading(false);
     setYearDropdownOpen(false);
+  };
+
+  const handleConferenceToggle = () => {
+    const newConferenceOnly = !conferenceOnly;
+    setConferenceOnly(newConferenceOnly);
+    
+    // Call the conference change handler with the appropriate value
+    onConferenceChange(newConferenceOnly ? 'conference' : null);
   };
 
   const playAnimation = async () => {
@@ -192,6 +199,10 @@ export const PercentileSection = ({
       ? currentPercentiles.playerPA
       : currentPercentiles.playerIP;
 
+  const isConferenceFiltered = currentPercentiles.isConferenceFiltered;
+  const conferenceUsed = currentPercentiles.conference;
+  const playerCount = currentPercentiles.playerCount;
+
   const categories =
     activeTab === "batting"
       ? [
@@ -251,13 +262,13 @@ export const PercentileSection = ({
       <div className="flex flex-col gap-3 mb-4 sm:mb-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2 relative">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center">
-              <span className="mr-1 text-xl">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center">
+              <span className="mr-1">
                 {selectedYear} Percentile Rankings
               </span>
               <button
                 onClick={() => setYearDropdownOpen(!isYearDropdownOpen)}
-                className="text-blue-600 hover:text-blue-700 text-lg"
+                className="text-blue-600 hover:text-blue-700 text-base sm:text-lg"
                 aria-label="Select year"
               >
                 ▾
@@ -281,7 +292,7 @@ export const PercentileSection = ({
                       key={year}
                       className={`w-full px-4 py-2 text-left hover:bg-gray-50 
                       ${
-                        selectedYear === year.toString()
+                        selectedYear === year
                           ? "bg-blue-50 text-blue-700"
                           : "text-gray-700"
                       }`}
@@ -296,8 +307,6 @@ export const PercentileSection = ({
           </div>
 
           <div className="flex items-center h-9">
-            {" "}
-            {/* Fixed height container */}
             {!isPlaying ? (
               <button
                 onClick={playAnimation}
@@ -308,7 +317,6 @@ export const PercentileSection = ({
               </button>
             ) : (
               <div className="flex items-center justify-center gap-1 px-3 py-1.5 text-transparent text-xs">
-                {/* Invisible placeholder to maintain layout */}
                 <span className="w-3.5 h-3.5"></span>
                 <span>Play Career</span>
               </div>
@@ -316,8 +324,40 @@ export const PercentileSection = ({
           </div>
         </div>
 
+        {/* Conference Toggle and Info */}
+        <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={conferenceOnly}
+                onChange={handleConferenceToggle}
+                className="sr-only"
+              />
+              <div className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 items-center rounded-full transition-colors ${
+                conferenceOnly ? 'bg-blue-600' : 'bg-gray-200'
+              }`}>
+                <span className={`inline-block h-3.5 w-3.5 sm:h-4 sm:w-4 transform rounded-full bg-white transition-transform ${
+                  conferenceOnly ? 'translate-x-5 sm:translate-x-6' : 'translate-x-0.5 sm:translate-x-1'
+                }`} />
+              </div>
+              <span className="ml-2 text-xs sm:text-sm font-medium text-gray-700">
+                Conference Only
+              </span>
+            </label>
+          </div>
+
+          {isConferenceFiltered && conferenceUsed && (
+            <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+              <span>{conferenceUsed}</span>
+              <span>•</span>
+              <span>{playerCount} players</span>
+            </div>
+          )}
+        </div>
+
         {!isQualified && (
-          <div className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full self-start">
+          <div className="text-xs text-gray-500 bg-gray-100 px-2 sm:px-3 py-1 rounded-full self-start">
             Below threshold ({appearances}/{threshold}{" "}
             {activeTab === "batting" ? "PA" : "IP"})
           </div>
