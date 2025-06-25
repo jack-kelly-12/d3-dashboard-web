@@ -8,6 +8,10 @@ import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import { roundTo } from "../../utils/mathUtils";
 import { columnsBatted } from "../../config/tableColumns";
+import { useSubscription } from "../../contexts/SubscriptionContext";
+import ErrorDisplay from "../alerts/ErrorDisplay";
+import { getErrorMessage, isPremiumAccessError } from "../../utils/errorUtils";
+import ExportButton from "../buttons/ExportButton";
 
 const PERCENTAGE_COLUMNS = [
   "oppo_pct",
@@ -189,8 +193,9 @@ const BattedBallLeaderboard = ({
       setData(transformedData);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
-      if (err.status === 403) {
+      const errorMessage = getErrorMessage(err, { division });
+      setError(errorMessage);
+      if (isPremiumAccessError(err)) {
         setDivision(3);
       }
     } finally {
@@ -392,6 +397,14 @@ const BattedBallLeaderboard = ({
                 Showing {filteredData.length} of {data.length} players
               </div>
             )}
+
+            {/* Export Button */}
+            <div className="ml-auto">
+              <ExportButton
+                data={filteredData}
+                filename={`batted_ball_${startYear}-${endYear}_division${division}.csv`}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -399,7 +412,12 @@ const BattedBallLeaderboard = ({
       {/* Leaderboard Table */}
       {error ? (
         <div className="text-center py-12">
-          <p className="text-red-600 text-xs lg:text-sm">{error}</p>
+          <ErrorDisplay
+            error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
+            context={{ division }}
+            onRetry={fetchData}
+            onSwitchToDivision3={() => setDivision(3)}
+          />
         </div>
       ) : filteredData.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">

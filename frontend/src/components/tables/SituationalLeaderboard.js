@@ -10,6 +10,10 @@ import {
   columnsSituational,
   columnsSituationalPitcher,
 } from "../../config/tableColumns";
+import { useSubscription } from "../../contexts/SubscriptionContext";
+import ErrorDisplay from "../alerts/ErrorDisplay";
+import { getErrorMessage, isPremiumAccessError } from "../../utils/errorUtils";
+import ExportButton from "../buttons/ExportButton";
 
 const SituationalLeaderboard = ({
   isPremiumUserProp,
@@ -129,27 +133,12 @@ const SituationalLeaderboard = ({
     setIsLoading(true);
     setError(null);
     try {
-      const endpoint =
-        viewType === "batters"
-          ? `/api/leaderboards/situational`
-          : `/api/leaderboards/situational_pitcher`;
-
-      const countParam = viewType === "batters" ? "min_pa" : "min_bf";
-
       const rawData = await fetchAPI(
-        `${endpoint}?start_year=${startYear}&end_year=${endYear}&${countParam}=${minCount}&division=${division}`
+        `/api/leaderboards/situational?start_year=${startYear}&end_year=${endYear}&division=${division}&min_count=${minCount}`
       );
 
-      const sortField = "wOBA_Overall";
-      const sortedData = [...rawData].sort((a, b) => {
-        return viewType === "batters"
-          ? b[sortField] - a[sortField]
-          : a[sortField] - b[sortField];
-      });
-
-      const transformedData = sortedData.map((row, index) => ({
+      const transformedData = rawData.map((row) => ({
         ...row,
-        rank: index + 1,
         renderedTeam: (
           <div className="flex items-center gap-2">
             <TeamLogo
@@ -161,11 +150,12 @@ const SituationalLeaderboard = ({
           </div>
         ),
         renderedConference: (
-          <div className="flex items-center gap-2">
+          <div className="w-full flex justify-center items-center gap-2">
             <TeamLogo
-              teamId={row.conference_id}
+              teamId={row.prev_team_id}
               conferenceId={row.conference_id}
-              teamName={row.Team}
+              teamName={row.Conference}
+              showConference={true}
               className="h-8 w-8"
             />
           </div>
@@ -175,8 +165,9 @@ const SituationalLeaderboard = ({
       setData(transformedData);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
-      if (err.status === 403) {
+      const errorMessage = getErrorMessage(err, { division });
+      setError(errorMessage);
+      if (isPremiumAccessError(err)) {
         setDivision(3);
       }
     } finally {
@@ -188,7 +179,6 @@ const SituationalLeaderboard = ({
     minCount,
     division,
     isAuthReady,
-    viewType,
     isLoadingPlayerList,
   ]);
 
@@ -370,6 +360,14 @@ const SituationalLeaderboard = ({
                 Showing {filteredData.length} of {data.length} players
               </div>
             )}
+
+            {/* Export Button */}
+            <div className="ml-auto">
+              <ExportButton
+                data={filteredData}
+                filename={`situational_${viewType}_${startYear}-${endYear}_division${division}.csv`}
+              />
+            </div>
           </div>
 
           <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
@@ -449,7 +447,12 @@ const SituationalLeaderboard = ({
       {/* Leaderboard Table */}
       {error ? (
         <div className="text-center py-12">
-          <p className="text-red-600 text-xs lg:text-sm">{error}</p>
+          <ErrorDisplay
+            error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
+            context={{ division }}
+            onRetry={fetchData}
+            onSwitchToDivision3={() => setDivision(3)}
+          />
         </div>
       ) : filteredData.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">

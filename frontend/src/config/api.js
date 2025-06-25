@@ -45,13 +45,28 @@ export const fetchAPI = async (endpoint, options = {}) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => null);
-      throw new Error(
-        errorData?.message || `API call failed: ${response.statusText}`
+      const error = new Error(
+        errorData?.error || errorData?.message || `API call failed: ${response.statusText}`
       );
+      // Preserve the status code for better error handling
+      error.status = response.status;
+      error.statusText = response.statusText;
+      error.data = errorData;
+      throw error;
     }
 
     return response.json();
   } catch (error) {
-    throw error;
+    // If it's already our custom error with status, re-throw it
+    if (error.status) {
+      throw error;
+    }
+    // For network errors or other issues, create a generic error
+    const networkError = new Error(
+      error.message || "Network error. Please check your connection."
+    );
+    networkError.status = 0; // 0 indicates network error
+    networkError.originalError = error;
+    throw networkError;
   }
 };

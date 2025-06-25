@@ -8,7 +8,12 @@ import {
   ChevronDown,
   ChevronUp,
   FileBox,
+  User,
+  Users,
 } from "lucide-react";
+import ErrorDisplay from "../alerts/ErrorDisplay";
+import { getErrorMessage, isPremiumAccessError } from "../../utils/errorUtils";
+import ExportButton from "../buttons/ExportButton";
 
 const RollingLeaderboard = ({
   isPremiumUser = false,
@@ -51,7 +56,11 @@ const RollingLeaderboard = ({
       setData(combinedData);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
+      const errorMessage = getErrorMessage(err, { division });
+      setError(errorMessage);
+      if (isPremiumAccessError(err)) {
+        setDivision(3);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -385,10 +394,11 @@ const RollingLeaderboard = ({
     );
   };
 
-  if (isLoading || isLoadingPlayerList) {
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="flex flex-col justify-center items-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-gray-500 text-sm">Loading data...</p>
       </div>
     );
   }
@@ -396,7 +406,12 @@ const RollingLeaderboard = ({
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-600 text-sm">{error}</p>
+        <ErrorDisplay
+          error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
+          context={{ division }}
+          onRetry={fetchData}
+          onSwitchToDivision3={() => setDivision(3)}
+        />
       </div>
     );
   }
@@ -425,44 +440,6 @@ const RollingLeaderboard = ({
       {/* Controls */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
         <div className="p-4 space-y-4">
-          {/* Toggle View Type */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-600 font-medium">View:</span>
-              <div className="inline-flex bg-gray-100 rounded-md" role="group">
-                <button
-                  type="button"
-                  onClick={() => handleViewTypeChange("batter")}
-                  className={`px-4 py-2 text-sm font-medium rounded-l-md flex items-center ${
-                    playerType === "batter"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  Batters
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleViewTypeChange("pitcher")}
-                  className={`px-4 py-2 text-sm font-medium rounded-r-md flex items-center ${
-                    playerType === "pitcher"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  Pitchers
-                </button>
-              </div>
-            </div>
-
-            {/* Player List Filter Status */}
-            {selectedListId && selectedListPlayerIds && (
-              <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
-                Player list filter active
-              </div>
-            )}
-          </div>
-
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="w-full lg:w-64 relative">
               <Search
@@ -471,10 +448,10 @@ const RollingLeaderboard = ({
               />
               <input
                 type="text"
-                placeholder="Search"
+                placeholder="Search by name or team"
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                        focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
 
@@ -484,7 +461,7 @@ const RollingLeaderboard = ({
                   value={division}
                   onChange={(e) => setDivision(Number(e.target.value))}
                   className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                          focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+                    focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
                 >
                   <option value={1}>Division 1</option>
                   <option value={2}>Division 2</option>
@@ -492,12 +469,39 @@ const RollingLeaderboard = ({
                 </select>
               )}
 
+              <div className="inline-flex bg-gray-100 rounded-md" role="group">
+                <button
+                  type="button"
+                  onClick={() => setPlayerType("batter")}
+                  className={`px-4 py-2 text-sm font-medium rounded-l-md flex items-center ${
+                    playerType === "batter"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <User size={16} className="mr-1.5" />
+                  Batters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlayerType("pitcher")}
+                  className={`px-4 py-2 text-sm font-medium rounded-r-md flex items-center ${
+                    playerType === "pitcher"
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <Users size={16} className="mr-1.5" />
+                  Pitchers
+                </button>
+              </div>
+
               {conferences.length > 0 && (
                 <select
                   value={selectedConference}
                   onChange={(e) => setSelectedConference(e.target.value)}
                   className="w-full lg:w-44 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                          focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   <option value="">All Conferences</option>
                   {conferences.map((conf) => (
@@ -507,7 +511,22 @@ const RollingLeaderboard = ({
                   ))}
                 </select>
               )}
+
+              {/* Export Button */}
+              <div className="ml-auto">
+                <ExportButton
+                  data={Object.values(data).flat()}
+                  filename={`rolling_${playerType}_division${division}.csv`}
+                />
+              </div>
             </div>
+
+            {/* Player List Filter Status */}
+            {selectedListId && (
+              <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
+                Showing {Object.values(data).flat().length} players
+              </div>
+            )}
           </div>
         </div>
       </div>

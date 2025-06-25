@@ -9,6 +9,8 @@ import { useSearchParams } from "react-router-dom";
 import debounce from "lodash/debounce";
 import { useSubscription } from "../contexts/SubscriptionContext";
 import PlayerListManager from "../managers/PlayerListManager";
+import ErrorDisplay from "../components/alerts/ErrorDisplay";
+import { getErrorMessage, isPremiumAccessError } from "../utils/errorUtils";
 
 const MemoizedTable = React.memo(({ data, dataType, filename }) => (
   <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
@@ -173,20 +175,19 @@ const Data = () => {
       const results = await Promise.all(
         state.selectedYears.map((year) =>
           fetchAPI(endpointMap[state.dataType](year)).catch((err) => {
-            if (err.status === 403) {
-              throw new Error(
-                "Premium subscription required to access D1/D2 data"
-              );
-            }
-            console.error(`Error fetching ${year}:`, err);
-            return [];
+            // Use the new error utility for consistent error handling
+            const errorMessage = getErrorMessage(err, { 
+              division: state.division, 
+              dataType: state.dataType 
+            });
+            throw new Error(errorMessage);
           })
         )
       );
 
       const combinedData = results.flat();
       if (combinedData.length === 0) {
-        setError("No data found for the selected years");
+        setError("No data found for the selected years and filters.");
         return;
       }
 
@@ -194,13 +195,17 @@ const Data = () => {
       setError(null);
     } catch (err) {
       setError(err.message);
-      setState((prev) => ({ ...prev, division: 3 }));
+      // Only auto-switch to Division 3 for premium-related errors
+      if (isPremiumAccessError(err) && state.division !== 3) {
+        setState((prev) => ({ ...prev, division: 3 }));
+      }
     } finally {
       setIsLoading(false);
     }
   }, [
     state.dataType,
     state.selectedYears,
+    state.division,
     endpointMap,
     transformData,
     isSubscriptionLoading,
@@ -286,6 +291,12 @@ const Data = () => {
           setSelectedListId={(val) => handleStateChange("selectedListId", val)}
           conferences={conferences}
           isPremiumUser={isPremiumUser}
+          // Export functionality
+          exportData={!isPageLoading && !error && filteredData.length > 0 ? filteredData : null}
+          exportFilename={`${state.dataType}_${state.selectedYears.join("-")}${
+            state.selectedListId ? `_list_${state.selectedListId}` : ""
+          }.csv`}
+          showExportButton={!isPageLoading && !error && filteredData.length > 0}
         />
 
         {isPageLoading ? (
@@ -299,7 +310,12 @@ const Data = () => {
           </div>
         ) : error ? (
           <div className="text-center py-12">
-            <p className="text-red-600">{error}</p>
+            <ErrorDisplay
+              error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
+              context={{ division: state.division, dataType: state.dataType }}
+              onRetry={fetchData}
+              onSwitchToDivision3={() => setState(prev => ({ ...prev, division: 3 }))}
+            />
           </div>
         ) : filteredData.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">

@@ -7,6 +7,10 @@ import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import { columnsSplits, columnsSplitsPitcher } from "../../config/tableColumns";
+import { useSubscription } from "../../contexts/SubscriptionContext";
+import ErrorDisplay from "../alerts/ErrorDisplay";
+import { getErrorMessage, isPremiumAccessError } from "../../utils/errorUtils";
+import ExportButton from "../buttons/ExportButton";
 
 const SplitsLeaderboard = ({
   isPremiumUserProp,
@@ -126,28 +130,14 @@ const SplitsLeaderboard = ({
     setIsLoading(true);
     setError(null);
     try {
-      const endpoint =
-        viewType === "batters"
-          ? `/api/leaderboards/splits`
-          : `/api/leaderboards/splits_pitcher`;
-
-      const countParam = viewType === "batters" ? "min_pa" : "min_bf";
-
       const rawData = await fetchAPI(
-        `${endpoint}?start_year=${startYear}&end_year=${endYear}&${countParam}=${minCount}&division=${division}`
+        `/api/leaderboards/splits${
+          viewType === "pitchers" ? "_pitcher" : ""
+        }?start_year=${startYear}&end_year=${endYear}&division=${division}&min_count=${minCount}`
       );
 
-      const sortField = "wOBA_Overall";
-
-      const sortedData = [...rawData].sort((a, b) => {
-        return viewType === "batters"
-          ? b[sortField] - a[sortField] // Descending for batters (higher wOBA is better)
-          : a[sortField] - b[sortField]; // Ascending for pitchers (lower wOBA against is better)
-      });
-
-      const transformedData = sortedData.map((row, index) => ({
+      const transformedData = rawData.map((row) => ({
         ...row,
-        rank: index + 1,
         renderedTeam: (
           <div className="flex items-center gap-2">
             <TeamLogo
@@ -159,11 +149,12 @@ const SplitsLeaderboard = ({
           </div>
         ),
         renderedConference: (
-          <div className="flex items-center gap-2">
+          <div className="w-full flex justify-center items-center gap-2">
             <TeamLogo
-              teamId={row.conference_id}
+              teamId={row.prev_team_id}
               conferenceId={row.conference_id}
-              teamName={row.Team}
+              teamName={row.Conference}
+              showConference={true}
               className="h-8 w-8"
             />
           </div>
@@ -173,8 +164,9 @@ const SplitsLeaderboard = ({
       setData(transformedData);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
-      if (err.status === 403) {
+      const errorMessage = getErrorMessage(err, { division });
+      setError(errorMessage);
+      if (isPremiumAccessError(err)) {
         setDivision(3);
       }
     } finally {
@@ -379,6 +371,14 @@ const SplitsLeaderboard = ({
                 Showing {filteredData.length} of {data.length} players
               </div>
             )}
+
+            {/* Export Button */}
+            <div className="ml-auto">
+              <ExportButton
+                data={filteredData}
+                filename={`splits_${viewType}_${startYear}-${endYear}_division${division}.csv`}
+              />
+            </div>
           </div>
 
           {/* Filters */}
@@ -459,7 +459,12 @@ const SplitsLeaderboard = ({
       {/* Leaderboard Table */}
       {error ? (
         <div className="text-center py-12">
-          <p className="text-red-600 text-xs lg:text-sm">{error}</p>
+          <ErrorDisplay
+            error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
+            context={{ division }}
+            onRetry={fetchData}
+            onSwitchToDivision3={() => setDivision(3)}
+          />
         </div>
       ) : filteredData.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">

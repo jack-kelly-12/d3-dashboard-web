@@ -103,7 +103,48 @@ def require_premium(f):
     return decorated_function
 
 
+def require_premium_or_division_3(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        division = request.args.get('division', type=int, default=3)
+
+        if division != 3:
+            auth_header = request.headers.get('Authorization')
+            if not auth_header:
+                return jsonify({"error": "Premium subscription required"}), 403
+
+            try:
+                token = auth_header.split('Bearer ')[1]
+                decoded_token = auth.verify_id_token(token)
+                user_id = decoded_token['uid']
+
+                db = firestore.client()
+                sub_doc = db.collection(
+                    'subscriptions').document(user_id).get()
+
+                if not sub_doc.exists:
+                    return jsonify({"error": "Premium subscription required"}), 403
+
+                data = sub_doc.to_dict()
+                is_active = (
+                    data.get('status') == 'active' and
+                    data.get('expiresAt', datetime.now()
+                             ).timestamp() > datetime.now().timestamp()
+                )
+
+                if not is_active:
+                    return jsonify({"error": "Premium subscription required"}), 403
+
+            except Exception as e:
+                print(f"Auth error: {str(e)}")
+                return jsonify({"error": "Premium subscription required"}), 403
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @app.route('/api/batting_war/<int:year>', methods=['GET'])
+@require_premium
 def get_batting_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -131,6 +172,7 @@ def get_batting_war(year):
 
 
 @app.route('/api/pitching_war/<int:year>', methods=['GET'])
+@require_premium
 def get_pitching_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -158,6 +200,7 @@ def get_pitching_war(year):
 
 
 @app.route('/api/batting_team_war/<int:year>', methods=['GET'])
+@require_premium
 def get_batting_team_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -185,6 +228,7 @@ def get_batting_team_war(year):
 
 
 @app.route('/api/pitching_team_war/<int:year>', methods=['GET'])
+@require_premium
 def get_pitching_team_war(year):
     if year < 2021 or year > 2025:
         return jsonify({"error": "Invalid year. Must be between 2021 and 2025."}), 400
@@ -212,6 +256,7 @@ def get_pitching_team_war(year):
 
 
 @app.route('/api/guts', methods=['GET'])
+@require_premium
 def get_guts():
     division = request.args.get('division', default=3, type=int)
     if division not in [1, 2, 3]:
@@ -226,6 +271,7 @@ def get_guts():
 
 
 @app.route('/api/rankings', methods=['GET'])
+@require_premium
 def get_rankings():
     division = request.args.get('division', default=3, type=int)
     year = request.args.get('year', default=2025, type=int)
@@ -285,6 +331,7 @@ def get_rankings():
 
 
 @app.route('/api/park-factors', methods=['GET'])
+@require_premium
 def get_pf():
     division = request.args.get('division', default=3, type=int)
     if division not in [1, 2, 3]:
@@ -300,6 +347,7 @@ def get_pf():
 
 
 @app.route('/api/teams', methods=['GET'])
+@require_premium
 def get_teams():
     division = request.args.get('division', 3, type=int)
     year = request.args.get('year', 2024, type=int)
@@ -322,6 +370,7 @@ def get_teams():
 
 
 @app.route('/api/players-hit/<team_name>', methods=['GET'])
+@require_premium_or_division_3
 def get_team_players(team_name):
     try:
         division = request.args.get('division')
@@ -385,6 +434,7 @@ def get_team_players(team_name):
 
 
 @app.route('/api/players-pitch/<team_name>', methods=['GET'])
+@require_premium_or_division_3
 def get_team_pitchers(team_name):
     division = request.args.get('division', type=int)
     year = request.args.get('year', '2025')
@@ -425,6 +475,7 @@ def get_team_pitchers(team_name):
 
 
 @app.route('/api/expected-runs', methods=['GET'])
+@require_premium_or_division_3
 def get_expected_runs():
     year = request.args.get('year', '2025')
     division = request.args.get('division', default=3, type=int)
@@ -453,6 +504,7 @@ def get_expected_runs():
     return jsonify(data)
 
 @app.route('/api/player-percentiles/<string:player_id>/<int:year>/<int:division>', methods=['GET'])
+@require_premium
 def get_player_percentiles(player_id, year, division):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -609,6 +661,7 @@ def get_player_percentiles(player_id, year, division):
 
 
 @app.route('/api/spraychart-data/<player_id>', methods=['GET'])
+@require_premium
 def get_spraychart_data(player_id):
     try:
         year = int(request.args.get('year', '2025'))
@@ -724,6 +777,7 @@ def get_spraychart_data(player_id):
 
 
 @app.route('/api/player/<string:player_id>', methods=['GET'])
+@require_premium_or_division_3
 def get_player_stats(player_id):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -831,6 +885,7 @@ def get_player_stats(player_id):
 
 
 @app.route('/api/search/players', methods=['GET'])
+@require_premium_or_division_3
 def search_players():
     query = request.args.get('q', '').strip()
     if not query:
@@ -909,6 +964,7 @@ def search_players():
 
 @app.route('/api/upload/rapsodo', methods=['POST', 'OPTIONS'])
 @cross_origin(supports_credentials=True)
+@require_premium
 def upload_rapsodo():
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
@@ -993,6 +1049,7 @@ def upload_rapsodo():
 
 @app.route('/api/upload/trackman', methods=['POST', 'OPTIONS'])
 @cross_origin(supports_credentials=True)  # Add this decorator
+@require_premium
 def upload_trackman():
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
@@ -1052,6 +1109,7 @@ def upload_trackman():
 
 @app.route('/api/upload/d3', methods=['POST', 'OPTIONS'])
 @cross_origin(supports_credentials=True)
+@require_premium
 def upload_d3():
     if request.method == 'OPTIONS':
         response = app.make_default_options_response()
@@ -1161,6 +1219,7 @@ def upload_d3():
 
 
 @app.route('/api/conferences', methods=['GET'])
+@require_premium_or_division_3
 def get_conferences():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1203,6 +1262,7 @@ def get_conferences():
 
 
 @app.route('/api/players')
+@require_premium_or_division_3
 def get_players():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1267,11 +1327,13 @@ def get_players():
 
 
 @app.route('/api/teams/logos/<team_id>.png')
+@require_premium_or_division_3
 def get_team_logo(team_id):
     return serve_logo(team_id, 'team')
 
 
 @app.route('/api/conferences/logos/<conference_id>.png')
+@require_premium_or_division_3
 def get_conference_logo(conference_id):
     return serve_logo(conference_id, 'conference')
 
@@ -1340,6 +1402,7 @@ def serve_logo(entity_id, entity_type):
 
 
 @app.route('/api/similar-batters/<string:player_id>', methods=['GET'])
+@require_premium
 def get_similar_batters(player_id):
     year = request.args.get('year', type=int, default=2025)
     division = request.args.get('division', type=int, default=3)
@@ -1468,6 +1531,7 @@ def get_similar_batters(player_id):
 
 
 @app.route('/api/similar-pitchers/<string:player_id>', methods=['GET'])
+@require_premium
 def get_similar_pitchers(player_id):
     year = request.args.get('year', type=int, default=2025)
     division = request.args.get('division', type=int, default=3)
@@ -1614,6 +1678,7 @@ def get_similar_pitchers(player_id):
 
 
 @app.route('/api/leaderboards/value', methods=['GET'])
+@require_premium
 def get_value_leaderboard():
     start_year = request.args.get('start_year', '2025')
     end_year = request.args.get('end_year', '2025')
@@ -1728,6 +1793,7 @@ def get_value_leaderboard():
 
 @app.route('/api/leaderboards/baserunning', methods=['GET'])
 @app.route('/api/leaderboards/baserunning/<string:player_id>', methods=['GET'])
+@require_premium
 def get_player_baserunning(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
@@ -1813,6 +1879,7 @@ def get_player_baserunning(player_id=None):
 
 
 @app.route('/api/rolling/<string:player_id>', methods=['GET'])
+@require_premium
 def get_player_rolling_data(player_id):
     window = request.args.get('window', type=int, default=25)
     player_type = request.args.get('player_type', default='batter')
@@ -1953,6 +2020,7 @@ WHERE window_size >= ?
 
 
 @app.route('/api/leaderboards/rolling', methods=['GET'])
+@require_premium
 def get_rolling_leaderboard():
     division = request.args.get('division', type=int, default=3)
     window = request.args.get('window', type=int, default=25)
@@ -2030,6 +2098,7 @@ def get_rolling_leaderboard():
 
 @app.route('/api/leaderboards/situational', methods=['GET'])
 @app.route('/api/leaderboards/situational/<string:player_id>', methods=['GET'])
+@require_premium
 def get_player_situational(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
@@ -2130,6 +2199,7 @@ def get_player_situational(player_id=None):
 
 @app.route('/api/leaderboards/situational_pitcher', methods=['GET'])
 @app.route('/api/leaderboards/situational_pitcher/<string:player_id>', methods=['GET'])
+@require_premium
 def get_player_situational_pitcher(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
@@ -2231,6 +2301,7 @@ def get_player_situational_pitcher(player_id=None):
 
 @app.route('/api/leaderboards/splits', methods=['GET'])
 @app.route('/api/leaderboards/splits/<string:player_id>', methods=['GET'])
+@require_premium_or_division_3
 def get_player_splits(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
@@ -2330,6 +2401,7 @@ def get_player_splits(player_id=None):
 
 @app.route('/api/leaderboards/splits_pitcher', methods=['GET'])
 @app.route('/api/leaderboards/splits_pitcher/<string:player_id>', methods=['GET'])
+@require_premium_or_division_3
 def get_player_splits_pitcher(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
@@ -2429,6 +2501,7 @@ def get_player_splits_pitcher(player_id=None):
 
 @app.route('/api/leaderboards/batted_ball', methods=['GET'])
 @app.route('/api/leaderboards/batted_ball/<string:player_id>', methods=['GET'])
+@require_premium_or_division_3
 def get_player_batted_ball(player_id=None):
     start_year = request.args.get('start_year', '2021')
     end_year = request.args.get('end_year', '2025')
@@ -2524,6 +2597,7 @@ def get_player_batted_ball(player_id=None):
 
 
 @app.route('/api/games/<int:year>/<game_id>', methods=['GET'])
+@require_premium_or_division_3
 def get_game(year, game_id):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -2570,6 +2644,7 @@ def get_game(year, game_id):
 
 
 @app.route('/api/games', methods=['GET'])
+@require_premium_or_division_3
 def get_games_by_date():
     month = request.args.get('month')
     day = request.args.get('day')
@@ -2624,46 +2699,6 @@ def get_games_by_date():
         return jsonify({"error": f"Database error: {str(e)}"}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-@app.route('/api/insights/query', methods=['POST'])
-def query_insights():
-    try:
-        insights_processor = InsightsProcessor()
-        data = request.get_json()
-        question = data['question'].strip()
-        conversation_id = data.get('conversation_id', str(uuid.uuid4()))
-
-        if len(question) > 1000:
-            return jsonify({
-                "status": "error",
-                "message": "Question too long",
-                "data": None
-            }), 400
-
-        # Process the question with conversation context
-        result = insights_processor.process_question(question, conversation_id)
-
-        # Ensure result has the expected structure
-        formatted_result = {
-            "answer": result["result"]["answer"],
-            "analysis": result["result"]["analysis"],
-            "data": result["result"]["data"]  # SQL query results if any
-        }
-
-        return jsonify({
-            "status": "success",
-            "result": formatted_result,
-            "conversation_id": conversation_id
-        }), 200
-
-    except Exception as e:
-        logger.error(f"Error processing question: {str(e)}", exc_info=True)
-        return jsonify({
-            "status": "error",
-            "message": str(e),
-            "data": None
-        }), 500
 
 
 class StripeService:

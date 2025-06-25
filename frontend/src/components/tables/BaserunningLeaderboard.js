@@ -7,6 +7,10 @@ import debounce from "lodash/debounce";
 import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import { columnsBaserunning } from "../../config/tableColumns";
+import { useSubscription } from "../../contexts/SubscriptionContext";
+import ErrorDisplay from "../alerts/ErrorDisplay";
+import { getErrorMessage, isPremiumAccessError } from "../../utils/errorUtils";
+import ExportButton from "../buttons/ExportButton";
 
 const BaserunningLeaderboard = ({
   isPremiumUserProp,
@@ -27,6 +31,7 @@ const BaserunningLeaderboard = ({
   const [isPremiumUser, setIsPremiumUser] = useState(
     isPremiumUserProp || false
   );
+  const [minPA, setMinPA] = useState(100);
 
   const fetchConferences = useCallback(async () => {
     if (!isAuthReady) return;
@@ -123,16 +128,11 @@ const BaserunningLeaderboard = ({
     setError(null);
     try {
       const rawData = await fetchAPI(
-        `/api/leaderboards/baserunning?start_year=${startYear}&end_year=${endYear}&division=${division}`
+        `/api/leaderboards/baserunning?start_year=${startYear}&end_year=${endYear}&division=${division}&min_pa=${minPA}`
       );
 
-      const sortedData = [...rawData].sort(
-        (a, b) => b.Baserunning - a.Baserunning
-      );
-
-      const transformedData = sortedData.map((row, index) => ({
+      const transformedData = rawData.map((row) => ({
         ...row,
-        rank: index + 1,
         renderedTeam: (
           <div className="flex items-center gap-2">
             <TeamLogo
@@ -144,11 +144,12 @@ const BaserunningLeaderboard = ({
           </div>
         ),
         renderedConference: (
-          <div className="flex items-center gap-2">
+          <div className="w-full flex justify-center items-center gap-2">
             <TeamLogo
-              teamId={row.conference_id}
+              teamId={row.prev_team_id}
               conferenceId={row.conference_id}
-              teamName={row.Team}
+              teamName={row.Conference}
+              showConference={true}
               className="h-8 w-8"
             />
           </div>
@@ -158,14 +159,22 @@ const BaserunningLeaderboard = ({
       setData(transformedData);
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message);
-      if (err.status === 403) {
+      const errorMessage = getErrorMessage(err, { division });
+      setError(errorMessage);
+      if (isPremiumAccessError(err)) {
         setDivision(3);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [startYear, endYear, division, isAuthReady, isLoadingPlayerList]);
+  }, [
+    startYear,
+    endYear,
+    minPA,
+    division,
+    isAuthReady,
+    isLoadingPlayerList,
+  ]);
 
   useEffect(() => {
     fetchData();
@@ -340,6 +349,14 @@ const BaserunningLeaderboard = ({
                 Showing {filteredData.length} of {data.length} players
               </div>
             )}
+
+            {/* Export Button */}
+            <div className="ml-auto">
+              <ExportButton
+                data={filteredData}
+                filename={`baserunning_${startYear}-${endYear}_division${division}.csv`}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -347,7 +364,12 @@ const BaserunningLeaderboard = ({
       {/* Leaderboard Table */}
       {error ? (
         <div className="text-center py-12">
-          <p className="text-red-600 text-xs lg:text-sm">{error}</p>
+          <ErrorDisplay
+            error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
+            context={{ division }}
+            onRetry={fetchData}
+            onSwitchToDivision3={() => setDivision(3)}
+          />
         </div>
       ) : filteredData.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">

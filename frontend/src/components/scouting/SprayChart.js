@@ -300,14 +300,14 @@ const SprayChart = ({
       );
 
     const titleFontSize = isVerySmallScreen
-      ? "14px"
-      : isSmallScreen
       ? "16px"
+      : isSmallScreen
+      ? "17px"
       : "20px";
     const subtitleFontSize = isVerySmallScreen
-      ? "12px"
-      : isSmallScreen
       ? "14px"
+      : isSmallScreen
+      ? "15px"
       : "18px";
 
     header
@@ -422,7 +422,7 @@ const SprayChart = ({
       const textY = centerY - Math.cos(textAngle) * textRadius;
 
       const percentageFontSize = isVerySmallScreen
-        ? "12px"
+        ? "30px"
         : isSmallScreen
         ? "16px"
         : "28px";
@@ -460,7 +460,7 @@ const SprayChart = ({
 
       if (!isVerySmallScreen || hrCount > 0) {
         const hrFontSize = isVerySmallScreen
-          ? "14px"
+          ? "15px"
           : isSmallScreen
           ? "16px"
           : "18px";
@@ -520,7 +520,7 @@ const SprayChart = ({
 
       if (percentage > 0) {
         const infieldFontSize = isVerySmallScreen
-          ? "8px"
+          ? "18px"
           : isSmallScreen
           ? "14px"
           : "14px";

@@ -10,6 +10,7 @@ import {
 import { Link } from "react-router-dom";
 import PlayerListManager from "../../managers/PlayerListManager";
 import { useNavigate } from "react-router-dom";
+import ExportButton from "../buttons/ExportButton";
 
 const dataTypes = [
   { id: "player_hitting", label: "Player Hitting" },
@@ -60,6 +61,9 @@ const DataControls = ({
   isPremiumUser = false,
   selectedListId,
   setSelectedListId,
+  exportData,
+  exportFilename,
+  showExportButton = false,
 }) => {
   const [playerLists, setPlayerLists] = useState([]);
   const [isLoadingLists, setIsLoadingLists] = useState(false);
@@ -279,13 +283,21 @@ const DataControls = ({
           </div>
         </div>
 
-        <Link
-          to="/documentation"
-          className="flex items-center gap-2 text-xs lg:text-sm text-blue-600 hover:text-blue-700 mt-1 md:mt-0 md:ml-auto"
-        >
-          <BookOpen size={16} className="flex-shrink-0" />
-          <span>View Statistics Guide</span>
-        </Link>
+        <div className="flex items-center gap-3 mt-1 md:mt-0 md:ml-auto">
+          {showExportButton && exportData && (
+            <ExportButton
+              data={exportData}
+              filename={exportFilename}
+            />
+          )}
+          <Link
+            to="/documentation"
+            className="flex items-center gap-2 text-xs lg:text-sm text-blue-600 hover:text-blue-700"
+          >
+            <BookOpen size={16} className="flex-shrink-0" />
+            <span>View Statistics Guide</span>
+          </Link>
+        </div>
       </div>
 
       {/* Mobile: Show/Hide filters toggle */}
