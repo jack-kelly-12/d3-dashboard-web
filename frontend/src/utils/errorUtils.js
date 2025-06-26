@@ -9,7 +9,7 @@
  * @returns {string} User-friendly error message
  */
 export const getErrorMessage = (error, context = {}) => {
-  const { division, dataType, endpoint } = context;
+  const { division } = context;
   
   // Handle different HTTP status codes
   if (error.status === 401) {

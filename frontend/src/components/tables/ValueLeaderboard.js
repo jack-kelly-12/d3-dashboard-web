@@ -1,16 +1,12 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
-import { Search, FileBox, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, FileBox } from "lucide-react";
 import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import AuthManager from "../../managers/AuthManager";
 import { columnsValue } from "../../config/tableColumns";
-import { useSubscription } from "../../contexts/SubscriptionContext";
-import PlayerListManager from "../../managers/PlayerListManager";
-import ErrorDisplay from "../alerts/ErrorDisplay";
-import { getErrorMessage, isPremiumAccessError } from "../../utils/errorUtils";
 import ExportButton from "../buttons/ExportButton";
 
 const ValueLeaderboard = ({
@@ -47,7 +43,6 @@ const ValueLeaderboard = ({
   useEffect(() => {
     let isMounted = true;
 
-    // If isPremiumUserProp is provided, use it
     if (isPremiumUserProp !== undefined) {
       setIsPremiumUser(isPremiumUserProp);
       setIsAuthReady(true);
@@ -56,7 +51,6 @@ const ValueLeaderboard = ({
       };
     }
 
-    // Otherwise, fetch the subscription status
     const initializeAuth = async () => {
       const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
         if (!isMounted) return;
@@ -163,9 +157,8 @@ const ValueLeaderboard = ({
       setData(transformedData);
     } catch (err) {
       console.error("Error fetching data:", err);
-      const errorMessage = getErrorMessage(err, { division });
-      setError(errorMessage);
-      if (isPremiumAccessError(err)) {
+      setError(err.message);
+      if (err.status === 403) {
         setDivision(3);
       }
     } finally {
@@ -242,24 +235,10 @@ const ValueLeaderboard = ({
     return `${filename}.csv`;
   };
 
-  if (isLoading) {
+  if (!isAuthReady || isLoading || isLoadingPlayerList) {
     return (
-      <div className="flex flex-col justify-center items-center h-64">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-gray-500 text-sm">Loading data...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <ErrorDisplay
-          error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
-          context={{ division }}
-          onRetry={fetchData}
-          onSwitchToDivision3={() => setDivision(3)}
-        />
+      <div className="flex justify-center items-center h-64">
+        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -299,7 +278,7 @@ const ValueLeaderboard = ({
               />
               <input
                 type="text"
-                placeholder="Search by name or team"
+                placeholder="Search"
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
                   focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -363,28 +342,32 @@ const ValueLeaderboard = ({
                   ))}
                 </select>
               )}
-
-              {/* Export Button */}
-              <div className="ml-auto">
-                <ExportButton
-                  data={filteredData}
-                  filename={`value_leaderboard_${startYear}-${endYear}_division${division}.csv`}
-                />
-              </div>
             </div>
 
             {/* Player List Filter Status */}
             {selectedListId && (
-              <div className="px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
+              <div className="ml-auto px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
                 Showing {filteredData.length} of {data.length} players
               </div>
             )}
+
+            {/* Export Button */}
+            <div className="ml-auto">
+              <ExportButton
+                data={filteredData}
+                filename={generateFilename()}
+              />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Leaderboard Table */}
-      {filteredData.length === 0 ? (
+      {error ? (
+        <div className="text-center py-12">
+          <p className="text-red-600 text-xs lg:text-sm">{error}</p>
+        </div>
+      ) : filteredData.length === 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
           <p className="text-gray-600 mb-4">
             No data found for the current filters.

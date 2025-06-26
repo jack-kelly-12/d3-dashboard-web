@@ -8,7 +8,6 @@ import AuthManager from "../../managers/AuthManager";
 import SubscriptionManager from "../../managers/SubscriptionManager";
 import { roundTo } from "../../utils/mathUtils";
 import { columnsBatted } from "../../config/tableColumns";
-import { useSubscription } from "../../contexts/SubscriptionContext";
 import ErrorDisplay from "../alerts/ErrorDisplay";
 import { getErrorMessage, isPremiumAccessError } from "../../utils/errorUtils";
 import ExportButton from "../buttons/ExportButton";
@@ -402,7 +401,7 @@ const BattedBallLeaderboard = ({
             <div className="ml-auto">
               <ExportButton
                 data={filteredData}
-                filename={`batted_ball_${startYear}-${endYear}_division${division}.csv`}
+                filename={generateFilename()}
               />
             </div>
           </div>
