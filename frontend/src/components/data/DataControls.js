@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState, useEffect } from "react";
 import debounce from "lodash/debounce";
-import { Search, Check, X, Plus } from "lucide-react";
+import { Search, Check, X, Plus, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import PlayerListManager from "../../managers/PlayerListManager";
 import DatePicker from "./DatePicker";
@@ -37,6 +37,7 @@ const DataControls = ({
   onApplyFilters = () => {},
   currentData = [],
   onAddToPlayerList = () => {},
+  columns = [],
 }) => {
   const navigate = useNavigate();
   const [tempYears, setTempYears] = useState(selectedYears);
@@ -238,6 +239,82 @@ const DataControls = ({
     setSelectedListId(e.target.value);
   }, [setSelectedListId]);
 
+  const handleExport = useCallback(() => {
+    if (!currentData || currentData.length === 0 || !columns || columns.length === 0) return;
+
+    // Filter columns that have selectors and names (skip action columns)
+    const exportableColumns = columns.filter(col => col.selector && col.name && col.name.trim() !== "");
+
+    if (exportableColumns.length === 0) return;
+
+    // Helper function to extract field name from selector function
+    const getFieldName = (selector) => {
+      if (typeof selector !== 'function') return null;
+      
+      // Convert function to string and try to extract the field name
+      const funcStr = selector.toString();
+      
+      // Match patterns like: (row) => row.field_name, row => row.field_name, (row) => row.field_name?.something
+      const match = funcStr.match(/=>\s*row\.(\w+)/) || funcStr.match(/row\.(\w+)/);
+      if (match && match[1]) {
+        return match[1];
+      }
+      
+      // Fallback: try to find property access patterns
+      const propertyMatch = funcStr.match(/\[['"](\w+)['"]\]/) || funcStr.match(/\.(\w+)(?:[^.]|$)/);
+      if (propertyMatch && propertyMatch[1]) {
+        return propertyMatch[1];
+      }
+      
+      return null;
+    };
+
+    // Create CSV headers using actual field names
+    const headers = exportableColumns.map(col => {
+      const fieldName = getFieldName(col.selector);
+      return fieldName || col.name.toLowerCase().replace(/\s+/g, '_');
+    });
+
+    // Create CSV rows using selectors
+    const rows = currentData.map(row => 
+      exportableColumns.map(col => {
+        try {
+          const value = col.selector(row);
+          // Handle null/undefined values
+          if (value === null || value === undefined) return '';
+          // Handle strings that might contain commas or quotes
+          if (typeof value === 'string') {
+            return `"${value.replace(/"/g, '""')}"`;
+          }
+          // Handle numbers and other types
+          return String(value);
+        } catch (error) {
+          console.error(`Error exporting column ${col.name}:`, error);
+          return '';
+        }
+      })
+    );
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    const filename = `${dataType}_${selectedYears.join("-") || new Date().getFullYear()}.csv`;
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [currentData, columns, dataType, selectedYears]);
+
   // derived flag not used here; computing it triggers warnings. Remove unused.
 
   return (
@@ -348,15 +425,25 @@ const DataControls = ({
               </select>
             </div>
             )}
-            <button
-              onClick={() => navigate('/player-lists')}
-              className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
-            >
-              <Plus size={14} className="text-gray-600" />
-              <span className="hidden sm:inline">Create player list</span>
-            </button>
-          </div>
-        )}
+             <button
+               onClick={() => navigate('/player-lists')}
+               className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+             >
+               <Plus size={14} className="text-gray-600" />
+               <span className="hidden sm:inline">Create player list</span>
+             </button>
+             {currentData && currentData.length > 0 && columns && columns.length > 0 && (
+               <button
+                 onClick={handleExport}
+                 className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-md hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+                 title="Export data to CSV"
+               >
+                 <Download size={14} className="text-gray-600" />
+                 <span className="hidden sm:inline">Export</span>
+               </button>
+             )}
+           </div>
+         )}
 
         <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
           {dataTypeConfig.hasPlayerType && (

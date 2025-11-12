@@ -292,6 +292,7 @@ const Data = () => {
               allowedDataTypes={["player_batting", "player_pitching", "team_batting", "team_pitching"]}
               onApplyFilters={fetchData}
               currentData={filteredData}
+              columns={columns}
               onAddToPlayerList={(listId, playerIds) => {
                 console.log(`Added ${playerIds.length} players to list ${listId}`);
               }}
