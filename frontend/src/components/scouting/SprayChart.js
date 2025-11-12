@@ -2,10 +2,6 @@ import React, { useEffect, useRef, useState, useMemo } from "react";
 import * as d3 from "d3";
 import { fetchAPI } from "../../config/api";
 
-// Create a cache object outside the component to persist between renders
-const apiCache = new Map();
-const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes in milliseconds
-
 const SprayChart = ({
   width = 600,
   height = 570,
@@ -17,35 +13,22 @@ const SprayChart = ({
   const [playerData, setPlayerData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Create a memoized cache key based on the dependencies
-  const cacheKey = useMemo(
-    () => `spraychart-${playerId}-${year}-${division}`,
-    [playerId, year, division]
-  );
+  const [events, setEvents] = useState([]);
 
   useEffect(() => {
     const fetchPlayerData = async () => {
       setLoading(true);
 
       try {
-        const cachedData = apiCache.get(cacheKey);
-        const now = Date.now();
-
-        if (cachedData && now - cachedData.timestamp < CACHE_EXPIRATION) {
-          setPlayerData(cachedData.data);
-          setError(null);
-          setLoading(false);
-          return;
-        }
-
         const data = await fetchAPI(
-          `/spraychart-data/${playerId}?year=${year}&division=${division}`
+          `/spraychart_data/${playerId}?year=${year}&division=${division}`
         );
 
         const counts = data.counts || {};
         const splits = data.splits_data || {};
         const battedBall = data.batted_ball_data || {};
+        const incomingEvents = Array.isArray(data.events) ? data.events : [];
+        setEvents(incomingEvents);
 
         const totalOutfield =
           (counts.to_lf || 0) +
@@ -219,11 +202,6 @@ const SprayChart = ({
           ],
         };
 
-        apiCache.set(cacheKey, {
-          data: processedData,
-          timestamp: Date.now(),
-        });
-
         setPlayerData(processedData);
         setError(null);
       } catch (err) {
@@ -235,7 +213,134 @@ const SprayChart = ({
     };
 
     fetchPlayerData();
-  }, [cacheKey, division, playerId, year]);
+  }, [division, playerId, year]);
+
+  const aggregates = useMemo(() => {
+    const evts = Array.isArray(events) ? events : [];
+    const outfieldZones = ["left-field", "center-field", "right-field"];
+    const infieldZones = ["third-base", "shortstop", "up-the-middle", "second-base", "first-base"];
+
+    const outCounts = { "left-field": 0, "center-field": 0, "right-field": 0 };
+    const outHR = { "left-field": 0, "center-field": 0, "right-field": 0 };
+    const inCounts = { "third-base": 0, "shortstop": 0, "second-base": 0, "first-base": 0, "up-the-middle": 0 };
+
+    let bbGround = 0, bbFly = 0, bbLined = 0, bbPopped = 0;
+    let dirPull = 0, dirOppo = 0, dirMiddle = 0;
+
+    let pa = 0, hits = 0, bb = 0, hbp = 0, sf = 0;
+    const wobas = [];
+
+    evts.forEach((e) => {
+      const z = e.field_zone;
+      if (z) {
+        const base = z.endsWith("-hr") ? z.replace("-hr", "") : z;
+        if (outfieldZones.includes(base)) {
+          outCounts[base] += 1;
+          if (e.is_hr || z.endsWith("-hr")) outHR[base] += 1;
+        } else if (infieldZones.includes(base)) {
+          inCounts[base] += 1;
+        }
+      }
+
+      if (e.is_ground) bbGround += 1;
+      if (e.is_fly) bbFly += 1;
+      if (e.is_lined) bbLined += 1;
+      if (e.is_popped) bbPopped += 1;
+
+      if (e.direction === 'pull') dirPull += 1;
+      if (e.direction === 'oppo') dirOppo += 1;
+      if (e.direction === 'middle') dirMiddle += 1;
+
+      if (e.is_pa) {
+        pa += 1;
+        if (typeof e.woba === 'number') wobas.push(e.woba);
+        if (e.is_bb) bb += 1;
+        if (e.is_hbp) hbp += 1;
+        if (e.is_sf) sf += 1;
+        if (e.is_single || e.is_double || e.is_triple || e.is_hr) hits += 1;
+      }
+    });
+
+    const outTotal = outfieldZones.reduce((s, k) => s + outCounts[k] + outHR[k], 0);
+    const inTotal = infieldZones.reduce((s, k) => s + inCounts[k], 0);
+
+    const outfield = outfieldZones.map((z) => ({
+      id: z,
+      percentage: outTotal ? Math.round(((outCounts[z] + outHR[z]) / outTotal) * 100) : 0,
+      hrCount: outHR[z],
+    }));
+    const infield = [
+      { id: "third-base", percentage: inTotal ? Math.round((inCounts["third-base"] / inTotal) * 100) : 0 },
+      { id: "shortstop", percentage: inTotal ? Math.round((inCounts["shortstop"] / inTotal) * 100) : 0 },
+      { id: "up-the-middle", percentage: inTotal ? Math.round((inCounts["up-the-middle"] / inTotal) * 100) : 0 },
+      { id: "second-base", percentage: inTotal ? Math.round((inCounts["second-base"] / inTotal) * 100) : 0 },
+      { id: "first-base", percentage: inTotal ? Math.round((inCounts["first-base"] / inTotal) * 100) : 0 },
+    ];
+
+    const bbTotal = bbGround + bbFly + bbLined + bbPopped;
+    const gb_pct = bbTotal ? Math.round((bbGround / bbTotal) * 100) : 0;
+    const air_pct = bbTotal ? 100 - gb_pct : 0;
+
+    const dirTotal = dirPull + dirOppo + dirMiddle;
+    const pull_pct = dirTotal ? Math.round((dirPull / dirTotal) * 100) : 0;
+    const oppo_pct = dirTotal ? Math.round((dirOppo / dirTotal) * 100) : 0;
+    const middle_pct = dirTotal ? Math.round((dirMiddle / dirTotal) * 100) : 0;
+
+    const pull_air_pct = dirTotal ? Math.round(((evts.filter(e => e.direction === 'pull' && (e.is_fly || e.is_lined)).length) / dirTotal) * 100) : 0;
+    const oppo_gb_pct = dirTotal ? Math.round(((evts.filter(e => e.direction === 'oppo' && e.is_ground).length) / dirTotal) * 100) : 0;
+
+    const ab = pa - bb - hbp - sf;
+    const ba = ab > 0 ? hits / ab : 0;
+    const obp = (ab + bb + hbp + sf) > 0 ? (hits + bb + hbp) / (ab + bb + hbp + sf) : 0;
+    const woba = wobas.length ? wobas.reduce((a, b) => a + b, 0) / wobas.length : 0;
+
+    const byHand = (hand) => {
+      const subset = evts.filter(e => (e.pitcher_throws || '').toUpperCase().startsWith(hand));
+      let s_pa = 0, s_hits = 0, s_bb = 0, s_hbp = 0, s_sf = 0; const s_w = [];
+      subset.forEach(e => {
+        if (e.is_pa) {
+          s_pa += 1;
+          if (typeof e.woba === 'number') s_w.push(e.woba);
+          if (e.is_bb) s_bb += 1;
+          if (e.is_hbp) s_hbp += 1;
+          if (e.is_sf) s_sf += 1;
+          if (e.is_single || e.is_double || e.is_triple || e.is_hr) s_hits += 1;
+        }
+      });
+      const s_ab = s_pa - s_bb - s_hbp - s_sf;
+      return {
+        PA: s_pa,
+        battingAvg: s_ab > 0 ? s_hits / s_ab : 0,
+        onBasePercentage: (s_ab + s_bb + s_hbp + s_sf) > 0 ? (s_hits + s_bb + s_hbp) / (s_ab + s_bb + s_hbp + s_sf) : 0,
+        wOBA: s_w.length ? s_w.reduce((a,b)=>a+b,0)/s_w.length : 0,
+      };
+    };
+
+    const vsR = byHand('R');
+    const vsL = byHand('L');
+
+    return {
+      outfieldZones: outfield,
+      infieldZones: infield,
+      stats: {
+        battingAvg: ba,
+        PA: pa,
+        onBasePercentage: obp,
+        wOBA: woba,
+        batted: {
+          air: air_pct,
+          ground: gb_pct,
+          pull: pull_pct,
+          oppo: oppo_pct,
+          middle: middle_pct,
+          pullAir: pull_air_pct,
+          backspinGroundball: oppo_gb_pct,
+        },
+        vsRHP: vsR,
+        vsLHP: vsL,
+      }
+    };
+  }, [events]);
 
   useEffect(() => {
     if (!svgRef.current || !playerData) return;
@@ -255,9 +360,9 @@ const SprayChart = ({
 
     const title = playerData.player_name || playerData.Player || "Player Name";
     const playerInfo = playerData.playerInfo || "-";
-    const stats = playerData.stats || {};
-    const outfieldZoneData = playerData.outfieldZones || [];
-    const infieldZoneData = playerData.infieldZones || [];
+    const stats = aggregates.stats || {};
+    const outfieldZoneData = aggregates.outfieldZones || [];
+    const infieldZoneData = aggregates.infieldZones || [];
 
     const isVerySmallScreen = chartWidth < 400;
     const isSmallScreen = chartWidth < 600;
@@ -280,7 +385,7 @@ const SprayChart = ({
     const innerWidth = width - margin.left;
     const innerHeight = height - margin.top - margin.bottom;
 
-    const headerHeight = isVerySmallScreen ? 60 : 80;
+    const headerHeight = isVerySmallScreen ? 56 : 72;
 
     svg
       .append("rect")
@@ -300,15 +405,15 @@ const SprayChart = ({
       );
 
     const titleFontSize = isVerySmallScreen
-      ? "16px"
-      : isSmallScreen
-      ? "17px"
-      : "20px";
-    const subtitleFontSize = isVerySmallScreen
       ? "14px"
       : isSmallScreen
       ? "15px"
       : "18px";
+    const subtitleFontSize = isVerySmallScreen
+      ? "12px"
+      : isSmallScreen
+      ? "13px"
+      : "16px";
 
     header
       .append("text")
@@ -422,10 +527,10 @@ const SprayChart = ({
       const textY = centerY - Math.cos(textAngle) * textRadius;
 
       const percentageFontSize = isVerySmallScreen
-        ? "30px"
+        ? "18px"
         : isSmallScreen
-        ? "16px"
-        : "28px";
+        ? "14px"
+        : "22px";
 
       field
         .append("text")
@@ -443,7 +548,7 @@ const SprayChart = ({
       const numberX = centerX + Math.sin(numberAngle) * numberRadius;
       const numberY = centerY - Math.cos(numberAngle) * numberRadius;
 
-      const circleRadius = isVerySmallScreen ? 12 : isSmallScreen ? 15 : 18;
+      const circleRadius = isVerySmallScreen ? 9 : isSmallScreen ? 12 : 16;
 
       if (!isVerySmallScreen || outfieldZoneData[i]?.hrCount > 0) {
         field
@@ -460,10 +565,10 @@ const SprayChart = ({
 
       if (!isVerySmallScreen || hrCount > 0) {
         const hrFontSize = isVerySmallScreen
-          ? "15px"
+          ? "11px"
           : isSmallScreen
-          ? "16px"
-          : "18px";
+          ? "12px"
+          : "14px";
 
         field
           .append("text")
@@ -520,10 +625,10 @@ const SprayChart = ({
 
       if (percentage > 0) {
         const infieldFontSize = isVerySmallScreen
-          ? "18px"
+          ? "12px"
           : isSmallScreen
-          ? "14px"
-          : "14px";
+          ? "12px"
+          : "12px";
 
         field
           .append("text")
@@ -725,7 +830,7 @@ const SprayChart = ({
         "#90CAF9"
       );
     }
-  }, [playerData, width, height]);
+  }, [playerData, aggregates, width, height]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -768,15 +873,15 @@ const SprayChart = ({
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div className="space-y-1">
               <div className="font-semibold text-gray-600">Overall Stats</div>
-              <div>PA: {playerData.stats.PA || 0}</div>
-              <div>BA: .{((playerData.stats.battingAvg || 0) * 1000).toFixed(0).padStart(3, "0")}</div>
-              <div>wOBA: .{((playerData.stats.wOBA || 0) * 1000).toFixed(0).padStart(3, "0")}</div>
+              <div>PA: {aggregates?.stats?.PA || 0}</div>
+              <div>BA: .{(((aggregates?.stats?.battingAvg || 0)) * 1000).toFixed(0).padStart(3, "0")}</div>
+              <div>wOBA: .{(((aggregates?.stats?.wOBA || 0)) * 1000).toFixed(0).padStart(3, "0")}</div>
             </div>
             <div className="space-y-1">
               <div className="font-semibold text-gray-600">Spray Pattern</div>
-              <div>Pull: {playerData.stats.batted?.pull || 0}%</div>
-              <div>Middle: {playerData.stats.batted?.middle || 0}%</div>
-              <div>Oppo: {playerData.stats.batted?.oppo || 0}%</div>
+              <div>Pull: {aggregates?.stats?.batted?.pull || 0}%</div>
+              <div>Middle: {aggregates?.stats?.batted?.middle || 0}%</div>
+              <div>Oppo: {aggregates?.stats?.batted?.oppo || 0}%</div>
             </div>
           </div>
         </div>

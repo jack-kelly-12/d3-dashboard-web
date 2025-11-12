@@ -17,13 +17,21 @@ export const fetchAPI = async (endpoint, options = {}) => {
   const url = `${API_BASE_URL}${normalizedEndpoint}`;
   const auth = getAuth();
 
+  let authToken = "";
+  if (auth.currentUser) {
+    try {
+      authToken = await auth.currentUser.getIdToken();
+    } catch (error) {
+      console.warn("Failed to get auth token:", error);
+      authToken = "";
+    }
+  }
+
   const defaultOptions = {
     mode: "cors",
     headers: {
       "Content-Type": "application/json",
-      Authorization: auth.currentUser
-        ? `Bearer ${await auth.currentUser.getIdToken()}`
-        : "",
+      Authorization: authToken ? `Bearer ${authToken}` : "",
     },
   };
 
@@ -48,7 +56,6 @@ export const fetchAPI = async (endpoint, options = {}) => {
       const error = new Error(
         errorData?.error || errorData?.message || `API call failed: ${response.statusText}`
       );
-      // Preserve the status code for better error handling
       error.status = response.status;
       error.statusText = response.statusText;
       error.data = errorData;
@@ -57,15 +64,21 @@ export const fetchAPI = async (endpoint, options = {}) => {
 
     return response.json();
   } catch (error) {
-    // If it's already our custom error with status, re-throw it
     if (error.status) {
       throw error;
     }
-    // For network errors or other issues, create a generic error
+    
+    if (error.name === 'TypeError' && error.message.includes('CORS')) {
+      const corsError = new Error("CORS error: Server is not allowing requests from this origin. Please check server configuration.");
+      corsError.status = 0;
+      corsError.originalError = error;
+      throw corsError;
+    }
+    
     const networkError = new Error(
       error.message || "Network error. Please check your connection."
     );
-    networkError.status = 0; // 0 indicates network error
+    networkError.status = 0;
     networkError.originalError = error;
     throw networkError;
   }

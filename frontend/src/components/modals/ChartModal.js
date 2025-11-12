@@ -150,7 +150,7 @@ const ChartModal = ({ isOpen, onClose, onSubmit }) => {
                 </label>
               </div>
               <p className="text-sm text-gray-500 italic">
-                When enabled, the chart won't automatically update pitcher after
+                When enabled, the chart won&apos;t automatically update pitcher after
                 3 outs, inning change, etc.
               </p>
             </div>

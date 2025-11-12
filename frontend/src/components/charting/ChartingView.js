@@ -425,16 +425,21 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-blue-600 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500" />
+        <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700" />
+      </div>
+      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
         {isBullpen ? (
-          // Bullpen View
           <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="w-full mb-6">
               <button
@@ -500,7 +505,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   Pitch History
                 </h2>
               </div>
-              {/* Fixed table container with max-width and horizontal scrolling */}
               <div className="w-full max-w-full">
                 <PitchTable
                   pitches={pitches}
@@ -647,7 +651,6 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   Pitch History
                 </h2>
               </div>
-              {/* Fixed table container with max-width and horizontal scrolling */}
               <div className="w-full max-w-full">
                 <PitchTable
                   pitches={pitches}

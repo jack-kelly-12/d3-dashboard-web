@@ -7,7 +7,6 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
 
-  // Track window size for responsive design
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
@@ -21,11 +20,16 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
     }
   }, []);
 
-  // Determine which sizes to use based on screen size
   const isMobile = windowWidth < 640;
 
-  // All columns shown at all screen sizes
   const columns = [
+    {
+      id: "play_id",
+      name: "#",
+      selector: (row) => Number(row.play_id) || 0,
+      sortable: true,
+      omit: true,
+    },
     {
       name: "Inning",
       selector: (row) => `${row.top_inning} ${row.inning}`,
@@ -215,6 +219,8 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
         data={plays}
         columns={columns}
         filename="game_log.csv"
+        defaultSortFieldId="play_id"
+        defaultSortAsc
         noDataComponent={
           <div className="text-center py-6 sm:py-8 md:py-12">
             <p className="text-gray-500 text-base sm:text-lg">
@@ -232,7 +238,6 @@ const GameLog = ({ plays, homeTeam, awayTeam }) => {
         highlightOnHover
         pointerOnHover
         className="overflow-x-auto"
-        defaultSortFieldId={1}
       />
     </div>
   );

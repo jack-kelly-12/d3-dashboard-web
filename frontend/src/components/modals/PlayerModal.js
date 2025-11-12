@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Search } from "lucide-react";
 import _ from "lodash";
 
@@ -137,9 +138,9 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg max-w-md w-full">
+      <div className="bg-white rounded-lg max-w-md w-full relative">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">
             Select {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -244,6 +245,8 @@ const PlayerModal = ({ isOpen, onClose, onSubmit, type, chart }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default PlayerModal;

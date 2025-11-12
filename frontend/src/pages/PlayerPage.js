@@ -2,34 +2,52 @@ import React, { useState, useEffect, useCallback, useMemo, useRef, memo } from "
 import { useParams } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import { fetchAPI } from "../config/api";
+import { isBattingTab } from "../utils/playerDataUtils";
+import { trackPlayerPageVisit } from "../services/dataService";
 import { PercentileSection } from "../components/player/PercentileRankings";
 import StatTable from "../components/player/StatTable";
 import PlayerHeader from "../components/player/PlayerHeader";
-import TeamLogo from "../components/data/TeamLogo";
-import SprayChart from "../components/scouting/SprayChart";
+import SprayChart from "../components/player/SprayChart";
 import RollingChart from "../components/player/RollingChart";
+import SimilarBatters from "../components/player/SimilarBatters";
+import SimilarPitchers from "../components/player/SimilarPitchers";
+import { usePercentiles } from "../hooks/usePercentiles";
 
 const LoadingState = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 via-white to-white">
-    <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" />
+  <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+      <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500"></div>
+      <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700"></div>
+    </div>
+    <div className="relative z-10 flex flex-col items-center justify-center min-h-screen">
+      <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mb-4" />
+    </div>
   </div>
 );
 
 const ErrorState = memo(({ error }) => (
-  <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 via-white to-white">
-    <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md">
-      <div className="flex items-center gap-3 mb-3">
-        <AlertCircle className="w-5 h-5 text-red-500" />
-        <h3 className="text-lg font-semibold text-red-800">
-          Error Loading Player
-        </h3>
+  <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
+      <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+    </div>
+    <div className="relative z-10 flex items-center justify-center min-h-screen">
+      <div className="bg-white/70 backdrop-blur-lg border border-white/20 rounded-2xl shadow-xl p-8 max-w-md">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+          <h3 className="text-lg font-semibold text-red-800">
+            Error Loading Player
+          </h3>
+        </div>
+        <p className="text-red-600">{error}</p>
       </div>
-      <p className="text-red-600">{error}</p>
     </div>
   </div>
 ));
 
-const MemoizedStatTable = memo(StatTable);
+ErrorState.displayName = 'ErrorState';
 
 const TabButton = memo(({ active, onClick, children }) => (
   <button
@@ -42,6 +60,8 @@ const TabButton = memo(({ active, onClick, children }) => (
     {children}
   </button>
 ));
+
+TabButton.displayName = 'TabButton';
 
 const TabNavigation = memo(({ activeTab, onTabChange, availableTabs }) => (
   <div className="border-b border-gray-100">
@@ -59,144 +79,14 @@ const TabNavigation = memo(({ activeTab, onTabChange, availableTabs }) => (
   </div>
 ));
 
-const renderTeamLogo = (
-  teamId,
-  conferenceId,
-  teamName,
-  showConference = false
-) => (
+TabNavigation.displayName = 'TabNavigation';
+
+const renderTeamName = (teamName) => (
   <div className="w-full flex justify-center items-center">
-    <TeamLogo
-      teamId={teamId}
-      conferenceId={conferenceId}
-      teamName={teamName}
-      showConference={showConference}
-      className="h-8 w-8"
-    />
+    <span className="text-sm font-medium text-gray-700">{teamName}</span>
   </div>
 );
 
-const SimilarBatters = memo(({ playerId, year, division }) => {
-  const [similarPlayers, setSimilarPlayers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [player, setPlayer] = useState("");
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchSimilarBatters = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetchAPI(
-          `/api/similar-batters/${encodeURIComponent(
-            playerId
-          )}?year=${year}&division=${division}`
-        );
-        setPlayer(response.target_player.player_name || "");
-        setSimilarPlayers(response.similar_players || []);
-      } catch (err) {
-        console.error("Error fetching similar batters:", err);
-        setError("Could not load similar batters");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (playerId && year && division) {
-      fetchSimilarBatters();
-    }
-  }, [playerId, year, division]);
-
-  if (isLoading) return <div className="text-center py-4"></div>;
-  if (error) return null;
-  if (!similarPlayers.length) return null;
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
-      <h3 className="text-sm font-medium mb-3">Similar Batters to {player}:</h3>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {similarPlayers.slice(0, 5).map((player, idx) => (
-          <a
-            key={`${player.player_id}-${player.year}`}
-            href={`/player/${player.player_id}`}
-            className="flex items-center p-2 hover:bg-blue-50 rounded-lg transition-colors"
-          >
-            <TeamLogo
-              teamId={player.prev_team_id}
-              conferenceId={player.conference_id}
-              teamName={player.team}
-              className="h-8 w-8 flex-shrink-0 mr-2"
-            />
-            <span className="text-xs truncate">
-              {player.year} - {player.player_name}
-            </span>
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-});
-
-const SimilarPitchers = memo(({ playerId, year, division }) => {
-  const [similarPlayers, setSimilarPlayers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [player, setPlayer] = useState("");
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchSimilarPitchers = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetchAPI(
-          `/api/similar-pitchers/${encodeURIComponent(
-            playerId
-          )}?year=${year}&division=${division}`
-        );
-        setPlayer(response.target_player.player_name || "");
-        setSimilarPlayers(response.similar_players || []);
-      } catch (err) {
-        console.error("Error fetching similar pitchers:", err);
-        setError("Could not load similar pitchers");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (playerId && year && division) {
-      fetchSimilarPitchers();
-    }
-  }, [playerId, year, division]);
-
-  if (isLoading) return <div className="text-center py-4"></div>;
-  if (error) return null;
-  if (!similarPlayers.length) return null;
-
-  return (
-    <div className="bg-white rounded-lg shadow-sm p-4 mt-8">
-      <h3 className="text-sm font-medium mb-3">Similar Pitchers to {player}:</h3>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {similarPlayers.slice(0, 5).map((player, idx) => (
-          <a
-            key={`${player.player_id}-${player.year}`}
-            href={`/player/${player.player_id}`}
-            className="flex items-center p-2 hover:bg-blue-50 rounded-lg transition-colors"
-          >
-            <TeamLogo
-              teamId={player.prev_team_id}
-              conferenceId={player.conference_id}
-              teamName={player.team}
-              className="h-8 w-8 flex-shrink-0 mr-2"
-            />
-            <span className="text-xs truncate">
-              {player.year} - {player.player_name}
-            </span>
-          </a>
-        ))}
-      </div>
-    </div>
-  );
-});
 
 const enrichStats = (stats) => {
   if (!stats || !Array.isArray(stats)) return [];
@@ -204,20 +94,11 @@ const enrichStats = (stats) => {
   return stats
     .map((stat) => ({
       ...stat,
-      renderedTeam: renderTeamLogo(
-        stat.prev_team_id,
-        stat.conference_id,
-        stat.Team
-      ),
-      renderedConference: renderTeamLogo(
-        stat.prev_team_id,
-        stat.conference_id,
-        stat.Conference,
-        true
-      ),
+      renderedTeam: renderTeamName(stat.team_name),
+      renderedConference: renderTeamName(stat.conference),
     }))
     .sort((a, b) => {
-      const yearKey = "Season" in a ? "Season" : "Year";
+      const yearKey = "year" in a ? "year" : "Season";
       return b[yearKey] - a[yearKey];
     });
 };
@@ -232,7 +113,6 @@ const PlayerContent = memo(
     const stats = statCategories[activeTab]?.stats || [];
     const statType = statCategories[activeTab]?.type || activeTab;
 
-    // Determine player type based on active tab
     const playerType = [
       STAT_TYPES.BATTING,
       STAT_TYPES.BASERUNNING,
@@ -245,7 +125,7 @@ const PlayerContent = memo(
 
     const getMostRecentYear = () => {
       if (stats.length === 0) return new Date().getFullYear();
-      const yearKey = "Season" in stats[0] ? "Season" : "Year";
+      const yearKey = "year" in stats[0] ? "year" : "Season" in stats[0] ? "Season" : "Year";
       return stats[0][yearKey];
     };
 
@@ -263,14 +143,11 @@ const PlayerContent = memo(
 
     const currentYear = getMostRecentYear();
 
-    // Get player name from playerData if available
-    const playerName = playerData?.name || "";
+    const playerName = playerData?.player_name || "";
 
-    // Create a clear label for the wOBA chart based on the current tab
     const chartLabel =
       playerType === "batter" ? "Batting wOBA" : "Pitching wOBA";
 
-    // Handler function to set loading state
     const handleRollingChartLoadingState = (type, isLoading) => {
       setIsRollingChartLoading((prev) => ({
         ...prev,
@@ -279,16 +156,23 @@ const PlayerContent = memo(
     };
 
     return (
-      <div className="p-6">
+      <div className="p-6 space-y-8">
         {stats.length > 0 && (
-          <MemoizedStatTable stats={stats} type={statType} />
+          <StatTable stats={stats} type={statType} />
         )}
 
-        {/* Rolling wOBA Chart for Pitchers - Show immediately after stats table */}
+        {shouldShowSimilarPitchers && (
+          <SimilarPitchers
+            playerId={playerId}
+            year={currentYear}
+            division={selectedDivision}
+          />
+        )}
+
         {playerType === "pitcher" && stats.length > 0 && (
           <div>
             {isRollingChartLoading.pitcher ? (
-              <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow-sm mt-4">
+              <div className="flex justify-center items-center h-64 bg-white rounded-lg shadow-sm">
                 <div className="w-8 h-8 border-3 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
               </div>
             ) : (
@@ -314,27 +198,16 @@ const PlayerContent = memo(
           />
         )}
 
-        {shouldShowSimilarPitchers && (
-          <SimilarPitchers
+        {shouldShowSprayChart && (
+          <SprayChart
             playerId={playerId}
             year={currentYear}
             division={selectedDivision}
+            height={600}
+            width={700}
           />
         )}
 
-        {shouldShowSprayChart && (
-          <div className="mt-8">
-            <SprayChart
-              playerId={playerId}
-              year={currentYear}
-              division={selectedDivision}
-              height={600}
-              width={700}
-            />
-          </div>
-        )}
-
-        {/* Rolling wOBA Chart for Batters - Show after spray chart */}
         {playerType === "batter" && shouldShowSprayChart && (
           <div>
             {isRollingChartLoading.batter ? (
@@ -359,6 +232,8 @@ const PlayerContent = memo(
     );
   }
 );
+
+PlayerContent.displayName = 'PlayerContent';
 
 const STAT_TYPES = {
   BATTING: "batting",
@@ -389,11 +264,9 @@ const getBaseStatType = (statType) => {
 const PlayerPage = () => {
   const { playerId } = useParams();
   const [playerData, setPlayerData] = useState(null);
-  const [percentiles, setPercentiles] = useState({
-    batting: null,
-    pitching: null,
-  });
+  const [playerYears, setPlayerYears] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isHeaderReady, setIsHeaderReady] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(STAT_TYPES.BATTING);
   const [selectedDivision, setSelectedDivision] = useState(3);
@@ -409,32 +282,47 @@ const PlayerPage = () => {
   });
   const isInitialMount = useRef(true);
 
+  const fallbackYearsByTab = useMemo(() => {
+    const battingYears = (playerData?.battingStats || []).map(s => s.year || s.Season).filter(Boolean);
+    const pitchingYears = (playerData?.pitchingStats || []).map(s => s.year || s.Season).filter(Boolean);
+    const sortedB = [...new Set(battingYears)].sort((a,b) => b-a);
+    const sortedP = [...new Set(pitchingYears)].sort((a,b) => b-a);
+    return {
+      batting_years: sortedB,
+      pitching_years: sortedP,
+      most_recent_batting: sortedB[0] || null,
+      most_recent_pitching: sortedP[0] || null,
+    };
+  }, [playerData]);
+
+  const { 
+    percentiles, 
+    isLoading: isPercentilesLoading,
+    targetYear: percentTargetYear,
+    prefetchYears,
+  } = usePercentiles({
+    playerId: decodeURIComponent(playerId),
+    playerYears,
+    activeTab,
+    division: selectedDivision,
+    conference: selectedConference,
+    selectedYear,
+    fallbackYearsByTab,
+  });
+
   const enhancePlayerData = useCallback((data) => {
     if (!data) return null;
 
     return {
       ...data,
-      renderedTeam: data.currentTeam
-        ? renderTeamLogo(
-            data.prev_team_id,
-            data.conference_id,
-            data.currentTeam
-          )
-        : null,
-      renderedConference: data.conference
-        ? renderTeamLogo(
-            data.prev_team_id,
-            data.conference_id,
-            data.conference,
-            true
-          )
-        : null,
-      battingStats: enrichStats(data.battingStats),
-      pitchingStats: enrichStats(data.pitchingStats),
+      renderedTeam: data.current_team ? renderTeamName(data.current_team) : null,
+      renderedConference: data.conference ? renderTeamName(data.conference) : null,
+      battingStats: enrichStats(data.batting_stats),
+      pitchingStats: enrichStats(data.pitching_stats),
       yearsPlayed: [
         ...new Set([
-          ...(data.battingStats || []).map(s => s.Season),
-          ...(data.pitchingStats || []).map(s => s.Season),
+          ...(data.batting_stats || []).map(s => s.year),
+          ...(data.pitching_stats || []).map(s => s.year),
         ])
       ]
     };
@@ -466,17 +354,17 @@ const PlayerPage = () => {
   }, [fetchStatsForType]);
   
   const determineDivision = useCallback((playerData) => {
-    const getMaxSeason = (stats) => stats?.length ? Math.max(...stats.map(s => s.Season || s.Year || 0)) : 0;
+    const getMaxSeason = (stats) => stats?.length ? Math.max(...stats.map(s => s.year || s.Season || 0)) : 0;
     const maxBattingSeason = getMaxSeason(playerData.battingStats);
     const maxPitchingSeason = getMaxSeason(playerData.pitchingStats);
 
     let division = 3;
     if (maxBattingSeason > 0) {
-      const stat = playerData.battingStats.find(s => s.Season === maxBattingSeason);
-      if (stat?.Division) division = stat.Division;
+      const stat = playerData.battingStats.find(s => s.year === maxBattingSeason);
+      if (stat?.division) division = stat.division;
     } else if (maxPitchingSeason > 0) {
-      const stat = playerData.pitchingStats.find(s => s.Season === maxPitchingSeason);
-      if (stat?.Division) division = stat.Division;
+      const stat = playerData.pitchingStats.find(s => s.year === maxPitchingSeason);
+      if (stat?.division) division = stat.division;
     }
     return division;
   }, []);
@@ -488,53 +376,19 @@ const PlayerPage = () => {
     return STAT_TYPES.BATTING;
   }, []);
 
-  const fetchPercentiles = useCallback(
-    async (year, division, conference) => {
-      if (!year || !division) return;
-      setIsLoading(true);
-      try {
-        let url = `/api/player-percentiles/${decodeURIComponent(
-          playerId
-        )}/${year}/${division}`;
-        
-        // Only add conference parameter if it's specifically requested (not null/undefined)
-        if (conference === 'conference') {
-          // Let the backend determine the player's conference
-          url += `?conference=auto`;
-        } else if (conference && conference !== 'conference') {
-          // Specific conference provided
-          url += `?conference=${encodeURIComponent(conference)}`;
-        }
-        // If conference is null, don't add the parameter (division-wide percentiles)
-        
-        const response = await fetchAPI(url);
-        
-        setPercentiles(response);
-
-      } catch (err) {
-        console.error(`Error fetching percentiles:`, err);
-        // Do not set error here to avoid blocking the whole page for just this part
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [playerId]
-  );
-  
-  // This useEffect handles UPDATES to percentiles when filters change (but not initial load).
-  useEffect(() => {
-    if (!isInitialMount.current) {
-      fetchPercentiles(selectedYear, selectedDivision, selectedConference);
+  const fetchPlayerYears = useCallback(async (division) => {
+    try {
+      const url = `/api/player-years/${decodeURIComponent(playerId)}/${division}`;
+      const response = await fetchAPI(url);
+      setPlayerYears(response);
+    } catch (err) {
+      console.error(`Error fetching player years:`, err);
     }
-  }, [selectedYear, selectedDivision, selectedConference, fetchPercentiles]);
+  }, [playerId]);
   
-  const handleYearChange = useCallback((year) => {
+  
+  const handleYearChange = useCallback(async (year) => {
     setSelectedYear(year);
-  }, []);
-
-  const handleDivisionChange = useCallback((division) => {
-    setSelectedDivision(division);
-    setSelectedConference(null); // Reset conference when division changes
   }, []);
 
   const handleConferenceChange = useCallback((conference) => {
@@ -543,10 +397,20 @@ const PlayerPage = () => {
 
   const handleTabChange = useCallback((newTab) => {
       if (newTab === activeTab) return;
+      
+      const newTabType = isBattingTab(newTab) ? 'batting' : 'pitching';
+      
       setActiveTab(newTab);
-  }, [activeTab]);
+      
+      if (playerYears) {
+        const mostRecentYear = newTabType === 'batting' ? playerYears.most_recent_batting : playerYears.most_recent_pitching;
+        
+        if (mostRecentYear && mostRecentYear !== selectedYear) {
+          setSelectedYear(mostRecentYear);
+        }
+      }
+  }, [activeTab, selectedYear, playerYears]);
 
-  // This useEffect handles the INITIAL page load.
   useEffect(() => {
     const loadPlayerData = async () => {
       setIsLoading(true);
@@ -566,26 +430,12 @@ const PlayerPage = () => {
           setSelectedYear(initialYear);
         }
 
-        const percentilePromise = (async () => {
-          if (initialYear && division) {
-            try {
-              const url = `/api/player-percentiles/${decodeURIComponent(playerId)}/${initialYear}/${division}`;
-              const percentileResponse = await fetchAPI(url);
-              setPercentiles(percentileResponse);
-            } catch (err) {
-              console.error(`Error fetching initial percentiles:`, err);
-            }
-          }
-        })();
-        
-        await Promise.all([
-          fetchAllStats(division),
-          percentilePromise
-        ]);
+        await fetchAllStats(division);
+        await fetchPlayerYears(division);
 
-        setActiveTab(determineInitialActiveTab(enhancedData));
+        const initialTab = determineInitialActiveTab(enhancedData);
+        setActiveTab(initialTab);
         
-        // Mark initial mount as complete after everything is loaded
         isInitialMount.current = false;
         
       } catch (err) {
@@ -596,7 +446,21 @@ const PlayerPage = () => {
     };
 
     loadPlayerData();
-  }, [playerId, enhancePlayerData, determineDivision, fetchAllStats, determineInitialActiveTab]);
+  }, [playerId, enhancePlayerData, determineDivision, fetchAllStats, determineInitialActiveTab, fetchPlayerYears]);
+
+  useEffect(() => {
+    if (percentTargetYear && selectedYear !== percentTargetYear) {
+      setSelectedYear(percentTargetYear);
+    }
+  }, [percentTargetYear, selectedYear]);
+
+  useEffect(() => {
+    if (!playerYears) return;
+    const years = isBattingTab(activeTab) ? playerYears?.batting_years : playerYears?.pitching_years;
+    if (!years || !years.length) return;
+    const recent = [...years].sort((a, b) => b - a).slice(0, 3);
+    prefetchYears(recent);
+  }, [playerYears, activeTab, prefetchYears]);
 
   const getAvailableYears = useCallback(
     (type = null) => {
@@ -605,15 +469,15 @@ const PlayerPage = () => {
       const years = new Set();
 
       if (type === null || type === STAT_TYPES.BATTING) {
-        playerData.battingStats?.forEach((stat) => years.add(stat.Season));
+        playerData.battingStats?.forEach((stat) => years.add(stat.year || stat.Season));
       }
 
       if (type === null || type === STAT_TYPES.PITCHING) {
-        playerData.pitchingStats?.forEach((stat) => years.add(stat.Season));
+        playerData.pitchingStats?.forEach((stat) => years.add(stat.year || stat.Season));
       }
 
       if (type !== null && statData[type]) {
-        const yearKey = statData[type][0]?.Season ? "Season" : "Year";
+        const yearKey = statData[type][0]?.year ? "year" : statData[type][0]?.Season ? "Season" : "Year";
         statData[type].forEach((stat) => years.add(stat[yearKey]));
       }
 
@@ -633,7 +497,7 @@ const PlayerPage = () => {
       ...Object.values(statData),
     ].forEach((statsArray) => {
       statsArray?.forEach((stat) => {
-        if (stat.Division) divisions.add(stat.Division);
+        if (stat.division || stat.Division) divisions.add(stat.division || stat.Division);
       });
     });
 
@@ -738,34 +602,49 @@ const PlayerPage = () => {
     };
   }, [activeTab, percentiles]);
 
+  useEffect(() => {
+    if (playerData) {
+      trackPlayerPageVisit(playerData.player_id, playerData.player_name);
+    }
+  }, [playerData]);
+
   if (isLoading && isInitialMount.current) return <LoadingState />;
   if (error) return <ErrorState error={error} />;
   if (!playerData) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500"></div>
+        <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700"></div>
+      </div>
+      <div className="relative z-10 container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
+        {!isHeaderReady && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-sm">
+            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          </div>
+        )}
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-white rounded-lg shadow-sm">
-              <PlayerHeader playerData={playerData} />
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <PlayerHeader playerData={playerData} onReady={() => setIsHeaderReady(true)} />
             </div>
-            <div className="lg:col-span-2 bg-white rounded-lg shadow-sm">
+            <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200">
               <PercentileSection
-                playerData={enhancedPlayerDataForPercentile}
+                playerData={{...enhancedPlayerDataForPercentile, playerYears}}
                 initialPercentiles={currentPercentiles}
-                activeTab={getBaseStatType(activeTab)}
+                activeTab={activeTab}
                 selectedYear={selectedYear}
-                selectedDivision={selectedDivision}
                 onYearChange={handleYearChange}
-                onDivisionChange={handleDivisionChange}
                 onConferenceChange={handleConferenceChange}
-                isLoading={isLoading}
+                isLoading={isPercentilesLoading}
               />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
             <TabNavigation
               activeTab={activeTab}
               onTabChange={handleTabChange}

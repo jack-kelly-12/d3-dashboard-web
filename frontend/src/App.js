@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import "./App.css";
 import SidebarComponent from "./components/Sidebar";
@@ -10,200 +10,147 @@ import SignIn from "./pages/SignIn";
 import HomePage from "./pages/HomePage";
 import { Toaster } from "react-hot-toast";
 import SprayChart from "./components/charting/SprayChart";
-import SubscriptionPlans from "./pages/SubscriptionPlans";
 import PlayerPage from "./pages/PlayerPage.js";
-import Documentation from "./pages/Documentation.js";
 import Leaderboards from "./pages/Leaderboards.js";
 import GamePage from "./pages/GamePage.js";
 import Scoreboard from "./pages/Scoreboard.js";
-import InsightsPage from "./pages/InsightsPage.js";
-import PlayerLists from "./pages/PlayerLists.js"; // Import the new PlayerLists component
-import { SubscriptionProvider } from "./contexts/SubscriptionContext";
-import { Navigate, useLocation } from "react-router-dom";
-import { useSubscription } from "./contexts/SubscriptionContext";
-import BaseballSpraychart from "./components/scouting/SprayChart";
+import PlayerLists from "./pages/PlayerLists.js";
 import SprayChartsPage from "./pages/SprayChartsPage.js";
-import GamePrediction from "./pages/Simulation.js";
-
-export const ProtectedRoute = ({ children, requiresPremium = false }) => {
-  const { isLoading, isPremium } = useSubscription();
-  const location = useLocation();
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (requiresPremium && !isPremium) {
-    return (
-      <Navigate
-        to="/subscriptions"
-        state={{ from: location.pathname }}
-        replace
-      />
-    );
-  }
-
-  return children;
-};
+import WhatsNewModal from "./components/modals/WhatsNewModal";
+import AuthManager from "./managers/AuthManager";
 
 function App() {
+  const [showWhatsNew, setShowWhatsNew] = useState(false);
+
+  const whatsNewVersion = "2025-10-player-id-upgrade";
+
+  const getStorageKey = useMemo(() => {
+    const user = AuthManager.getCurrentUser();
+    const uid = user?.uid || "anonymous";
+    return `whatsnew:${whatsNewVersion}:dismissed:${uid}`;
+  }, [whatsNewVersion]);
+
+  useEffect(() => {
+    const unsubscribe = AuthManager.onAuthStateChanged(() => {
+      const key = getStorageKey;
+      const dismissed = typeof window !== "undefined" && window.localStorage.getItem(key);
+      setShowWhatsNew(!dismissed);
+    });
+    return () => unsubscribe();
+  }, [getStorageKey]);
+
+  const handleCloseWhatsNew = () => {
+    const key = getStorageKey;
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(key, "true");
+      }
+    } catch {}
+    setShowWhatsNew(false);
+  };
+
   return (
     <Router>
-      <SubscriptionProvider>
-        <div className="App flex h-screen">
-          <SidebarComponent />
-          <div className="content flex-grow overflow-auto">
-            <Routes>
-              {/* Public routes */}
+      <div className="App flex h-screen">
+        <SidebarComponent />
+        <div className="content flex-grow overflow-auto">
+          <Routes>
               <Route path="/signin" element={<SignIn />} />
-              <Route path="/" element={<HomePage />} />
-              <Route path="/subscriptions" element={<SubscriptionPlans />} />
-              <Route path="/documentation" element={<Documentation />} />
-              <Route
-                path="/baseball-spraychart"
-                element={<BaseballSpraychart />}
-              />
-
-              {/* Basic feature routes (require authentication but not premium) */}
+              <Route path="/" element={<HomePage />} />  
               <Route
                 path="/guts"
                 element={
-                  <ProtectedRoute>
                     <Guts />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/simulation"
-                element={
-                  <ProtectedRoute>
-                    <GamePrediction />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/scouting"
                 element={
-                  <ProtectedRoute>
                     <Scouting />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/charting"
                 element={
-                  <ProtectedRoute>
                     <Charting />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/data"
                 element={
-                  <ProtectedRoute>
                     <Data />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/spraychart"
                 element={
-                  <ProtectedRoute>
                     <SprayChart />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/player/:playerId"
                 element={
-                  <ProtectedRoute>
                     <PlayerPage />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="scouting/reports/:reportId/spraycharts"
                 element={
-                  <ProtectedRoute>
                     <SprayChartsPage />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/leaderboards"
                 element={
-                  <ProtectedRoute>
                     <Leaderboards />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/scoreboard"
                 element={
-                  <ProtectedRoute>
                     <Scoreboard />
-                  </ProtectedRoute>
                 }
               />
               <Route
                 path="/games/:year/:gameId"
                 element={
-                  <ProtectedRoute>
                     <GamePage />
-                  </ProtectedRoute>
                 }
               />
-              {/* New Player Lists route */}
               <Route
                 path="/player-lists"
                 element={
-                  <ProtectedRoute>
-                    <PlayerLists />
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Premium routes */}
-              <Route
-                path="/insights"
-                element={
-                  <ProtectedRoute>
-                    <InsightsPage />
-                  </ProtectedRoute>
+                  <PlayerLists />
                 }
               />
             </Routes>
-          </div>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: "#333",
-                color: "#fff",
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: "#4ade80",
-                  secondary: "#fff",
-                },
-              },
-              error: {
+            <Toaster
+              position="top-right"
+              toastOptions={{
                 duration: 4000,
-                iconTheme: {
-                  primary: "#ef4444",
-                  secondary: "#fff",
+                style: {
+                  background: "#333",
+                  color: "#fff",
                 },
-              },
-            }}
-          />
+                success: {
+                  duration: 3000,
+                  iconTheme: {
+                    primary: "#4ade80",
+                    secondary: "#fff",
+                  },
+                },
+                error: {
+                  duration: 4000,
+                  iconTheme: {
+                    primary: "#ef4444",
+                    secondary: "#fff",
+                  },
+                },
+              }}
+            />
+            <WhatsNewModal isOpen={showWhatsNew} onClose={handleCloseWhatsNew} />
+          </div>
         </div>
-      </SubscriptionProvider>
     </Router>
   );
 }

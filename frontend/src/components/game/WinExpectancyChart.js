@@ -1,16 +1,21 @@
 import React, { useMemo, useState, useEffect } from "react";
 import {
-  LineChart,
+  ComposedChart,
   Line,
+  Area,
   Tooltip,
   ReferenceLine,
   ResponsiveContainer,
   YAxis,
   XAxis,
+  CartesianGrid,
+  ReferenceDot,
 } from "recharts";
 import { TrendingUp, ChevronsUpDown } from "lucide-react";
 
-const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
+// TeamLogo component was unused; remove to satisfy linter.
+
+const WinExpectancyChart = ({ homeTeam, awayTeam, plays, homeTeamId, awayTeamId }) => {
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
@@ -29,22 +34,24 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
     }
   }, []);
 
-  // Determine screen size
   const isMobile = windowWidth < 640;
   const isTablet = windowWidth >= 640 && windowWidth < 1024;
 
   const chartData = useMemo(() => {
-    return plays.map((play, index) => {
+    return (Array.isArray(plays) ? plays : []).map((play, index) => {
       const isLastPlay = index === plays.length - 1;
-      let probability = play.home_win_exp_after * 100;
+      const homeExp = Number(play.home_win_exp_after);
+      let probability = Number.isFinite(homeExp) ? homeExp * 100 : 50;
 
       if (isLastPlay && play.away_score_after !== play.home_score_after) {
         probability = play.away_score_after > play.home_score_after ? 0 : 100;
       }
 
-      const inningDisplay = `${play.top_inning} ${play.inning}`;
+      const inningHalf = String(play.top_inning || "").toUpperCase().startsWith("T") ? "Top" : "Bot";
+      const inningDisplay = `${inningHalf} ${Number(play.inning) || ""}`;
 
       return {
+        index,
         probability,
         inning_half: play.top_inning,
         inning: play.inning,
@@ -52,7 +59,7 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
         description: play.description,
         homeScore: play.home_score_after,
         awayScore: play.away_score_after,
-        wpa: play.wpa,
+        wpa: Number(play.wpa) || 0,
       };
     });
   }, [plays]);
@@ -61,10 +68,10 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
   const [highlightedPlay, setHighlightedPlay] = useState(null);
 
   const momentumSwings = useMemo(() => {
-    return plays
+    return (Array.isArray(plays) ? plays : [])
       .map((play, index) => ({
         index,
-        wpa: Math.abs(play.wpa || 0),
+        wpa: Math.abs(Number(play.wpa) || 0),
         description: play.description,
       }))
       .sort((a, b) => b.wpa - a.wpa)
@@ -104,7 +111,6 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
       ? probability
       : 100 - probability;
 
-    // Create abbreviated team name for mobile
     const teamDisplay = isMobile
       ? leadingTeam.length > 3
         ? leadingTeam.substring(0, 3)
@@ -124,12 +130,10 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
 
   return (
     <div className="w-full bg-white rounded-xl shadow-md border border-gray-200">
-      {/* Header */}
       <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-gray-100">
         <div className="flex flex-col gap-2 sm:gap-4">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
             <div className="flex items-center gap-4 sm:gap-8 justify-center sm:justify-start">
-              {/* Away Team */}
               <div className="text-center">
                 <div className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1">
                   {isMobile && awayTeam.length > 10
@@ -145,7 +149,6 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
 
               <div className="text-gray-300 text-base sm:text-xl">@</div>
 
-              {/* Home Team */}
               <div className="text-center">
                 <div className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1">
                   {isMobile && homeTeam.length > 10
@@ -160,7 +163,6 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
               </div>
             </div>
 
-            {/* Win Probability */}
             <div className="flex items-center gap-1 sm:gap-2 bg-blue-50 px-2 sm:px-4 py-1 sm:py-2 rounded-lg self-center sm:self-auto mt-2 sm:mt-0">
               <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
               <span className="text-xs sm:text-sm font-medium text-blue-700">
@@ -169,7 +171,6 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
             </div>
           </div>
 
-          {/* Key Moments */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 sm:gap-4 text-xs">
             {momentumSwings.map((swing, index) => (
               <button
@@ -189,16 +190,18 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
                   Key Moment
                 </div>
                 <div className="line-clamp-2 text-xs">{swing.description}</div>
+                <div className="mt-1 text-[10px] sm:text-xs text-gray-500">
+                  WPA: {(swing.wpa * 100).toFixed(1)}%
+                </div>
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Chart */}
       <div className="px-2 sm:px-4 md:px-8 pt-4 sm:pt-6 md:pt-8 pb-3 sm:pb-4 md:pb-6 h-64 sm:h-80 md:h-96">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <ComposedChart
             data={chartData}
             margin={{
               top: isMobile ? 10 : 20,
@@ -212,38 +215,63 @@ const WinExpectancyChart = ({ homeTeam, awayTeam, plays }) => {
             }}
           >
             <defs>
-              <linearGradient id="probGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.22} />
+                <stop offset="50%" stopColor="#3b82f6" stopOpacity={0.18} />
+                <stop offset="50%" stopColor="#ef4444" stopOpacity={0.18} />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity={0.22} />
               </linearGradient>
             </defs>
+            <CartesianGrid vertical={false} stroke="#f1f5f9" />
             <XAxis
-              dataKey="inningDisplay"
-              interval={Math.floor(
-                chartData.length / (isMobile ? 4 : isTablet ? 6 : 8)
-              )}
+              dataKey="index"
+              tickFormatter={(v) => chartData[v]?.inningDisplay || ""}
+              interval={Math.floor(chartData.length / (isMobile ? 4 : isTablet ? 6 : 8))}
               tick={{ fontSize: isMobile ? 10 : 12, fill: "#6b7280" }}
               axisLine={{ stroke: "#e5e7eb" }}
               tickLine={false}
             />
             <YAxis domain={[0, 100]} hide={true} reversed={true} />
             <ReferenceLine y={50} stroke="#e5e7eb" strokeDasharray="3 3" />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#94a3b8", strokeDasharray: "4 4", strokeWidth: 1 }} />
+
+            <Area
+              type="monotone"
+              dataKey="probability"
+              stroke="none"
+              fill="url(#areaGradient)"
+              isAnimationActive={true}
+              animationDuration={600}
+            />
+
             <Line
               type="monotone"
               dataKey="probability"
-              stroke="#3b82f6"
-              strokeWidth={isMobile ? 1.5 : 2.5}
+              stroke="#2563eb"
+              strokeWidth={isMobile ? 1.75 : 2.5}
               dot={false}
               activeDot={{
                 r: isMobile ? 4 : 6,
                 stroke: "#fff",
                 strokeWidth: isMobile ? 1 : 2,
-                fill: "#3b82f6",
+                fill: "#2563eb",
               }}
-              fill="url(#probGradient)"
+              isAnimationActive={true}
+              animationDuration={500}
             />
-          </LineChart>
+
+            {momentumSwings.map((swing, i) => (
+              <ReferenceDot
+                key={`swing-${i}`}
+                x={swing.index}
+                y={chartData[swing.index]?.probability}
+                r={isMobile ? 3 : 4}
+                fill={highlightedPlay === swing.index ? "#dc2626" : "#3b82f6"}
+                stroke="#fff"
+                strokeWidth={1}
+              />
+            ))}
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import PlayerListManager from "../managers/PlayerListManager";
 
 const AddToListModal = ({ isOpen, onClose, playerId, playerName }) => {
@@ -69,9 +70,9 @@ const AddToListModal = ({ isOpen, onClose, playerId, playerName }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+  const modalContent = (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full relative">
         <h2 className="text-xl font-semibold mb-4">Add to Player List</h2>
         <p className="mb-4">
           Add <span className="font-medium">{playerName}</span> to a player
@@ -184,6 +185,8 @@ const AddToListModal = ({ isOpen, onClose, playerId, playerName }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default AddToListModal;

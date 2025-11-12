@@ -2,15 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search, Users, User, FileBox } from "lucide-react";
-import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
-import AuthManager from "../../managers/AuthManager";
-import SubscriptionManager from "../../managers/SubscriptionManager";
-import { columnsSplits, columnsSplitsPitcher } from "../../config/tableColumns";
+import { columnsSplitsBatters, columnsSplitsPitchers } from "../../config/splitsColumns";
 import ExportButton from "../buttons/ExportButton";
 
 const SplitsLeaderboard = ({
-  isPremiumUserProp,
   selectedListId,
   selectedListPlayerIds,
   isLoadingPlayerList,
@@ -26,9 +22,6 @@ const SplitsLeaderboard = ({
   const [minCount, setMinCount] = useState(50);
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
-  const [isPremiumUser, setIsPremiumUser] = useState(
-    isPremiumUserProp || false
-  );
   const [viewType, setViewType] = useState("batters");
 
   const fetchConferences = useCallback(async () => {
@@ -43,77 +36,8 @@ const SplitsLeaderboard = ({
   }, [division, isAuthReady]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    // If isPremiumUserProp is provided, use it
-    if (isPremiumUserProp !== undefined) {
-      setIsPremiumUser(isPremiumUserProp);
-      setIsAuthReady(true);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    // Otherwise, fetch the subscription status
-    const initializeAuth = async () => {
-      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-        if (!isMounted) return;
-
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
-
-            if (initialSubscription?.isActive) {
-              const urlParams = new URLSearchParams(window.location.search);
-              const divisionParam = urlParams.get("division");
-              if (divisionParam) {
-                setDivision(Number(divisionParam));
-              }
-            }
-          }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
-          }
-        }
-
-        if (isMounted) {
-          setIsAuthReady(true);
-        }
-      });
-
-      return unsubscribeAuth;
-    };
-
-    const cleanup = initializeAuth();
-
-    return () => {
-      isMounted = false;
-      if (cleanup) {
-        cleanup.then((unsubscribe) => unsubscribe && unsubscribe());
-      }
-      SubscriptionManager.stopListening();
-    };
-  }, [isPremiumUserProp]);
-
-  useEffect(() => {
-    if (isPremiumUser) {
-      const url = new URL(window.location);
-      url.searchParams.set("division", division.toString());
-      window.history.replaceState({}, "", url);
-    }
-  }, [division, isPremiumUser]);
+    setIsAuthReady(true);
+  }, []);
 
   useEffect(() => {
     if (isAuthReady) {
@@ -138,38 +62,11 @@ const SplitsLeaderboard = ({
         `${endpoint}?start_year=${startYear}&end_year=${endYear}&${countParam}=${minCount}&division=${division}`
       );
 
-      const sortField = "wOBA_Overall";
+      const sortField = "woba_overall";
 
-      const sortedData = [...rawData].sort((a, b) => {
-        return viewType === "batters"
-          ? b[sortField] - a[sortField] // Descending for batters (higher wOBA is better)
-          : a[sortField] - b[sortField]; // Ascending for pitchers (lower wOBA against is better)
-      });
+      const sortedData = [...rawData].sort((a, b) => viewType === "batters" ? (b[sortField] ?? 0) - (a[sortField] ?? 0) : (a[sortField] ?? 0) - (b[sortField] ?? 0));
 
-      const transformedData = sortedData.map((row, index) => ({
-        ...row,
-        rank: index + 1,
-        renderedTeam: (
-          <div className="flex items-center gap-2">
-            <TeamLogo
-              teamId={row.prev_team_id}
-              conferenceId={row.conference_id}
-              teamName={row.Team}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-        renderedConference: (
-          <div className="flex items-center gap-2">
-            <TeamLogo
-              teamId={row.conference_id}
-              conferenceId={row.conference_id}
-              teamName={row.Team}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-      }));
+      const transformedData = sortedData.map((row, index) => ({ ...row, rank: index + 1 }));
 
       setData(transformedData);
     } catch (err) {
@@ -204,14 +101,11 @@ const SplitsLeaderboard = ({
   );
 
   const filteredData = useMemo(() => {
-    // First apply the standard filters (search and conference)
     let filtered = data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
-      const nameMatch = player.Player?.toLowerCase().includes(searchStr);
-      const teamMatch = player.Team?.toLowerCase().includes(searchStr);
-      const conferenceMatch = selectedConference
-        ? player.Conference === selectedConference
-        : true;
+      const nameMatch = player.player_name?.toLowerCase().includes(searchStr);
+      const teamMatch = player.team_name?.toLowerCase().includes(searchStr);
+      const conferenceMatch = selectedConference ? player.conference === selectedConference : true;
       return (nameMatch || teamMatch) && conferenceMatch;
     });
 
@@ -264,8 +158,8 @@ const SplitsLeaderboard = ({
     [viewType]
   );
 
-  const columns = viewType === "batters" ? columnsSplits : columnsSplitsPitcher;
-  const defaultSortField = "wOBA_Overall";
+  const columns = viewType === "batters" ? columnsSplitsBatters : columnsSplitsPitchers;
+  const defaultSortField = "woba_overall";
   const defaultSortAsc = viewType !== "batters";
 
   const handleViewTypeChange = (newViewType) => {
@@ -392,18 +286,16 @@ const SplitsLeaderboard = ({
 
           {/* Filters */}
           <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
-            {isPremiumUser && (
-              <select
-                value={division}
-                onChange={(e) => setDivision(Number(e.target.value))}
-                className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                    focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-              >
-                <option value={1}>Division 1</option>
-                <option value={2}>Division 2</option>
-                <option value={3}>Division 3</option>
-              </select>
-            )}
+            <select
+              value={division}
+              onChange={(e) => setDivision(Number(e.target.value))}
+              className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                  focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+            >
+              <option value={1}>Division 1</option>
+              <option value={2}>Division 2</option>
+              <option value={3}>Division 3</option>
+            </select>
 
             <div className="flex items-center gap-2 w-full lg:w-auto">
               <select

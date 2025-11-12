@@ -2,6 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    
+    // Allow anyone to read and write to playerPageVisits collection
+    match /playerPageVisits/{document=**} {
+      allow read, write: if true;
+    }
 
     // This rule allows anyone with your Firestore database reference to view, edit,
     // and delete all data in your Firestore database. It is useful for getting

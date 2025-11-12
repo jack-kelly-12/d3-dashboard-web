@@ -78,6 +78,8 @@ export const BaseballTable = ({
   stickyColumns = [],
   defaultSortField,
   defaultSortAsc = false,
+  containerClassName,
+  ...dataTableProps
 }) => {
   const remToPx = useCallback((rem) => {
     const baseFontSize = parseFloat(
@@ -149,14 +151,15 @@ export const BaseballTable = ({
         style: {
           ...(column.style || {}),
           justifyContent: "flex-start",
-          textAlign: "center",
         },
       })),
     [columns, stickyColumns]
   );
 
   return (
-    <div className="bg-white shadow-sm border border-gray-200 overflow-hidden">
+    <div className={`bg-white shadow-sm border border-gray-200 overflow-hidden${
+      containerClassName ? " " + containerClassName : ""
+    }`}>
       {(title || searchComponent) && (
         <div className="px-6 sm:px-2 py-4 border-b border-gray-200">
           <div className="flex flex-wrap justify-between items-center gap-4">
@@ -193,6 +196,7 @@ export const BaseballTable = ({
           dense
           defaultSortFieldId={defaultSortField}
           defaultSortAsc={defaultSortAsc}
+          {...dataTableProps}
         />
       </div>
     </div>

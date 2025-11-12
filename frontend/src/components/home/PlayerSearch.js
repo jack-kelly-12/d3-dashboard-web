@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchAPI } from "../../config/api";
 
@@ -11,10 +11,8 @@ const PlayerSearch = () => {
   const navigate = useNavigate();
   const debounceTimerRef = useRef(null);
 
-  // Cache for search results
   const cacheRef = useRef({});
 
-  // Debounced search function
   const debouncedSearch = useCallback((searchQuery) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -22,7 +20,7 @@ const PlayerSearch = () => {
 
     debounceTimerRef.current = setTimeout(() => {
       searchPlayers(searchQuery);
-    }, 300); // 300ms debounce delay
+    }, 300);
   }, []);
 
   const searchPlayers = async (searchQuery) => {
@@ -31,7 +29,6 @@ const PlayerSearch = () => {
       return;
     }
 
-    // Check if we have cached results
     if (cacheRef.current[searchQuery]) {
       setResults(cacheRef.current[searchQuery]);
       return;
@@ -45,10 +42,8 @@ const PlayerSearch = () => {
       const topResults = data.slice(0, 5);
       setResults(topResults);
 
-      // Cache the results
       cacheRef.current[searchQuery] = topResults;
 
-      // Limit cache size to prevent memory issues
       const cacheKeys = Object.keys(cacheRef.current);
       if (cacheKeys.length > 50) {
         delete cacheRef.current[cacheKeys[0]];
@@ -77,7 +72,6 @@ const PlayerSearch = () => {
           }`
         );
       } else if (results.length > 0) {
-        // Navigate to first result if none selected but results exist
         navigate(`/player/${results[0].player_id || results[0].playerId}`);
       }
     }
@@ -90,7 +84,6 @@ const PlayerSearch = () => {
     debouncedSearch(value);
   };
 
-  // Clean up debounce timer on unmount
   useEffect(() => {
     return () => {
       if (debounceTimerRef.current) {
@@ -107,40 +100,47 @@ const PlayerSearch = () => {
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          placeholder="Search for a player..."
-          className="w-full h-12 px-4 pl-12 text-base rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          placeholder="Search players..."
+          className="w-full h-12 px-4 pl-12 text-sm rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white shadow-sm transition-all duration-200 placeholder:text-gray-400"
           autoComplete="off"
         />
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
           {isLoading ? (
-            <Loader2 className="h-5 w-5 text-gray-400 animate-spin" />
+            <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
           ) : (
-            <Search className="h-5 w-5 text-gray-400" />
+            <Search className="h-4 w-4 text-gray-400" />
           )}
         </div>
       </div>
 
       {results.length > 0 && query && (
-        <div className="absolute z-50 w-full bg-white mt-1 rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-          {results.map((player, index) => (
+        <div className="absolute z-[99999] w-full bg-white mt-2 rounded-xl shadow-2xl border border-gray-200 overflow-hidden" style={{ zIndex: 99999 }}>
+          <div className="max-h-80 overflow-y-auto">
+            {results.map((player, index) => (
             <div
               key={player.player_id || player.playerId || index}
               onClick={() =>
                 navigate(`/player/${player.player_id || player.playerId}`)
               }
               onMouseEnter={() => setSelectedIndex(index)}
-              className={`cursor-pointer p-3 hover:bg-gray-50 ${
-                index === selectedIndex ? "bg-gray-50" : ""
+              className={`cursor-pointer p-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 ${
+                index === selectedIndex ? "bg-blue-50" : ""
               }`}
             >
-              <div className="font-semibold text-gray-900">
-                {player.playerName}
-              </div>
-              <div className="text-sm text-gray-500">
-                {player.team} • {player.conference}
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm truncate">
+                    {player.playerName}
+                  </div>
+                  <div className="text-xs text-gray-500 truncate">
+                    {player.team} • {player.conference}
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0 ml-2" />
               </div>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>

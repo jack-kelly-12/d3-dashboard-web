@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   LineChart,
   Line,
@@ -13,7 +13,7 @@ import { fetchAPI } from "../../config/api";
 
 const ChartSkeleton = () => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-3 sm:p-5 animate-pulse">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-5 animate-pulse">
       {/* Header skeleton */}
       <div className="mb-4 pb-3 border-b border-gray-100">
         <div className="h-5 sm:h-6 bg-gray-200 rounded w-1/2 sm:w-1/3 mb-3"></div>
@@ -58,25 +58,21 @@ const ChartSkeleton = () => {
 
 const EmptyState = ({ message, suggestion }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 text-center h-48 sm:h-64 flex flex-col justify-center">
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-6 text-center h-48 sm:h-64 flex flex-col justify-center">
       <div className="text-sm sm:text-base text-gray-600 mb-2">{message}</div>
       {suggestion && <div className="text-xs sm:text-sm text-gray-500">{suggestion}</div>}
     </div>
   );
 };
 
-const RollingChart = memo(
-  ({
-    playerId,
-    playerType = "batter",
-    initialWindow = 25,
-    playerName = "",
-    chartTitle = "",
-    minRequiredDataPoints = 10,
-  }) => {
+const RollingChart = ({
+  playerId,
+  playerType = "batter",
+  initialWindow = 25,
+  minRequiredDataPoints = 10,
+}) => {
     const [rollingData, setRollingData] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [window, setWindow] = useState(initialWindow);
     const [lastPA, setLastPA] = useState("");
     const [currentWoba, setCurrentWoba] = useState(0);
@@ -93,7 +89,6 @@ const RollingChart = memo(
         }
 
         setIsLoading(true);
-        setError(null);
 
         try {
           const response = await fetchAPI(
@@ -122,7 +117,6 @@ const RollingChart = memo(
           }
         } catch (err) {
           console.error("Error fetching rolling wOBA data:", err);
-          setError("Unable to load performance data. Please try again later.");
         } finally {
           setIsLoading(false);
         }
@@ -178,22 +172,6 @@ const RollingChart = memo(
       return <ChartSkeleton />;
     }
 
-    if (error) {
-      return (
-        <EmptyState
-          message={error}
-          suggestion={
-            <button
-              onClick={() => window.location.reload()}
-              className="px-3 sm:px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors mt-3"
-            >
-              Retry
-            </button>
-          }
-        />
-      );
-    }
-
     if (!playerId) {
       return (
         <EmptyState
@@ -214,18 +192,27 @@ const RollingChart = memo(
 
     if (!isDataSufficient) {
       return (
-        <div className="bg-white rounded-lg shadow-md p-3 sm:p-5 mt-4">
-          <div className="mb-4 pb-3 border-b border-gray-100">
-            <h3 className="text-base sm:text-lg font-bold text-gray-800 mb-3">{playerName}</h3>
+        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between mb-4 border-b border-gray-100 pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col leading-tight">
+                <span className="text-[11px] uppercase tracking-wider text-gray-500">
+                  Performance Analysis
+                </span>
+                <h2 className="text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent select-none">
+                  Rolling wOBA Chart
+                </h2>
+              </div>
+            </div>
+          </div>
             
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4">
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4">
               <p className="text-xs sm:text-sm text-yellow-700">
                 Limited data available ({rollingData.length} PAs). At least{" "}
                 {minRequiredDataPoints} PAs are recommended for a meaningful rolling wOBA chart.
               </p>
             </div>
 
-            {/* Stats grid - responsive */}
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap mt-3 gap-3 sm:gap-4">
               {rollingData.length > 0 && (
                 <>
@@ -256,11 +243,9 @@ const RollingChart = memo(
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Responsive table */}
-          <div className="mb-3">
-            <h4 className="text-sm font-bold text-gray-800 mb-2">Available Performance Data</h4>
+          <div className="mb-4">
+            <h4 className="text-xs font-semibold text-gray-600 tracking-wide uppercase mb-2">Available Performance Data</h4>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -305,10 +290,21 @@ const RollingChart = memo(
       );
     }
 
-    // Main chart view
     return (
-      <div className="bg-white rounded-lg shadow-md p-3 sm:p-5 mt-4">
-        {/* Responsive controls section */}
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between mb-4 border-b border-gray-100 pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex flex-col leading-tight">
+              <span className="text-[11px] uppercase tracking-wider text-gray-500">
+                Performance Analysis
+              </span>
+              <h2 className="text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent select-none">
+                Rolling wOBA Chart
+              </h2>
+            </div>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-5 gap-3 sm:gap-0">
           <div className="flex items-center">
             <div className="flex bg-gray-100 rounded-lg p-0.5 sm:p-1 w-full sm:w-auto">
@@ -352,14 +348,7 @@ const RollingChart = memo(
           </div>
         </div>
 
-        {/* Chart title */}
-        <div className="mb-3">
-          <h4 className="text-xs sm:text-sm font-bold text-gray-800">
-            {window} PAs Rolling wOBA {chartTitle && `(${chartTitle})`}
-          </h4>
-        </div>
 
-        {/* Responsive chart area */}
         <div className="h-48 sm:h-64 lg:h-72 relative">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
@@ -419,9 +408,6 @@ const RollingChart = memo(
         </div>
       </div>
     );
-  }
-);
-
-RollingChart.displayName = "RollingChart";
+};
 
 export default RollingChart;
