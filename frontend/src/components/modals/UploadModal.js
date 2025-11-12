@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import DataUpload from "../charting/UploadData";
 
@@ -15,7 +16,7 @@ const UploadModal = ({ isOpen, onClose, onUpload }) => {
     onClose();
   };
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-2xl mx-4 bg-white rounded-lg shadow-xl">
@@ -71,6 +72,8 @@ const UploadModal = ({ isOpen, onClose, onUpload }) => {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default UploadModal;

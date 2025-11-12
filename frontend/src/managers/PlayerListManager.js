@@ -63,7 +63,6 @@ class PlayerListManager {
         const snapshot = await getDocs(q);
         return this.processPlayerListDocuments(snapshot);
       } catch (indexError) {
-        // Fallback if the composite index doesn't exist
         const q = query(this.playerListsRef, where("userId", "==", userId));
 
         const snapshot = await getDocs(q);

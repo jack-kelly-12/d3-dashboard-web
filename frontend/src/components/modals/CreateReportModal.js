@@ -6,7 +6,6 @@ const CreateReportModal = ({
   onClose,
   onSubmit,
   availableTeams,
-  isPremiumUser,
   selectedDivision,
   onDivisionChange,
 }) => {
@@ -24,7 +23,7 @@ const CreateReportModal = ({
     const reportData = {
       teamName: selectedTeam,
       division: selectedDivision,
-      year: selectedYear,
+      year: Number(selectedYear),
     };
 
     onSubmit(reportData);
@@ -34,14 +33,21 @@ const CreateReportModal = ({
   const handleDivisionChange = async (newDivision) => {
     setIsLoadingTeams(true);
     setSelectedTeam("");
-    await onDivisionChange(Number(newDivision));
+    await onDivisionChange(Number(newDivision), Number(selectedYear));
+    setIsLoadingTeams(false);
+  };
+
+  const handleYearChange = async (newYear) => {
+    setSelectedYear(newYear);
+    setIsLoadingTeams(true);
+    setSelectedTeam("");
+    await onDivisionChange(Number(selectedDivision), Number(newYear));
     setIsLoadingTeams(false);
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Create Scouting Report">
       <div className="space-y-6">
-        {isPremiumUser && (
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">
               Division:
@@ -57,19 +63,20 @@ const CreateReportModal = ({
               <option value={3}>Division 3</option>
             </select>
           </div>
-        )}
 
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Use 2024 or 2025 data?
+            Select year:
           </label>
           <select
             value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
+            onChange={(e) => handleYearChange(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            disabled={isLoadingTeams}
           >
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
+            {(["2025", "2024", "2023", "2022", "2021"]).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
           </select>
         </div>
 

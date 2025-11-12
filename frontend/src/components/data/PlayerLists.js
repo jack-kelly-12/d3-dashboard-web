@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import PlayerListManager from "../managers/PlayerListManager";
 import { BaseballTable } from "../components/tables/BaseballTable";
 import { getDataColumns } from "../config/tableColumns";
 import InfoBanner from "../components/data/InfoBanner";
-import debounce from "lodash/debounce";
 
 const PlayerLists = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,9 +17,7 @@ const PlayerLists = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filteredData, setFilteredData] = useState([]);
-  const [originalData, setOriginalData] = useState([]);
 
-  // Fetch player lists on component mount
   useEffect(() => {
     const fetchPlayerLists = async () => {
       try {
@@ -28,7 +25,6 @@ const PlayerLists = () => {
         const lists = await PlayerListManager.getUserPlayerLists();
         setPlayerLists(lists);
 
-        // If a list is selected in URL but not loaded yet, load it
         if (
           selectedListId &&
           lists.find((list) => list.id === selectedListId)
@@ -45,7 +41,6 @@ const PlayerLists = () => {
     fetchPlayerLists();
   }, [selectedListId]);
 
-  // Update URL when selected list changes
   useEffect(() => {
     if (selectedListId) {
       setSearchParams({ listId: selectedListId });
@@ -54,7 +49,6 @@ const PlayerLists = () => {
     }
   }, [selectedListId, setSearchParams]);
 
-  // Load player data when a list is selected
   const loadPlayerData = async (listId) => {
     if (!listId) {
       setFilteredData([]);
@@ -64,17 +58,13 @@ const PlayerLists = () => {
     try {
       setIsLoading(true);
 
-      // Fetch the players data - you'll need to implement this API endpoint
       const response = await fetch("/api/players");
       if (!response.ok) throw new Error("Failed to fetch player data");
 
       const allPlayers = await response.json();
-      setOriginalData(allPlayers);
 
-      // Get the player list details
       const playerList = await PlayerListManager.getPlayerListById(listId);
 
-      // Filter the players based on the playerIds in the list
       const filtered = allPlayers.filter((player) =>
         playerList.playerIds.includes(player.id)
       );
@@ -129,18 +119,7 @@ const PlayerLists = () => {
     }
   };
 
-  const handleAddPlayerToList = async (playerId) => {
-    if (!selectedListId) return;
-
-    try {
-      await PlayerListManager.addPlayerToList(selectedListId, playerId);
-
-      // Refresh the data
-      loadPlayerData(selectedListId);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
+  // add-to-list handler not used in this view; omit to satisfy linter
 
   const handleRemovePlayerFromList = async (playerId) => {
     if (!selectedListId) return;
@@ -148,7 +127,6 @@ const PlayerLists = () => {
     try {
       await PlayerListManager.removePlayerFromList(selectedListId, playerId);
 
-      // Update the UI without refetching all data
       setFilteredData((prev) =>
         prev.filter((player) => player.id !== playerId)
       );
@@ -225,7 +203,7 @@ const PlayerLists = () => {
 
           {playerLists.length === 0 && !isLoading && (
             <div className="text-center py-6 text-gray-500">
-              You haven't created any player lists yet.
+              You haven&apos;t created any player lists yet.
             </div>
           )}
 
@@ -301,4 +279,4 @@ const PlayerLists = () => {
   );
 };
 
-export default React.memo(PlayerLists);
+export default PlayerLists;

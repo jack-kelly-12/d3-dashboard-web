@@ -2,15 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search, FileBox } from "lucide-react";
-import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
-import AuthManager from "../../managers/AuthManager";
-import SubscriptionManager from "../../managers/SubscriptionManager";
-import { columnsBaserunning } from "../../config/tableColumns";
+import { columnsBaserunningLeaderboard } from "../../config/baserunningColumns";
 import ExportButton from "../buttons/ExportButton";
 
 const BaserunningLeaderboard = ({
-  isPremiumUserProp,
   selectedListId,
   selectedListPlayerIds,
   isLoadingPlayerList,
@@ -25,9 +21,6 @@ const BaserunningLeaderboard = ({
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
-  const [isPremiumUser, setIsPremiumUser] = useState(
-    isPremiumUserProp || false
-  );
 
   const fetchConferences = useCallback(async () => {
     if (!isAuthReady) return;
@@ -41,75 +34,8 @@ const BaserunningLeaderboard = ({
   }, [division, isAuthReady]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    if (isPremiumUserProp !== undefined) {
-      setIsPremiumUser(isPremiumUserProp);
-      setIsAuthReady(true);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    const initializeAuth = async () => {
-      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-        if (!isMounted) return;
-
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
-
-            if (initialSubscription?.isActive) {
-              const urlParams = new URLSearchParams(window.location.search);
-              const divisionParam = urlParams.get("division");
-              if (divisionParam) {
-                setDivision(Number(divisionParam));
-              }
-            }
-          }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
-          }
-        }
-
-        if (isMounted) {
-          setIsAuthReady(true);
-        }
-      });
-
-      return unsubscribeAuth;
-    };
-
-    const cleanup = initializeAuth();
-
-    return () => {
-      isMounted = false;
-      if (cleanup) {
-        cleanup.then((unsubscribe) => unsubscribe && unsubscribe());
-      }
-      SubscriptionManager.stopListening();
-    };
-  }, [isPremiumUserProp]);
-
-  useEffect(() => {
-    if (isPremiumUser) {
-      const url = new URL(window.location);
-      url.searchParams.set("division", division.toString());
-      window.history.replaceState({}, "", url);
-    }
-  }, [division, isPremiumUser]);
+    setIsAuthReady(true);
+  }, []);
 
   useEffect(() => {
     if (isAuthReady) {
@@ -127,34 +53,9 @@ const BaserunningLeaderboard = ({
         `/api/leaderboards/baserunning?start_year=${startYear}&end_year=${endYear}&division=${division}`
       );
 
-      const sortedData = [...rawData].sort(
-        (a, b) => b.Baserunning - a.Baserunning
-      );
+      const sortedData = [...rawData].sort((a, b) => (b.baserunning ?? 0) - (a.baserunning ?? 0));
 
-      const transformedData = sortedData.map((row, index) => ({
-        ...row,
-        rank: index + 1,
-        renderedTeam: (
-          <div className="flex items-center gap-2">
-            <TeamLogo
-              teamId={row.prev_team_id}
-              conferenceId={row.conference_id}
-              teamName={row.Team}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-        renderedConference: (
-          <div className="flex items-center gap-2">
-            <TeamLogo
-              teamId={row.conference_id}
-              conferenceId={row.conference_id}
-              teamName={row.Team}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-      }));
+      const transformedData = sortedData.map((row, index) => ({ ...row, rank: index + 1 }));
 
       setData(transformedData);
     } catch (err) {
@@ -183,10 +84,10 @@ const BaserunningLeaderboard = ({
   const filteredData = useMemo(() => {
     let filtered = data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
-      const nameMatch = player.Player?.toLowerCase().includes(searchStr);
-      const teamMatch = player.Team?.toLowerCase().includes(searchStr);
+      const nameMatch = player.player_name?.toLowerCase().includes(searchStr);
+      const teamMatch = player.team_name?.toLowerCase().includes(searchStr);
       const conferenceMatch = selectedConference
-        ? player.Conference === selectedConference
+        ? player.conference === selectedConference
         : true;
       return (nameMatch || teamMatch) && conferenceMatch;
     });
@@ -277,18 +178,16 @@ const BaserunningLeaderboard = ({
             </div>
 
             <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
-              {isPremiumUser && (
-                <select
-                  value={division}
-                  onChange={(e) => setDivision(Number(e.target.value))}
-                  className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                    focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value={1}>Division 1</option>
-                  <option value={2}>Division 2</option>
-                  <option value={3}>Division 3</option>
-                </select>
-              )}
+              <select
+                value={division}
+                onChange={(e) => setDivision(Number(e.target.value))}
+                className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                  focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value={1}>Division 1</option>
+                <option value={2}>Division 2</option>
+                <option value={3}>Division 3</option>
+              </select>
 
               <div className="flex items-center gap-2 w-full lg:w-auto">
                 <select
@@ -378,8 +277,8 @@ const BaserunningLeaderboard = ({
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columnsBaserunning}
-            defaultSortField="Baserunning"
+            columns={columnsBaserunningLeaderboard}
+            defaultSortField="baserunning"
             defaultSortAsc={false}
             stickyColumns={[0, 1]}
             filename={generateFilename()}

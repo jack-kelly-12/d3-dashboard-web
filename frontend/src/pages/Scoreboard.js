@@ -1,109 +1,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
-import { fetchAPI, API_BASE_URL } from "../config/api";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import InfoBanner from "../components/data/InfoBanner";
-import { useSubscription } from "../contexts/SubscriptionContext";
+import { Calendar } from "lucide-react";
+import { fetchAPI } from "../config/api";
+import DataControls from "../components/data/DataControls";
 import AuthManager from "../managers/AuthManager";
 
-const DIVISIONS = [
-  { label: "Division 1", value: 1 },
-  { label: "Division 2", value: 2 },
-  { label: "Division 3", value: 3 },
-];
-
-const DATE_RANGE = {
-  min: 2021,
-  max: 2025,
-};
-
-const TeamLogo = ({ teamId, teamName }) => {
-  const [error, setError] = useState(false);
-
-  if (error || !teamId) {
-    const initials =
-      teamName
-        ?.split(" ")
-        .map((word) => word[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase() || "??";
-
-    return (
-      <div className="w-8 h-6 flex items-center justify-center rounded-full bg-gray-100 text-gray-600">
-        <span className="text-xs font-medium">{initials}</span>
-      </div>
-    );
-  }
-
-  return (
+const TeamLogo = ({ teamId, teamName }) => (
+  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100">
     <img
-      src={`${API_BASE_URL}/api/teams/logos/${teamId}.png`}
+      src={teamId ? `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/${teamId}.png` : `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`}
       alt={teamName}
-      className="w-8 h-6 rounded-full"
-      onError={() => setError(true)}
+      className="w-full h-full object-cover"
+      onError={(e) => {
+        e.currentTarget.onerror = null;
+        e.currentTarget.src = `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`;
+      }}
     />
-  );
-};
-
-const DateControl = ({
-  currentDate,
-  onDateChange,
-  onNavigate,
-  displayDate,
-  filterDate,
-}) => (
-  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-grow">
-    <DatePicker
-      selected={currentDate}
-      onChange={onDateChange}
-      filterDate={filterDate}
-      className="w-full sm:w-auto px-4 py-2 border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:border-blue-500"
-    />
-    <div className="flex items-center bg-white rounded-lg shadow-sm border border-gray-200 w-full sm:w-auto">
-      <button
-        onClick={() => onNavigate(-1)}
-        className="p-2 hover:bg-gray-50 text-gray-600 border-r border-gray-200"
-        aria-label="Previous day"
-      >
-        <ChevronLeft size={20} />
-      </button>
-      <div className="px-4 py-2 flex items-center gap-2 flex-1 justify-center sm:justify-start">
-        <Calendar size={18} className="text-gray-500 flex-shrink-0" />
-        <span className="font-medium truncate">{displayDate}</span>
-      </div>
-      <button
-        onClick={() => onNavigate(1)}
-        className="p-2 hover:bg-gray-50 text-gray-600 border-l border-gray-200"
-        aria-label="Next day"
-      >
-        <ChevronRight size={20} />
-      </button>
-    </div>
-  </div>
-);
-
-const DivisionSelector = ({ division, onDivisionChange }) => (
-  <div className="flex items-center gap-2 flex-shrink-0">
-    <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-      Division:
-    </label>
-    <select
-      value={division}
-      onChange={(e) => onDivisionChange(Number(e.target.value))}
-      className="px-3 py-2 bg-white border border-gray-200 rounded-lg shadow-sm text-sm text-gray-700
-        focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500
-        hover:border-gray-300 transition-colors"
-      style={{ minWidth: "130px" }}
-    >
-      {DIVISIONS.map((div) => (
-        <option key={div.value} value={div.value}>
-          {div.label}
-        </option>
-      ))}
-    </select>
   </div>
 );
 
@@ -111,7 +23,10 @@ const GameCard = ({ game }) => {
   const navigate = useNavigate();
 
   const handleClick = () => {
-    navigate(`/games/${game.year}/${game.game_id}`);
+    const params = new URLSearchParams();
+    if (game.home_org_id) params.set("homeId", String(game.home_org_id));
+    if (game.away_org_id) params.set("awayId", String(game.away_org_id));
+    navigate(`/games/${game.year}/${game.contest_id}?${params.toString()}`);
   };
 
   return (
@@ -131,10 +46,7 @@ const GameCard = ({ game }) => {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              <TeamLogo
-                teamId={game.away_team_logo_id}
-                teamName={game.away_team}
-              />
+              <TeamLogo teamId={game.away_org_id} teamName={game.away_team} />
               <span className="font-medium truncate">{game.away_team}</span>
             </div>
             <span className="font-mono font-bold ml-2">{game.away_score}</span>
@@ -142,10 +54,7 @@ const GameCard = ({ game }) => {
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              <TeamLogo
-                teamId={game.home_team_logo_id}
-                teamName={game.home_team}
-              />
+              <TeamLogo teamId={game.home_org_id} teamName={game.home_team} />
               <span className="font-medium truncate">{game.home_team}</span>
             </div>
             <span className="font-mono font-bold ml-2">{game.home_score}</span>
@@ -155,7 +64,7 @@ const GameCard = ({ game }) => {
         {/* Footer */}
         <div className="pt-2 sm:pt-3 border-t border-gray-100">
           <div className="flex items-center justify-between text-xs sm:text-sm">
-            <div className="text-gray-600 truncate">Game #{game.game_id}</div>
+            <div className="text-gray-600 truncate">Game #{game.contest_id}</div>
             <div className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 ml-2 flex-shrink-0">
               Final
             </div>
@@ -180,7 +89,6 @@ const NoGames = () => (
 const Scoreboard = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const { isPremiumUser, isLoadingPremium } = useSubscription();
   const [state, setState] = useState({
     games: [],
     isLoading: true,
@@ -189,20 +97,6 @@ const Scoreboard = () => {
     division: Number(searchParams.get("division")) || 3,
   });
 
-  const formatDisplayDate = useCallback((date) => {
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(date);
-  }, []);
-
-  const filterDate = useCallback((date) => {
-    const year = date.getFullYear();
-    return year >= DATE_RANGE.min && year <= DATE_RANGE.max;
-  }, []);
-
   useEffect(() => {
     let isMounted = true;
 
@@ -210,8 +104,8 @@ const Scoreboard = () => {
       const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
         if (!isMounted) return;
 
-        if (user && isPremiumUser) {
-          // Update division from URL if premium user
+        if (user) {
+          // Update division from URL
           setState((prev) => ({
             ...prev,
             division: searchParams.get("division")
@@ -232,18 +126,16 @@ const Scoreboard = () => {
       isMounted = false;
       cleanup.then((unsubscribe) => unsubscribe());
     };
-  }, [searchParams, isPremiumUser]);
+  }, [searchParams]);
 
   useEffect(() => {
-    if (isPremiumUser) {
-      setState((prev) => ({
-        ...prev,
-        division: searchParams.get("division")
-          ? Number(searchParams.get("division"))
-          : prev.division,
-      }));
-    }
-  }, [isPremiumUser, searchParams]);
+    setState((prev) => ({
+      ...prev,
+      division: searchParams.get("division")
+        ? Number(searchParams.get("division"))
+        : prev.division,
+    }));
+  }, [searchParams]);
 
   useEffect(() => {
     const localDate = new Date(
@@ -253,16 +145,13 @@ const Scoreboard = () => {
       .toISOString()
       .split("T")[0];
 
-    const params = { date: localDate };
-    if (isPremiumUser) {
-      params.division = state.division.toString();
-    }
+    const params = { date: localDate, division: state.division.toString() };
 
     setSearchParams(params);
-  }, [state.currentDate, state.division, isPremiumUser, setSearchParams]);
+  }, [state.currentDate, state.division, setSearchParams]);
 
   const fetchGames = useCallback(async () => {
-    if (!isAuthReady || isLoadingPremium) return;
+    if (!isAuthReady) return;
 
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
@@ -291,76 +180,95 @@ const Scoreboard = () => {
         isLoading: false,
       }));
     }
-  }, [state.currentDate, state.division, isAuthReady, isLoadingPremium]);
+  }, [state.currentDate, state.division, isAuthReady]);
 
   useEffect(() => {
     fetchGames();
   }, [fetchGames]);
 
-  const handleDateChange = useCallback((date) => {
-    setState((prev) => ({ ...prev, currentDate: date }));
-  }, []);
 
-  const handleDateNavigate = useCallback(
-    (direction) => {
-      const newDate = new Date(state.currentDate);
-      newDate.setDate(state.currentDate.getDate() + direction);
-      setState((prev) => ({ ...prev, currentDate: newDate }));
-    },
-    [state.currentDate]
-  );
-
-  const handleDivisionChange = useCallback((division) => {
-    setState((prev) => ({ ...prev, division }));
-  }, []);
-
-  if (!isAuthReady || state.isLoading || isLoadingPremium) {
+  if (!isAuthReady || state.isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden">
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+          <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500"></div>
+          <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700"></div>
+        </div>
+        <div className="relative z-10 flex items-center justify-center min-h-screen">
+          <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <InfoBanner dataType="scoreboard" />
-
-        <div className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex flex-col md:flex-row md:items-center gap-4 w-full">
-              <DateControl
-                currentDate={state.currentDate}
-                onDateChange={handleDateChange}
-                onNavigate={handleDateNavigate}
-                displayDate={formatDisplayDate(state.currentDate)}
-                filterDate={filterDate}
-              />
-
-              {isPremiumUser && (
-                <DivisionSelector
-                  division={state.division}
-                  onDivisionChange={handleDivisionChange}
-                />
-              )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500"></div>
+        <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700"></div>
+      </div>
+      <div className="relative z-10 container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
+        <div className="relative z-10 mb-6">
+          <div className="relative overflow-hidden rounded-2xl border border-white/30 bg-white/60 backdrop-blur p-4 sm:p-5 shadow-xl">
+            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-400/20 blur-2xl" />
+            <div className="relative z-10 flex items-start gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold flex-shrink-0">
+                i
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm sm:text-base font-semibold text-gray-800 mb-1 truncate">Game Scores & Results</div>
+                <div className="text-xs sm:text-sm text-gray-600">Browse live and completed game scores across all divisions. Scores update as data is ingested. Select a date and division to view games with play-by-play level data.</div>
+              </div>
             </div>
           </div>
         </div>
 
-        {state.error ? (
-          <div className="text-center py-6 sm:py-8 bg-red-50 rounded-lg mb-6">
-            <div className="text-red-600 px-4">{state.error}</div>
-          </div>
-        ) : state.games.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-            {state.games.map((game) => (
-              <GameCard key={game.game_id} game={game} />
-            ))}
-          </div>
-        ) : (
-          <NoGames />
-        )}
+
+        <div id="controls" className="relative z-10 mb-6">
+          <DataControls
+            dataType={"scoreboard"}
+            setDataType={() => {}}
+            selectedYears={[]}
+            setSelectedYears={() => {}}
+            currentDate={state.currentDate}
+            setCurrentDate={(d) => setState((prev) => ({ ...prev, currentDate: d }))}
+            minPA={0}
+            setMinPA={() => {}}
+            minIP={0}
+            setMinIP={() => {}}
+            searchTerm={""}
+            setSearchTerm={() => {}}
+            conference={""}
+            setConference={() => {}}
+            division={state.division}
+            setDivision={(div) => setState((prev) => ({ ...prev, division: div }))}
+            selectedListId={""}
+            setSelectedListId={() => {}}
+            conferences={[]}
+            allowedDataTypes={["scoreboard"]}
+            onApplyFilters={() => {}}
+          />
+        </div>
+
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+          {state.error ? (
+            <div className="text-center py-6 sm:py-8 bg-red-50/80 backdrop-blur rounded-2xl border border-red-100 mb-6">
+              <div className="text-red-700 px-4">{state.error}</div>
+            </div>
+          ) : state.games.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {state.games.map((game) => (
+                <GameCard key={game.contest_id} game={game} />
+              ))}
+            </div>
+          ) : (
+            <NoGames />
+          )}
+        </div>
       </div>
     </div>
   );

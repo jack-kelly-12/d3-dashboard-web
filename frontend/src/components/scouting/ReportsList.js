@@ -4,7 +4,6 @@ import { Plus, Trash2, FileDown, Edit, FileText } from "lucide-react";
 import toast from "react-hot-toast";
 import ReportPDF from "./ReportPDF";
 import { pdf } from "@react-pdf/renderer";
-import InfoBanner from "../data/InfoBanner";
 import { useMediaQuery } from "react-responsive";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
@@ -481,18 +480,17 @@ const ReportsList = ({
   };
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6">
-      <InfoBanner dataType="scouting" />
-
-      <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex justify-between items-center mb-4 sm:mb-6">
-          <button
-            onClick={onCreateClick}
-            className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
-          >
-            <Plus size={isSmall ? 14 : 16} />
-            {isXSmall ? "New" : "New Report"}
-          </button>
+    <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+          <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+            <button
+              onClick={onCreateClick}
+              className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors"
+            >
+              <Plus size={isSmall ? 12 : 14} />
+              {isXSmall ? "New" : "New Report"}
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto -mx-3 sm:mx-0">
@@ -502,18 +500,13 @@ const ReportsList = ({
             columns={getColumns()}
             filename="scouting_reports.csv"
             noDataComponent={
-              <div className="text-center py-8 sm:py-12">
-                <div className="bg-gray-50 p-6 rounded-xl inline-flex flex-col items-center">
-                  <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
-                    <Plus size={24} />
-                  </div>
-                  <p className="text-gray-700 text-base sm:text-lg font-medium">
-                    No reports created yet
-                  </p>
-                  <p className="text-gray-500 mt-2 text-sm">
-                    Click {isXSmall ? '"New"' : '"New Report"'} to get started
-                  </p>
-                </div>
+              <div className="text-center py-6 sm:py-12">
+                <p className="text-gray-500 text-base sm:text-lg">
+                  No reports created yet
+                </p>
+                <p className="text-gray-400 mt-2 text-sm sm:text-base">
+                  Click {isXSmall ? '"New"' : '"New Report"'} to get started
+                </p>
               </div>
             }
             paginationComponentOptions={{
@@ -553,7 +546,6 @@ const ReportsList = ({
                   fontSize: "0.75rem",
                   fontWeight: "600",
                   color: "#6B7280",
-                  textTransform: "uppercase",
                   letterSpacing: "0.05em",
                 },
               },
@@ -576,7 +568,6 @@ const ReportsList = ({
           />
         </div>
       </div>
-    </div>
   );
 };
 

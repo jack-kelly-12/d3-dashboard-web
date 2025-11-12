@@ -1,354 +1,350 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { BaseballTable } from "../components/tables/BaseballTable";
-import InfoBanner from "../components/data/InfoBanner";
-import DataControls from "../components/data/DataControls";
-import { fetchAPI } from "../config/api";
-import { getDataColumns } from "../config/tableColumns";
-import TeamLogo from "../components/data/TeamLogo";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useDeferredValue } from "react";
 import debounce from "lodash/debounce";
-import { useSubscription } from "../contexts/SubscriptionContext";
-import PlayerListManager from "../managers/PlayerListManager";
+import { BaseballTable } from "../components/tables/BaseballTable";
+import DataControls from "../components/data/DataControls";
 import ErrorDisplay from "../components/alerts/ErrorDisplay";
-import { getErrorMessage, isPremiumAccessError } from "../utils/errorUtils";
+import { fetchAPI } from "../config/api";
+import { getBattingColumns } from "../config/battingColumns";
+import { getPitchingColumns } from "../config/pitchingColumns";
+import { getTeamBattingColumns } from "../config/teamBattingColumns";
+import { getTeamPitchingColumns } from "../config/teamPitchingColumns";
+import PlayerListManager from "../managers/PlayerListManager";
+import { getErrorMessage } from "../utils/errorUtils";
 
-const MemoizedTable = React.memo(({ data, dataType, filename }) => (
-  <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-    <BaseballTable
-      data={data}
-      columns={getDataColumns(dataType)}
-      filename={filename}
-      stickyColumns={[0, 1]}
-    />
-  </div>
-));
+const DEFAULT_YEAR = 2025;
+const DEFAULT_MIN_PA = 50;
+const DEFAULT_DIVISION = 3;
+
+const ENDPOINT_MAP = {
+  player_batting: "/api/batting",
+  player_pitching: "/api/pitching",
+  team_batting: "/api/batting_team",
+  team_pitching: "/api/pitching_team",
+};
+
+const COLUMN_MAP = {
+  player_batting: getBattingColumns,
+  player_pitching: getPitchingColumns,
+  team_batting: getTeamBattingColumns,
+  team_pitching: getTeamPitchingColumns,
+};
 
 const Data = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { isPremiumUser, isLoading: isSubscriptionLoading } = useSubscription();
 
-  const [state, setState] = useState({
-    dataType: searchParams.get("dataType") || "player_hitting",
-    selectedYears: searchParams.get("years")?.split(",").map(Number) || [2025],
-    searchTerm: searchParams.get("search") || "",
-    minPA: Number(searchParams.get("minPA")) || 50,
-    minIP: Number(searchParams.get("minIP")) || 10,
-    selectedConference: searchParams.get("conference") || "",
-    division: Number(searchParams.get("division")) || 3,
-    selectedListId: searchParams.get("listId") || "",
-  });
+  const initialYears = useMemo(() => {
+    const yearsParam = searchParams.get("years");
+    if (yearsParam) {
+      const years = yearsParam.split(',').map(Number).filter((y) => !Number.isNaN(y));
+      if (years.length) return years;
+    }
+    const single = Number(searchParams.get("year"));
+    return !Number.isNaN(single) && single ? [single] : [DEFAULT_YEAR];
+  }, [searchParams]);
+
+  const [dataType, setDataType] = useState(searchParams.get("dataType") || "player_batting");
+  const [selectedYears, setSelectedYears] = useState(initialYears);
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
+  const [minPA, setMinPA] = useState(Number(searchParams.get("minPA")) || DEFAULT_MIN_PA);
+  const [minIP, setMinIP] = useState(Number(searchParams.get("minIP")) || 10);
+  const [division, setDivision] = useState(Number(searchParams.get("division")) || DEFAULT_DIVISION);
+  const [conference, setConference] = useState(searchParams.get("conference") || "");
+  const [listId, setListId] = useState(searchParams.get("listId") || "");
+
+  const deferredSearch = useDeferredValue(searchTerm);
 
   const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [conferences, setConferences] = useState([]);
-  const [selectedListPlayerIds, setSelectedListPlayerIds] = useState([]);
-  const [isLoadingPlayerList, setIsLoadingPlayerList] = useState(false);
+  const [listPlayerIds, setListPlayerIds] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
+  const [error, setError] = useState(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [showError, setShowError] = useState(false);
+
+  const dataAbortRef = useRef(null);
+  const conferencesAbortRef = useRef(null);
+  const mounted = useRef(false);
+
+  const updateParams = useMemo(
+    () =>
+      debounce((state) => {
+        const params = new URLSearchParams();
+        params.set("dataType", state.dataType);
+        params.set("years", state.selectedYears.join(','));
+        params.set("search", state.searchTerm);
+        params.set("minPA", state.minPA.toString());
+        params.set("minIP", state.minIP.toString());
+        params.set("division", state.division.toString());
+        if (state.conference) params.set("conference", state.conference);
+        if (state.listId && state.dataType.includes("player")) params.set("listId", state.listId);
+
+        const newParams = params.toString();
+        const currentParams = searchParams.toString();
+
+        if (newParams !== currentParams) {
+          setSearchParams(params);
+        }
+      }, 300),
+    [setSearchParams, searchParams]
+  );
 
   useEffect(() => {
-    if (isPremiumUser) {
-      setState((prev) => ({
-        ...prev,
-        division: searchParams.get("division")
-          ? Number(searchParams.get("division"))
-          : prev.division,
-      }));
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
     }
-  }, [isPremiumUser, searchParams]);
+    updateParams({ dataType, selectedYears, searchTerm, minPA, minIP, division, conference, listId });
+  }, [dataType, selectedYears, searchTerm, minPA, minIP, division, conference, listId, updateParams]);
 
-  // Fetch player list IDs when selectedListId changes
+  const fetchPlayerList = useCallback(async () => {
+    if (!listId || !dataType.includes("player")) {
+      setListPlayerIds([]);
+      return;
+    }
+    
+    try {
+      setLoadingList(true);
+      const list = await PlayerListManager.getPlayerListById(listId);
+      setListPlayerIds(list?.playerIds || []);
+    } catch {
+      setListPlayerIds([]);
+    } finally {
+      setLoadingList(false);
+    }
+  }, [listId, dataType]);
+
   useEffect(() => {
-    const fetchPlayerList = async () => {
-      if (!state.selectedListId || !state.dataType.includes("player")) {
-        setSelectedListPlayerIds([]);
-        return;
-      }
-
-      try {
-        setIsLoadingPlayerList(true);
-        const list = await PlayerListManager.getPlayerListById(
-          state.selectedListId
-        );
-        if (list && list.playerIds) {
-          setSelectedListPlayerIds(list.playerIds);
-        } else {
-          setSelectedListPlayerIds([]);
-        }
-      } catch (err) {
-        console.error("Error fetching player list:", err);
-        setSelectedListPlayerIds([]);
-      } finally {
-        setIsLoadingPlayerList(false);
-      }
-    };
-
     fetchPlayerList();
-  }, [state.selectedListId, state.dataType]);
+  }, [fetchPlayerList]);
 
-  const endpointMap = useMemo(
-    () => ({
-      player_hitting: (year) =>
-        `/api/batting_war/${year}?division=${state.division}`,
-      player_pitching: (year) =>
-        `/api/pitching_war/${year}?division=${state.division}`,
-      team_hitting: (year) =>
-        `/api/batting_team_war/${year}?division=${state.division}`,
-      team_pitching: (year) =>
-        `/api/pitching_team_war/${year}?division=${state.division}`,
-    }),
-    [state.division]
-  );
+  const fetchConferences = useCallback(async () => {
+    conferencesAbortRef.current?.abort();
+    const controller = new AbortController();
+    conferencesAbortRef.current = controller;
+    
+    try {
+      const yearsParam = selectedYears.join(',');
+      const resp = await fetchAPI(`/conferences?division=${division}&years=${yearsParam}`, { 
+        signal: controller.signal 
+      });
+      const confs = Array.isArray(resp) ? resp : [];
+      
+      if (!controller.signal.aborted) {
+        const confNames = confs.map(conf => {
+          if (typeof conf === 'string') return conf;
+          if (typeof conf === 'object' && conf !== null) {
+            return conf.conference || conf.name || conf.Conference || conf.Name || String(conf);
+          }
+          return String(conf);
+        });
+        
+        const uniqueConfs = [...new Set(confNames)].sort();
+        setConferences(uniqueConfs);
+        setIsInitialized(true);
+      }
+    } catch (error) {
+      if (error.name !== "AbortError" && !controller.signal.aborted) {
+        console.error('Error fetching conferences:', error);
+        setIsInitialized(true);
+      }
+    }
+  }, [division, selectedYears]);
 
   useEffect(() => {
-    const fetchConferences = async () => {
-      try {
-        const response = await fetchAPI(
-          `/conferences?division=${state.division}`
-        );
-        setConferences(response.sort());
-      } catch (err) {
-        console.error("Error fetching conferences:", err);
-      }
-    };
     fetchConferences();
-  }, [state.division]);
-
-  const updateSearchParams = useCallback(
-    (newState) => {
-      const debouncedUpdate = debounce((state) => {
-        const params = {
-          dataType: state.dataType,
-          years: state.selectedYears.join(","),
-          search: state.searchTerm,
-          minPA: state.minPA.toString(),
-          minIP: state.minIP.toString(),
-          conference: state.selectedConference,
-        };
-
-        if (isPremiumUser) {
-          params.division = state.division.toString();
-        }
-
-        if (state.selectedListId && state.dataType.includes("player")) {
-          params.listId = state.selectedListId;
-        }
-
-        setSearchParams(params);
-      }, 300);
-      debouncedUpdate(newState);
-    },
-    [setSearchParams, isPremiumUser]
-  );
-
-  const transformData = useCallback(
-    (row) => ({
-      ...row,
-      renderedTeam: (
-        <div className="flex items-center gap-2">
-          <TeamLogo
-            teamId={row.prev_team_id}
-            conferenceId={row.conference_id}
-            className="h-8 w-8"
-          />
-        </div>
-      ),
-      renderedConference: (
-        <div className="w-full flex justify-center items-center gap-2">
-          <TeamLogo
-            teamId={row.prev_team_id}
-            conferenceId={row.conference_id}
-            teamName={row.Conference}
-            showConference={true}
-            className="h-8 w-8"
-          />
-        </div>
-      ),
-    }),
-    []
-  );
+  }, [fetchConferences]);
 
   const fetchData = useCallback(async () => {
-    if (!state.selectedYears.length || isSubscriptionLoading) return;
-    setIsLoading(true);
-
+    if (!selectedYears.length) return;
+    
+    dataAbortRef.current?.abort();
+    const controller = new AbortController();
+    dataAbortRef.current = controller;
+    
+    setLoading(true);
+    setError(null);
+    setShowError(false);
+    
     try {
-      const results = await Promise.all(
-        state.selectedYears.map((year) =>
-          fetchAPI(endpointMap[state.dataType](year)).catch((err) => {
-            // Use the new error utility for consistent error handling
-            const errorMessage = getErrorMessage(err, { 
-              division: state.division, 
-              dataType: state.dataType 
-            });
-            throw new Error(errorMessage);
-          })
-        )
-      );
-
-      const combinedData = results.flat();
-      if (combinedData.length === 0) {
-        setError("No data found for the selected years and filters.");
-        return;
+      const params = new URLSearchParams();
+      params.set("division", division.toString());
+      params.set("years", selectedYears.join(','));
+      
+      const endpoint = ENDPOINT_MAP[dataType] || ENDPOINT_MAP.player_batting;
+      const result = await fetchAPI(`${endpoint}?${params}`, { signal: controller.signal });
+      const rows = Array.isArray(result?.items) ? result.items : Array.isArray(result) ? result : [];
+      
+      if (!controller.signal.aborted) {
+        setData(rows);
+        setError(null);
+        setShowError(false);
       }
-
-      setData(combinedData.map(transformData));
-      setError(null);
     } catch (err) {
-      setError(err.message);
-      // Only auto-switch to Division 3 for premium-related errors
-      if (isPremiumAccessError(err) && state.division !== 3) {
-        setState((prev) => ({ ...prev, division: 3 }));
+      if (err.name !== "AbortError" && !controller.signal.aborted) {
+        console.error('Error fetching data:', err);
+        const errorMessage = getErrorMessage(err, { division, dataType });
+        setError(errorMessage);
+        setShowError(true);
       }
     } finally {
-      setIsLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }, [
-    state.dataType,
-    state.selectedYears,
-    state.division,
-    endpointMap,
-    transformData,
-    isSubscriptionLoading,
-  ]);
+  }, [selectedYears, division, dataType]);
 
   useEffect(() => {
+    if (!mounted.current || !isInitialized) return;
     fetchData();
-  }, [fetchData]);
-
-  const filteredData = useMemo(() => {
-    // Start with the basic filtering
-    let filtered = data.filter((item) => {
-      const searchStr = state.searchTerm.toLowerCase();
-      const name = item.Player?.toLowerCase() || item.Team?.toLowerCase() || "";
-      const team = item.Team?.toLowerCase() || "";
-      const meetsQualifier =
-        state.dataType === "player_pitching"
-          ? item.IP >= state.minIP
-          : state.dataType === "player_hitting"
-          ? item.PA >= state.minPA
-          : true;
-      const meetsConference = state.selectedConference
-        ? item.Conference === state.selectedConference
-        : true;
-
-      return (
-        meetsQualifier &&
-        meetsConference &&
-        (name.includes(searchStr) || team.includes(searchStr))
-      );
-    });
-
-    // Apply player list filtering if a list is selected
-    if (
-      state.selectedListId &&
-      selectedListPlayerIds.length > 0 &&
-      state.dataType.includes("player")
-    ) {
-      filtered = filtered.filter((item) => {
-        // The player ID in the data might be "d3d-123" or just 123
-        const playerId = item.player_id || item.Player_ID;
-        if (!playerId) return false;
-
-        // Check if the player ID is in the selected list
-        // Handle both string and number comparisons
-        return selectedListPlayerIds.some(
-          (id) =>
-            id === playerId.toString() ||
-            id === playerId ||
-            (playerId.toString().includes("d3d-") &&
-              id === playerId.toString().replace("d3d-", ""))
-        );
-      });
-    }
-
-    return filtered;
-  }, [data, state, selectedListPlayerIds]);
+  }, [fetchData, isInitialized]);
 
   useEffect(() => {
-    updateSearchParams(state);
-  }, [state, updateSearchParams]);
-
-  const handleStateChange = useCallback((key, value) => {
-    setState((prev) => ({ ...prev, [key]: value }));
+    return () => {
+      dataAbortRef.current?.abort();
+      conferencesAbortRef.current?.abort();
+    };
   }, []);
 
-  const isPageLoading =
-    isSubscriptionLoading || isLoading || isLoadingPlayerList;
+  const filteredData = useMemo(() => {
+    const s = deferredSearch.toLowerCase();
+    return data.filter((item) => {
+      if (!item || typeof item !== 'object') return false;
+      
+      const name = (item.player_name || item.Player || "").toLowerCase();
+      const team = (item.team_name || item.Team || "").toLowerCase();
+      
+      const isPitching = dataType.includes("pitching");
+      const isPlayerData = dataType.includes("player");
+      
+      if (isPlayerData) {
+        const threshold = isPitching ? (item.ip ?? item.IP ?? 0) : (item.pa ?? item.PA ?? 0);
+        const minThreshold = isPitching ? minIP : minPA;
+        if (threshold < minThreshold) return false;
+      }
+      
+      if (conference && (item.conference || item.Conference) !== conference) return false;
+      if (!(name.includes(s) || team.includes(s))) return false;
+      
+      if (listId && listPlayerIds.length > 0 && dataType.includes("player")) {
+        const pid = item.player_id || item.Player_ID;
+        return pid && listPlayerIds.includes(pid.toString());
+      }
+      
+      return true;
+    });
+  }, [data, deferredSearch, minPA, minIP, conference, listId, listPlayerIds, dataType]);
+
+  const columns = useMemo(() => {
+    const getColumns = COLUMN_MAP[dataType] || COLUMN_MAP.player_batting;
+    return getColumns();
+  }, [dataType]);
+
+  const isPageLoading = loading || loadingList;
+  const isInitializing = !isInitialized;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <InfoBanner dataType={state.dataType} />
-        <DataControls
-          {...state}
-          setDataType={(val) => handleStateChange("dataType", val)}
-          setSelectedYears={(val) => handleStateChange("selectedYears", val)}
-          setMinPA={(val) => handleStateChange("minPA", val)}
-          setMinIP={(val) => handleStateChange("minIP", val)}
-          setSearchTerm={(val) => handleStateChange("searchTerm", val)}
-          setConference={(val) => handleStateChange("selectedConference", val)}
-          setDivision={(val) => handleStateChange("division", val)}
-          setSelectedListId={(val) => handleStateChange("selectedListId", val)}
-          conferences={conferences}
-          isPremiumUser={isPremiumUser}
-          // Export functionality
-          exportData={!isPageLoading && !error && filteredData.length > 0 ? filteredData : null}
-          exportFilename={`${state.dataType}_${state.selectedYears.join("-")}${
-            state.selectedListId ? `_list_${state.selectedListId}` : ""
-          }.csv`}
-          showExportButton={!isPageLoading && !error && filteredData.length > 0}
-        />
-
-        {isPageLoading ? (
-          <div className="flex flex-col justify-center items-center h-64">
-            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-            <p className="text-gray-500 text-sm">
-              {isLoadingPlayerList
-                ? "Loading player list..."
-                : "Loading data..."}
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500" />
+        <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700" />
+      </div>
+      
+      <div className="container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
+        <div className="relative z-10 mb-6">
+          <div className="relative overflow-hidden rounded-2xl border border-white/30 bg-white/60 backdrop-blur p-4 sm:p-5 shadow-xl">
+            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-400/20 blur-2xl" />
+            <div className="relative z-10 flex items-start gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold flex-shrink-0">
+                i
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm sm:text-base font-semibold text-gray-800 mb-1 truncate">Stats & Data</div>
+                <div className="text-xs sm:text-sm text-gray-600">Explore comprehensive player and team statistics across all divisions. Access up-to-date batting, pitching, and team performance data with advanced filtering and search capabilities.</div>
+              </div>
+            </div>
           </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <ErrorDisplay
-              error={{ message: error, status: error.includes("Premium subscription required") ? 403 : 0 }}
-              context={{ division: state.division, dataType: state.dataType }}
-              onRetry={fetchData}
-              onSwitchToDivision3={() => setState(prev => ({ ...prev, division: 3 }))}
+        </div>
+        
+        <div id="controls" className="relative z-10 mb-6">
+          <DataControls
+              dataType={dataType}
+              selectedYears={selectedYears}
+              minPA={minPA}
+              minIP={minIP}
+              searchTerm={searchTerm}
+              conference={conference}
+              division={division}
+              selectedListId={listId}
+              setDataType={setDataType}
+              setSelectedYears={setSelectedYears}
+              setMinPA={setMinPA}
+              setMinIP={setMinIP}
+              setSearchTerm={setSearchTerm}
+              setConference={setConference}
+              setDivision={setDivision}
+              setSelectedListId={setListId}
+              conferences={conferences}
+              allowedDataTypes={["player_batting", "player_pitching", "team_batting", "team_pitching"]}
+              onApplyFilters={fetchData}
+              currentData={filteredData}
+              onAddToPlayerList={(listId, playerIds) => {
+                console.log(`Added ${playerIds.length} players to list ${listId}`);
+              }}
             />
-          </div>
-        ) : filteredData.length === 0 ? (
-          <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
-            <p className="text-gray-600 mb-4">
-              No data found for the current filters.
-            </p>
-            {state.selectedListId && (
-              <p className="text-gray-500 text-sm">
-                {selectedListPlayerIds.length === 0
-                  ? "The selected player list is empty."
-                  : "None of the players in the selected list match the current filters."}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div>
-            {state.selectedListId && (
-              <div className="mb-2 px-2 py-1 bg-blue-50 text-blue-700 rounded-md inline-flex items-center text-sm">
-                <span className="font-medium">Filtered: </span>
-                <span className="ml-2">
-                  Showing {filteredData.length} players from selected list
-                </span>
+        </div>
+        
+        <div className="relative z-10">
+          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 min-h-[400px]">
+            {isInitializing ? (
+              <div className="flex flex-col justify-center items-center h-64">
+                <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-sm text-gray-600">Initializing...</p>
+              </div>
+            ) : error && showError ? (
+              <div className="text-center py-16">
+                <ErrorDisplay 
+                  error={{ message: error, status: 0 }} 
+                  context={{ division, dataType }} 
+                  onRetry={fetchData} 
+                  onSwitchToDivision3={null} 
+                />
+              </div>
+            ) : (
+              <div className="relative">
+                {isPageLoading && (
+                  <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-20 flex items-center justify-center rounded-lg">
+                    <div className="flex flex-col items-center">
+                      <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-2" />
+                      <p className="text-sm text-gray-600">Loading data...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {filteredData.length === 0 && !isPageLoading ? (
+                  <div className="text-center py-6 sm:py-12">
+                    <p className="text-gray-500 text-base sm:text-lg">
+                      No data found for the current filters.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto -mx-3 sm:mx-0">
+                    <BaseballTable 
+                      data={Array.isArray(filteredData) ? filteredData.filter(item => item && typeof item === 'object') : []} 
+                      columns={columns} 
+                      filename={`${dataType}_${selectedYears.join("-")}.csv`} 
+                      stickyColumns={[0, 1]} 
+                    />
+                  </div>
+                )}
               </div>
             )}
-            <MemoizedTable
-              data={filteredData}
-              dataType={state.dataType}
-              filename={`${state.dataType}_${state.selectedYears.join("-")}${
-                state.selectedListId ? `_list_${state.selectedListId}` : ""
-              }.csv`}
-            />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

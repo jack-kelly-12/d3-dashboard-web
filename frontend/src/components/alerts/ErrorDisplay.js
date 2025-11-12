@@ -38,15 +38,6 @@ const ErrorDisplay = ({
       <p className="text-gray-600 mb-4 text-center">{errorMessage}</p>
       
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        {errorType === 'premium' && onSwitchToDivision3 && (
-          <button
-            onClick={onSwitchToDivision3}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-          >
-            Switch to Division 3 (Free)
-          </button>
-        )}
-        
         {onRetry && (
           <button
             onClick={onRetry}
@@ -56,12 +47,6 @@ const ErrorDisplay = ({
           </button>
         )}
       </div>
-      
-      {errorType === 'premium' && (
-        <div className="mt-4 text-sm text-gray-500 text-center">
-          <p>Division 3 data is available for free. Upgrade to premium to access Division 1 and 2 data.</p>
-        </div>
-      )}
       
       {errorType === 'auth' && (
         <div className="mt-4 text-sm text-gray-500 text-center">

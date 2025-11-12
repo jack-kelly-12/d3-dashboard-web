@@ -1,58 +1,38 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Calendar, ChevronLeft, Zap, TrendingUp, Award } from "lucide-react";
 import WinExpectancyChart from "../components/game/WinExpectancyChart";
 import GameLog from "../components/game/GameLog";
 import { fetchAPI } from "../config/api";
 
 const LoadingSkeleton = () => (
-  <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-    <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-7xl">
+  <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000" />
+      <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500" />
+      <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700" />
+    </div>
+    <div className="container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
       <div className="w-24 sm:w-32 h-4 sm:h-6 bg-gray-200 rounded animate-pulse mb-4 sm:mb-6" />
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-md sm:shadow-lg border border-gray-100 p-4 sm:p-6 md:p-8 mb-4 sm:mb-8 backdrop-blur-xl">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 sm:gap-6">
-          <div className="w-48 sm:w-64 h-8 sm:h-10 bg-gray-200 rounded-lg animate-pulse" />
-          <div className="w-32 sm:w-48 h-6 sm:h-10 bg-gray-200 rounded-lg animate-pulse" />
-        </div>
-      </div>
+      <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 mb-4 sm:mb-8" />
       <div className="grid gap-3 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {[...Array(3)].map((_, i) => (
-          <div
-            key={i}
-            className="h-20 sm:h-24 bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6 animate-pulse"
-          >
-            <div className="w-20 sm:w-24 h-3 sm:h-4 bg-gray-200 rounded mb-2 sm:mb-3" />
-            <div className="w-28 sm:w-32 h-5 sm:h-6 bg-gray-200 rounded" />
-          </div>
+          <div key={i} className="h-20 sm:h-24 bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6 animate-pulse" />
         ))}
       </div>
       <div className="space-y-4 sm:space-y-6 mt-4 sm:mt-6">
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
-          <div className="w-32 sm:w-40 h-5 sm:h-6 bg-gray-200 rounded animate-pulse mb-4 sm:mb-8" />
-          <div className="w-full h-64 sm:h-80 md:h-96 bg-gray-200 rounded-lg animate-pulse" />
-        </div>
-        <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
-          <div className="w-24 sm:w-32 h-5 sm:h-6 bg-gray-200 rounded animate-pulse mb-4 sm:mb-8" />
-          <div className="space-y-2 sm:space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div
-                key={i}
-                className="w-full h-12 sm:h-16 bg-gray-200 rounded-lg animate-pulse"
-              />
-            ))}
-          </div>
-        </div>
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 h-72" />
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 h-72" />
       </div>
     </div>
   </div>
 );
 
 const ErrorDisplay = ({ error }) => (
-  <div className="flex justify-center items-center min-h-screen bg-gradient-to-b from-gray-50 to-white p-4">
+  <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 p-4">
     <div className="bg-red-50 border border-red-100 rounded-xl p-4 sm:p-8 shadow-lg max-w-md w-full">
-      <h3 className="text-red-800 font-semibold text-base sm:text-lg mb-2 sm:mb-3">
-        Error Loading Game
-      </h3>
+      <h3 className="text-red-800 font-semibold text-base sm:text-lg mb-2 sm:mb-3">Error Loading Game</h3>
       <p className="text-red-600 text-sm sm:text-base">{error}</p>
     </div>
   </div>
@@ -60,252 +40,235 @@ const ErrorDisplay = ({ error }) => (
 
 const calculateGameStats = (gameData) => {
   if (!gameData?.plays?.length) return null;
-
   const lastPlay = gameData.plays[gameData.plays.length - 1];
   const homeScore = lastPlay?.home_score_after || 0;
   const awayScore = lastPlay?.away_score_after || 0;
-
-  const biggestPlay = [...gameData.plays].sort(
-    (a, b) => Math.abs(b.wpa) - Math.abs(a.wpa)
-  )[0];
-
-  const highestLeveragePlay = [...gameData.plays].sort(
-    (a, b) => b.li - a.li
-  )[0];
-
+  const biggestPlay = [...gameData.plays].sort((a, b) => Math.abs(b.wpa) - Math.abs(a.wpa))[0];
   const playerWPA = gameData.plays.reduce((acc, play) => {
-    if (play.batter_name) {
-      acc[play.batter_name] = (acc[play.batter_name] || 0) + (play.wpa || 0);
-    }
-
-    if (play.pitcher_name) {
-      acc[play.pitcher_name] = (acc[play.pitcher_name] || 0) + (-play.wpa || 0);
-    }
-
+    if (play.batter_name) acc[play.batter_name] = (acc[play.batter_name] || 0) + (play.wpa || 0);
+    if (play.pitcher_name) acc[play.pitcher_name] = (acc[play.pitcher_name] || 0) - (play.wpa || 0);
     return acc;
   }, {});
-
   const mvp = Object.entries(playerWPA).sort((a, b) => b[1] - a[1])[0];
-
   let leadChanges = 1;
   let lastLeader = null;
   gameData.plays.forEach((play) => {
-    const currentLeader =
-      play.home_score_after > play.away_score_after
-        ? "home"
-        : play.away_score_after > play.home_score_after
-        ? "away"
-        : "tie";
-    if (lastLeader && currentLeader !== "tie" && currentLeader !== lastLeader) {
-      leadChanges++;
-    }
+    const currentLeader = play.home_score_after > play.away_score_after ? "home" : play.away_score_after > play.home_score_after ? "away" : "tie";
+    if (lastLeader && currentLeader !== "tie" && currentLeader !== lastLeader) leadChanges++;
     if (currentLeader !== "tie") lastLeader = currentLeader;
   });
-
-  return {
-    homeScore,
-    awayScore,
-    biggestPlay,
-    highestLeveragePlay,
-    mvp,
-    leadChanges,
-  };
+  return { homeScore, awayScore, biggestPlay, mvp, leadChanges };
 };
 
-const StatCard = ({ icon: Icon, title, value, color }) => (
-  <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 md:p-6 hover:shadow-md transition-shadow">
-    <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-2">
-      <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
-      <h3 className="font-semibold text-sm sm:text-base text-gray-700">
-        {title}
-      </h3>
+const KPIChip = ({ icon: Icon, label, value, color }) => (
+  <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm">
+    <Icon className={`w-4 h-4 ${color}`} />
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-gray-600">{label}:</span>
+      <span className="text-sm font-semibold text-gray-900">{value}</span>
     </div>
-    <p className="text-base sm:text-lg md:text-xl font-bold text-gray-900 line-clamp-2">
-      {value}
-    </p>
   </div>
 );
 
-const GameContent = ({ gameData, handleBack }) => {
-  const gameStats = calculateGameStats(gameData);
-  const [windowWidth, setWindowWidth] = useState(
-    typeof window !== "undefined" ? window.innerWidth : 1200
-  );
+const TeamLogo = ({ teamId, teamName }) => (
+  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
+    <img
+      src={teamId ? `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/${teamId}.png` : `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`}
+      alt={teamName}
+      className="w-full h-full object-cover"
+      onError={(e) => {
+        e.currentTarget.onerror = null;
+        e.currentTarget.src = `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`;
+      }}
+    />
+  </div>
+);
 
+const GameHeader = ({ gameData, onBack, fallbackHomeId, fallbackAwayId }) => {
+  const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
   useEffect(() => {
-    const handleResize = () => {
-      setWindowWidth(window.innerWidth);
-    };
-
-    if (typeof window !== "undefined") {
-      window.addEventListener("resize", handleResize);
-      return () => {
-        window.removeEventListener("resize", handleResize);
-      };
-    }
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    if (windowWidth < 640) {
-      return date.toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
+  const formattedDate = useMemo(() => {
+    const raw = gameData.game_date;
+    let d;
+    if (typeof raw === "string" && /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.test(raw)) {
+      const [, mm, dd, yyyy] = raw.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      d = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+    } else {
+      d = new Date(raw);
     }
-    return date.toLocaleDateString(undefined, {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  if (!gameStats) return null;
-
+    if (Number.isNaN(d.getTime())) return String(raw || "");
+    if (windowWidth < 640) return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    return d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }, [gameData.game_date, windowWidth]);
+  const stats = calculateGameStats(gameData);
+  if (!stats) return null;
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      <div className="container max-w-full lg:max-w-[1200px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-        <div className="bg-white rounded-xl sm:rounded-xl shadow-md sm:shadow-lg border border-gray-100 p-4 sm:p-6 md:p-8 mb-4 sm:mb-6 md:mb-8 backdrop-blur-xl">
-          <div className="flex flex-col gap-3 sm:gap-6">
-            <div className="flex items-center gap-2 sm:gap-3 text-gray-400">
-              <button
-                onClick={handleBack}
-                className="hover:text-gray-900 transition-colors rounded-full p-1 hover:bg-gray-50 group"
-                aria-label="Back to scoreboard"
-              >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-0.5 transition-transform" />
-              </button>
-              <div className="h-3 sm:h-4 w-px bg-gray-200"></div>
-              <div className="flex items-center gap-1 sm:gap-2">
-                <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="text-xs sm:text-sm">
-                  {formatDate(gameData.game_date)}
-                </span>
-              </div>
-            </div>
+    <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 mb-6">
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="hover:text-gray-900 text-gray-500 transition-colors rounded-full p-1 hover:bg-gray-50 group" aria-label="Back to scoreboard">
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 group-hover:-translate-x-0.5 transition-transform" />
+        </button>
+        <div className="flex items-center gap-2 text-gray-600">
+          <Calendar className="w-4 h-4" />
+          <span className="text-xs sm:text-sm">{formattedDate}</span>
+        </div>
+        {Number.isFinite(Number(gameData.attendance)) ? (
+          <div className="text-xs sm:text-sm text-gray-600">
+            Attendance: {Number(gameData.attendance).toLocaleString()}
+          </div>
+        ) : <div className="w-16" />}
+      </div>
 
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center">
-              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl font-bold text-gray-900">
-                {gameData.away_team} @ {gameData.home_team}
-              </h1>
-              <div className="flex items-center text-xl sm:text-2xl font-bold mt-2 sm:mt-0">
-                <span className="text-gray-900">{gameStats.awayScore}</span>
-                <span className="mx-2 sm:mx-3 text-gray-400">-</span>
-                <span className="text-gray-900">{gameStats.homeScore}</span>
-              </div>
-            </div>
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 items-center">
+        <div className="flex items-center sm:justify-start justify-center gap-3">
+          <TeamLogo teamId={gameData.away_team_id || fallbackAwayId} teamName={gameData.away_team} />
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-gray-800 truncate">{gameData.away_team}</div>
           </div>
         </div>
-
-        <div className="grid gap-3 sm:gap-4 md:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 mb-4 sm:mb-6 md:mb-8">
-          <StatCard
-            icon={Zap}
-            title="Biggest Play"
-            value={
-              gameStats.biggestPlay
-                ? `${gameStats.biggestPlay.batter_name || "Unknown"} (${(
-                    gameStats.biggestPlay.wpa * 100
-                  ).toFixed(1)}% WPA)`
-                : "N/A"
-            }
-            color="text-purple-500"
-          />
-
-          <StatCard
-            icon={Award}
-            title="Game MVP"
-            value={
-              gameStats.mvp
-                ? `${gameStats.mvp[0]} (${(gameStats.mvp[1] * 100).toFixed(
-                    1
-                  )}% WPA)`
-                : "N/A"
-            }
-            color="text-green-500"
-          />
-
-          <StatCard
-            icon={TrendingUp}
-            title="Lead Changes"
-            value={gameStats.leadChanges}
-            color="text-red-500"
-          />
+        <div className="flex items-center justify-center mt-3 sm:mt-0">
+          <div className="text-2xl sm:text-3xl font-bold text-gray-900">
+            {stats.awayScore}
+            <span className="mx-2 text-gray-400">-</span>
+            {stats.homeScore}
+          </div>
         </div>
-
-        <div className="space-y-4 sm:space-y-6">
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">
-              <div className="w-1 h-6 sm:h-8 bg-blue-500 rounded"></div>
-              Win Probability
-            </h2>
-            <WinExpectancyChart
-              homeTeam={gameData.home_team}
-              awayTeam={gameData.away_team}
-              homeTeamId={gameData.home_team_id}
-              awayTeamId={gameData.away_team_id}
-              plays={gameData.plays || []}
-            />
+        <div className="flex items-center sm:justify-end justify-center gap-3 mt-3 sm:mt-0">
+          <div className="min-w-0 text-right">
+            <div className="text-sm font-medium text-gray-800 truncate">{gameData.home_team}</div>
           </div>
-
-          <div className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-md sm:shadow-lg p-4 sm:p-6 md:p-8">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4 md:mb-6 flex items-center gap-2 sm:gap-3">
-              <div className="w-1 h-6 sm:h-8 bg-green-500 rounded"></div>
-              Game Log
-            </h2>
-            <div className="overflow-hidden rounded-lg sm:rounded-xl">
-              <GameLog
-                plays={gameData.plays || []}
-                homeTeam={gameData.home_team}
-                awayTeam={gameData.away_team}
-              />
-            </div>
-          </div>
+          <TeamLogo teamId={gameData.home_team_id || fallbackHomeId} teamName={gameData.home_team} />
         </div>
       </div>
     </div>
   );
 };
 
-const GamePage = () => {
-  const { year, gameId } = useParams();
-  const navigate = useNavigate();
+const KPIChips = ({ gameData }) => {
+  const stats = calculateGameStats(gameData);
+  if (!stats) return null;
+  return (
+    <div className="mb-6">
+      <div className="flex flex-wrap gap-2">
+        <KPIChip
+          icon={Zap}
+          label="Biggest Play"
+          value={stats.biggestPlay ? `${stats.biggestPlay.batter_name || "Unknown"} · ${(stats.biggestPlay.wpa * 100).toFixed(1)}%` : "N/A"}
+          color="text-purple-500"
+        />
+        <KPIChip
+          icon={Award}
+          label="Game MVP"
+          value={stats.mvp ? `${stats.mvp[0]} · ${(stats.mvp[1] * 100).toFixed(1)}%` : "N/A"}
+          color="text-green-600"
+        />
+        <KPIChip
+          icon={TrendingUp}
+          label="Lead Changes"
+          value={stats.leadChanges}
+          color="text-rose-600"
+        />
+      </div>
+    </div>
+  );
+};
+
+const Card = ({ children }) => (
+  <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+    {children}
+  </div>
+);
+
+const useGameData = (year, gameId) => {
   const [gameData, setGameData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchGameData = async () => {
-      setIsLoading(true);
+    const controller = new AbortController();
+    let didCancel = false;
+
+    const run = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const data = await fetchAPI(`/api/games/${year}/${gameId}`);
-        setGameData(data);
+        const data = await fetchAPI(`/api/games/${year}/${gameId}`, { signal: controller.signal });
+        if (!didCancel) setGameData({ ...data, plays: data.plays });
       } catch (err) {
-        console.error("Error fetching game data:", err);
-        setError("Failed to load game data");
+        if (!didCancel && err.name !== "AbortError") setError("Failed to load game data");
       } finally {
-        setIsLoading(false);
+        if (!didCancel) setLoading(false);
       }
     };
 
-    fetchGameData();
-  }, [gameId, year]);
+    run();
+    return () => {
+      didCancel = true;
+      controller.abort();
+    };
+  }, [year, gameId]);
+
+  return { gameData, loading, error };
+};
+
+const GamePage = () => {
+  const { year, gameId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { gameData, loading, error } = useGameData(year, gameId);
+
+  const { fallbackHomeId, fallbackAwayId } = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    const homeId = params.get("homeId");
+    const awayId = params.get("awayId");
+    return {
+      fallbackHomeId: homeId ? Number(homeId) : null,
+      fallbackAwayId: awayId ? Number(awayId) : null,
+    };
+  }, [location.search]);
 
   const handleBack = () => {
-    if (gameData?.plays?.length > 0) {
-      const date = gameData.plays[0].game_date;
-      navigate(`/scoreboard?date=${date}&division=${gameData.division}`);
+    if (gameData?.game_date) {
+      navigate(`/scoreboard?date=${gameData.game_date}&division=${gameData.division}`);
     } else {
       navigate("/scoreboard");
     }
   };
 
-  if (isLoading) return <LoadingSkeleton />;
+  if (loading) return <LoadingSkeleton />;
   if (error) return <ErrorDisplay error={error} />;
   if (!gameData) return null;
 
-  return <GameContent gameData={gameData} handleBack={handleBack} />;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[6%] right-[8%] w-[380px] h-[380px] bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-[12%] left-[6%] w-[520px] h-[520px] bg-gradient-to-r from-purple-400/15 to-pink-400/15 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-[48%] right-[28%] w-[300px] h-[300px] bg-gradient-to-r from-cyan-400/20 to-blue-400/20 rounded-full blur-2xl animate-pulse delay-500" />
+        <div className="absolute top-[18%] left-[18%] w-[220px] h-[220px] bg-gradient-to-r from-indigo-400/25 to-purple-400/25 rounded-full blur-xl animate-pulse delay-700" />
+      </div>
+      <div className="relative z-10 container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
+        <GameHeader gameData={gameData} onBack={handleBack} fallbackHomeId={fallbackHomeId} fallbackAwayId={fallbackAwayId} />
+        <KPIChips gameData={gameData} />
+        <div className="space-y-4">
+          <div className="h-px bg-gray-200" />
+          <Card>
+            <WinExpectancyChart homeTeam={gameData.home_team} awayTeam={gameData.away_team} homeTeamId={gameData.home_team_id || fallbackHomeId} awayTeamId={gameData.away_team_id || fallbackAwayId} plays={gameData.plays || []} />
+          </Card>
+          <div className="h-px bg-gray-200" />
+          <Card>
+            <div className="rounded-lg sm:rounded-xl">
+              <GameLog plays={gameData.plays || []} homeTeam={gameData.home_team} awayTeam={gameData.away_team} />
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default GamePage;

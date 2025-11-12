@@ -2,15 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search, FileBox } from "lucide-react";
-import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
-import SubscriptionManager from "../../managers/SubscriptionManager";
-import AuthManager from "../../managers/AuthManager";
-import { columnsValue } from "../../config/tableColumns";
+import { columnsValueLeaderboard } from "../../config/valueColumns";
 import ExportButton from "../buttons/ExportButton";
 
 const ValueLeaderboard = ({
-  isPremiumUserProp,
   selectedListId,
   selectedListPlayerIds,
   isLoadingPlayerList,
@@ -25,9 +21,6 @@ const ValueLeaderboard = ({
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
-  const [isPremiumUser, setIsPremiumUser] = useState(
-    isPremiumUserProp || false
-  );
 
   const fetchConferences = useCallback(async () => {
     if (!isAuthReady) return;
@@ -41,76 +34,8 @@ const ValueLeaderboard = ({
   }, [division, isAuthReady]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    if (isPremiumUserProp !== undefined) {
-      setIsPremiumUser(isPremiumUserProp);
-      setIsAuthReady(true);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    const initializeAuth = async () => {
-      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-        if (!isMounted) return;
-
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
-
-            if (initialSubscription?.isActive) {
-              const urlParams = new URLSearchParams(window.location.search);
-              const divisionParam = urlParams.get("division");
-              if (divisionParam) {
-                setDivision(Number(divisionParam));
-              }
-            }
-          }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
-          }
-        }
-
-        if (isMounted) {
-          setIsAuthReady(true);
-        }
-      });
-
-      return unsubscribeAuth;
-    };
-
-    const cleanup = initializeAuth();
-
-    return () => {
-      isMounted = false;
-      if (cleanup) {
-        cleanup.then((unsubscribe) => unsubscribe && unsubscribe());
-      }
-      SubscriptionManager.stopListening();
-    };
-  }, [isPremiumUserProp]);
-
-  // Update URL when division changes
-  useEffect(() => {
-    if (isPremiumUser) {
-      const url = new URL(window.location);
-      url.searchParams.set("division", division.toString());
-      window.history.replaceState({}, "", url);
-    }
-  }, [division, isPremiumUser]);
+    setIsAuthReady(true);
+  }, []);
 
   useEffect(() => {
     if (isAuthReady) {
@@ -128,33 +53,9 @@ const ValueLeaderboard = ({
         `/api/leaderboards/value?start_year=${startYear}&end_year=${endYear}&division=${division}`
       );
 
-      const sortedData = rawData.sort((a, b) => b.WAR - a.WAR);
-      const transformedData = sortedData.map((row, index) => ({
-        ...row,
-        rank: index + 1,
-        renderedTeam: (
-          <div className="flex items-center gap-2">
-            <TeamLogo
-              teamId={row.prev_team_id}
-              conferenceId={row.conference_id}
-              teamName={row.Team}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-        renderedConference: (
-          <div className="w-full flex justify-center items-center gap-2">
-            <TeamLogo
-              teamId={row.prev_team_id}
-              conferenceId={row.conference_id}
-              teamName={row.Conference}
-              showConference={true}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-      }));
-      setData(transformedData);
+      const sortedData = [...rawData].sort((a, b) => (Number(b.total_war) || 0) - (Number(a.total_war) || 0));
+      const withRank = sortedData.map((row, index) => ({ ...row, rank: index + 1 }));
+      setData(withRank);
     } catch (err) {
       console.error("Error fetching data:", err);
       setError(err.message);
@@ -179,18 +80,16 @@ const ValueLeaderboard = ({
   );
 
   const filteredData = useMemo(() => {
-    // First apply the standard filters (search and conference)
     let filtered = data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
-      const nameMatch = player.Player?.toLowerCase().includes(searchStr);
-      const teamMatch = player.Team?.toLowerCase().includes(searchStr);
+      const nameMatch = player.player_name?.toLowerCase().includes(searchStr);
+      const teamMatch = player.team_name?.toLowerCase().includes(searchStr);
       const conferenceMatch = selectedConference
-        ? player.Conference === selectedConference
+        ? player.conference === selectedConference
         : true;
       return (nameMatch || teamMatch) && conferenceMatch;
     });
 
-    // Then apply the player list filter if selected
     if (
       selectedListId &&
       selectedListPlayerIds &&
@@ -200,8 +99,6 @@ const ValueLeaderboard = ({
         const playerId = player.player_id || player.Player_ID;
         if (!playerId) return false;
 
-        // Check if the player ID is in the selected list
-        // Handle both string and number comparisons
         return selectedListPlayerIds.some(
           (id) =>
             id === playerId.toString() ||
@@ -223,7 +120,6 @@ const ValueLeaderboard = ({
 
   const yearOptions = useMemo(() => [2025, 2024, 2023, 2022, 2021], []);
 
-  // Generate a filename for export that includes list information if present
   const generateFilename = () => {
     let filename = `value_leaderboard_${startYear}`;
     if (startYear !== endYear) {
@@ -245,7 +141,6 @@ const ValueLeaderboard = ({
 
   return (
     <div className="container max-w-full lg:max-w-[1200px] mx-auto px-2 sm:px-6 lg:px-8 py-4 sm:py-8">
-      {/* Explanation Banner */}
       <div className="bg-white border border-blue-200 rounded-lg p-4 lg:p-6 mb-6">
         <h3 className="text-xs lg:text-base font-semibold text-blue-800 mb-2">
           What is the Value Leaderboard?
@@ -261,13 +156,12 @@ const ValueLeaderboard = ({
         </p>
 
         <blockquote className="text-xs lg:text-sm border-l-4 border-blue-400 pl-4 italic text-gray-600 mt-2">
-          "Player X has a WAR of 3.8. In 2024, the number of runs per win was
+          &quot;Player X has a WAR of 3.8. In 2024, the number of runs per win was
           13.8. He accrued 3.35 from batting, .52 from baserunning, .02 from
-          positional adjustment, and no runs from pitching."
+          positional adjustment, and no runs from pitching.&quot;
         </blockquote>
       </div>
 
-      {/* Controls */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
         <div className="p-4 space-y-4">
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
@@ -286,18 +180,16 @@ const ValueLeaderboard = ({
             </div>
 
             <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
-              {isPremiumUser && (
-                <select
-                  value={division}
-                  onChange={(e) => setDivision(Number(e.target.value))}
-                  className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                    focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-                >
-                  <option value={1}>Division 1</option>
-                  <option value={2}>Division 2</option>
-                  <option value={3}>Division 3</option>
-                </select>
-              )}
+              <select
+                value={division}
+                onChange={(e) => setDivision(Number(e.target.value))}
+                className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                  focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+              >
+                <option value={1}>Division 1</option>
+                <option value={2}>Division 2</option>
+                <option value={3}>Division 3</option>
+              </select>
 
               <div className="flex items-center gap-2 w-full lg:w-auto">
                 <select
@@ -344,14 +236,12 @@ const ValueLeaderboard = ({
               )}
             </div>
 
-            {/* Player List Filter Status */}
             {selectedListId && (
               <div className="ml-auto px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
                 Showing {filteredData.length} of {data.length} players
               </div>
             )}
 
-            {/* Export Button */}
             <div className="ml-auto">
               <ExportButton
                 data={filteredData}
@@ -362,7 +252,6 @@ const ValueLeaderboard = ({
         </div>
       </div>
 
-      {/* Leaderboard Table */}
       {error ? (
         <div className="text-center py-12">
           <p className="text-red-600 text-xs lg:text-sm">{error}</p>
@@ -387,7 +276,7 @@ const ValueLeaderboard = ({
         <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
           <BaseballTable
             data={filteredData}
-            columns={columnsValue}
+            columns={columnsValueLeaderboard}
             defaultSortField="WAR"
             defaultSortAsc={false}
             stickyColumns={[0, 1]}

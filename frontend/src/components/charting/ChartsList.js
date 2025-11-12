@@ -4,9 +4,7 @@ import { Plus, FileText, Upload } from "lucide-react";
 import AdvanceReportModal from "../modals/AdvanceReportModal";
 import PitchArsenalReport from "../../reports/BullpenReport";
 import { pdf } from "@react-pdf/renderer";
-import InfoBanner from "../data/InfoBanner";
 import AuthManager from "../../managers/AuthManager";
-import { useSubscription } from "../../contexts/SubscriptionContext";
 import ActionMenu from "./ActionMenu";
 import { useMediaQuery } from "react-responsive";
 
@@ -23,7 +21,6 @@ const ChartsList = ({
     isAuthenticated: false,
     user: null,
   });
-  const { isPremiumUser } = useSubscription();
 
   const isXSmall = useMediaQuery({ maxWidth: 480 });
   const isSmall = useMediaQuery({ maxWidth: 640 });
@@ -170,16 +167,13 @@ const ChartsList = ({
   };
 
   const formatPitchesForExport = (chart, source = "d3", chartType = "game") => {
-    // Ensure chart and pitches are properly defined
     if (!chart) {
       console.error("Chart object is required");
       return [[], []];
     }
 
-    // Fix the pitches initialization with proper OR operator
     const pitches = chart.pitches || [];
 
-    // Validate pitches is an array
     if (!Array.isArray(pitches)) {
       console.error("Pitches must be an array");
       return [[], []];
@@ -341,7 +335,7 @@ const ChartsList = ({
       return (
         <div className="space-y-1">
           <span className="px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-800 rounded-full text-md sm:text-xs md-text-sm lg-text-md">
-            {isSmall ? row.description : row.description}
+            {row.description}
           </span>
         </div>
       );
@@ -351,17 +345,7 @@ const ChartsList = ({
       const pitcherName = row.pitcher?.name || "No Pitcher";
       return (
         <div className="space-y-1">
-          <span className="px-2 py-0.5 sm:py-1 bg-red-100 text-gray-800 rounded-full text-md md-text-sm lg-text-md">
-            {isXSmall ? (
-              <>Bullpen: {pitcherName}</>
-            ) : isSmall ? (
-              <>Bullpen: {pitcherName}</>
-            ) : isMedium ? (
-              <>Bullpen: {pitcherName}</>
-            ) : (
-              <>Bullpen: {pitcherName}</>
-            )}
-          </span>
+          <span className="px-2 py-0.5 sm:py-1 bg-red-100 text-gray-800 rounded-full text-md md-text-sm lg-text-md">Bullpen: {pitcherName}</span>
         </div>
       );
     }
@@ -369,22 +353,14 @@ const ChartsList = ({
     if (row.homeTeam && row.awayTeam) {
       return (
         <div className="space-y-1">
-          <span className="font-medium text-gray-800 text-md md-text-sm lg-text-sm">
-            {isXSmall
-              ? `${row.awayTeam} @ ${row.homeTeam}`
-              : isSmall
-              ? `${row.awayTeam} @ ${row.homeTeam}`
-              : `${row.awayTeam} @ ${row.homeTeam}`}
-          </span>
+          <span className="font-medium text-gray-800 text-md md-text-sm lg-text-sm">{`${row.awayTeam} @ ${row.homeTeam}`}</span>
         </div>
       );
     }
 
     return (
       <div className="space-y-1">
-        <span className="font-medium text-gray-800 text-xs sm:text-sm lg-text-md">
-          {isMedium ? row.description : row.description}
-        </span>
+        <span className="font-medium text-gray-800 text-xs sm:text-sm lg-text-md">{row.description}</span>
       </div>
     );
   };
@@ -410,194 +386,96 @@ const ChartsList = ({
 
     const normalizedSource = (source || "d3").toLowerCase();
     const config = sourceConfig[normalizedSource] || sourceConfig.d3;
+    const showShort = isXSmall || isSmall || isMedium;
 
     return (
       <span
         className={`px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs font-medium border ${config.styles}`}
       >
-        {isXSmall && <span>{config.shortLabel}</span>}
-        {isSmall && !isXSmall && <span>{config.shortLabel}</span>}
-        {isMedium && !isSmall && !isXSmall && <span>{config.shortLabel}</span>}
-
-        {!isMedium && <span>{config.label}</span>}
+        {showShort ? <span>{config.shortLabel}</span> : <span>{config.label}</span>}
       </span>
     );
   };
 
   const getColumns = () => {
-    if (isXSmall) {
-      return [
-        {
-          name: "Date",
-          selector: (row) => row.date || "—",
-          sortable: true,
-          width: "25%",
-          cell: (row) =>
-            row.date ? new Date(row.date).toLocaleDateString() : "—",
-        },
-        {
-          name: "Description",
-          sortable: true,
-          width: "55%",
-          cell: formatDescription,
-        },
-        {
-          name: "Actions",
-          width: "20%",
-          cell: (row) => (
-            <ActionMenu
-              row={row}
-              onChartSelect={onChartSelect}
-              handleExport={handleExport}
-              onDeleteChart={onDeleteChart}
-              compact={true}
-            />
-          ),
-        },
-      ];
-    }
+    const showCompact = isXSmall || isSmall;
+    const columns = [];
 
-    if (isSmall) {
-      return [
-        {
-          name: "Date",
-          selector: (row) => row.date || "—",
-          sortable: true,
-          width: "25%",
-          cell: (row) =>
-            row.date ? new Date(row.date).toLocaleDateString() : "—",
-        },
-        {
-          name: "Description",
-          sortable: true,
-          width: "55%",
-          cell: formatDescription,
-        },
-        {
-          name: "Actions",
-          width: "20%",
-          cell: (row) => (
-            <ActionMenu
-              row={row}
-              onChartSelect={onChartSelect}
-              handleExport={handleExport}
-              onDeleteChart={onDeleteChart}
-              compact={true}
-            />
-          ),
-        },
-      ];
-    }
+    columns.push({
+      name: "Date",
+      selector: (row) => row.date || "—",
+      sortable: true,
+      width: showCompact ? "25%" : isMedium ? "20%" : "15%",
+      cell: (row) => (row.date ? new Date(row.date).toLocaleDateString() : "—"),
+    });
 
-    if (isMedium) {
-      return [
-        {
-          name: "Date",
-          selector: (row) => row.date || "—",
-          sortable: true,
-          width: "20%",
-          cell: (row) =>
-            row.date ? new Date(row.date).toLocaleDateString() : "—",
-        },
-        {
-          name: "Description",
-          sortable: true,
-          width: "30%",
-          cell: formatDescription,
-        },
-        {
-          name: "Source",
-          selector: (row) => row.source,
-          sortable: true,
-          width: "20%",
-          cell: (row) => <SourceBadge source={row.source} />,
-        },
-        {
-          name: "#",
-          selector: (row) => row.totalPitches || 0,
-          sortable: true,
-          width: "10%",
-          cell: (row) => (
-            <span className="font-medium text-blue-600">
-              {row.totalPitches || 0}
-            </span>
-          ),
-        },
-        {
-          name: "Actions",
-          width: "10%",
-          cell: (row) => (
-            <ActionMenu
-              row={row}
-              onChartSelect={onChartSelect}
-              handleExport={handleExport}
-              onDeleteChart={onDeleteChart}
-            />
-          ),
-        },
-      ];
-    }
+    columns.push({
+      name: "Description",
+      sortable: true,
+      width: showCompact ? "55%" : isMedium ? "30%" : "25%",
+      cell: formatDescription,
+    });
 
-    return [
-      {
-        name: "Date",
-        selector: (row) => row.date || "—",
-        sortable: true,
-        width: "15%",
-        cell: (row) =>
-          row.date ? new Date(row.date).toLocaleDateString() : "—",
-      },
-      {
-        name: "Description",
-        sortable: true,
-        width: "25%",
-        cell: formatDescription,
-      },
-      {
+    if (!showCompact) {
+      columns.push({
         name: "Source",
         selector: (row) => row.source,
         sortable: true,
         width: "20%",
         cell: (row) => <SourceBadge source={row.source} />,
-      },
-      {
+      });
+    }
+
+    if (isMedium && !showCompact) {
+      columns.push({
+        name: "#",
+        selector: (row) => row.totalPitches || 0,
+        sortable: true,
+        width: "10%",
+        cell: (row) => (
+          <span className="font-medium text-blue-600">{row.totalPitches || 0}</span>
+        ),
+      });
+    }
+
+    if (!isMedium && !showCompact) {
+      columns.push({
         name: "Pitches",
         selector: (row) => row.totalPitches || 0,
         sortable: true,
         width: "10%",
         cell: (row) => (
-          <span className="font-medium text-blue-600">
-            {row.totalPitches || 0}
-          </span>
+          <span className="font-medium text-blue-600">{row.totalPitches || 0}</span>
         ),
-      },
-      {
+      });
+      columns.push({
         name: "Last Updated",
         selector: (row) => row.updatedAt || "—",
         sortable: true,
         width: "14%",
         cell: (row) => getTimeAgo(row.updatedAt),
-      },
-      {
-        name: "Actions",
-        width: "15%",
-        cell: (row) => (
-          <ActionMenu
-            row={row}
-            onChartSelect={onChartSelect}
-            handleExport={handleExport}
-            onDeleteChart={onDeleteChart}
-          />
-        ),
-      },
-    ];
+      });
+    }
+
+    columns.push({
+      name: "Actions",
+      width: showCompact ? "20%" : isMedium ? "10%" : "15%",
+      cell: (row) => (
+        <ActionMenu
+          row={row}
+          onChartSelect={onChartSelect}
+          handleExport={handleExport}
+          onDeleteChart={onDeleteChart}
+          compact={showCompact}
+        />
+      ),
+    });
+
+    return columns;
   };
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-      <InfoBanner dataType={"charting"} />
-
-      <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+    <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
           <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
             <button
@@ -607,7 +485,7 @@ const ChartsList = ({
               <Plus size={isSmall ? 12 : 14} />
               {isXSmall ? "New" : "New Chart"}
             </button>
-            {authState.isAuthenticated && isPremiumUser && (
+            {authState.isAuthenticated && (
               <>
                 <button
                   onClick={onUploadClick}
@@ -653,7 +531,6 @@ const ChartsList = ({
           onGenerate={handleGenerateReport}
         />
       </div>
-    </div>
   );
 };
 

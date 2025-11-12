@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FileDown, ArrowLeft } from "lucide-react";
+import { FileDown, ArrowLeft, BarChart3 } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import ScoutingReportManager from "../managers/ScoutingReportsManager";
 import SprayChart from "../components/scouting/SprayChart";
@@ -445,28 +445,34 @@ const SprayChartsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
+          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 min-h-[400px] flex justify-center items-center">
+            <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!report) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 text-center">
-          <h2 className="text-xl font-bold text-gray-800 mb-2">
-            Report Not Found
-          </h2>
-          <p className="text-gray-600 mb-4">
-            The requested report could not be found.
-          </p>
-          <button
-            onClick={() => navigate("/scouting/reports")}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800"
-          >
-            Back to Reports
-          </button>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        <div className="container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
+          <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 min-h-[400px] flex flex-col justify-center items-center text-center">
+            <h2 className="text-xl font-bold text-gray-800 mb-2">
+              Report Not Found
+            </h2>
+            <p className="text-gray-600 mb-4">
+              The requested report could not be found.
+            </p>
+            <button
+              onClick={() => navigate("/scouting/reports")}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800"
+            >
+              Back to Reports
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -476,136 +482,142 @@ const SprayChartsPage = () => {
   const isExportDisabled = exporting || batters.length === 0 || chartsLoading;
 
   return (
-    <div className="min-h-screen bg-blue-50 flex flex-col">
-      <div className="w-full max-w-6xl mx-auto px-4 py-6 flex-grow">
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full">
-          <div className="p-4 md:p-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleBackToReports}
-                  className="inline-flex items-center justify-center p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <div>
-                  <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-                    Spray Charts
-                  </h1>
-                  <p className="text-sm text-gray-500">
-                    {report.teamName} • {report.year || "2024"} Season
-                  </p>
-                </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+      <div className="container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
+        <div className="relative z-10 mb-6">
+          <div className="relative overflow-hidden rounded-2xl border border-white/30 bg-white/60 backdrop-blur p-4 sm:p-5 shadow-xl">
+            <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-gradient-to-br from-blue-400/20 to-indigo-400/20 blur-2xl" />
+            <div className="relative z-10 flex items-start gap-3 sm:gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold flex-shrink-0">
+                i
               </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm sm:text-base font-semibold text-gray-800 mb-1 truncate">Spray Charts & Hit Distribution</div>
+                <div className="text-xs sm:text-sm text-gray-600">View and export spray charts for all batters in this scouting report. Analyze field distribution patterns, spray tendencies, and home run locations to understand player hitting profiles.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3 w-full sm:w-auto">
+              <button
+                onClick={handleBackToReports}
+                className="inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                <ArrowLeft size={14} />
+                Back
+              </button>
               <button
                 onClick={handleExportAll}
                 disabled={isExportDisabled}
-                className={`inline-flex items-center justify-center gap-2 px-4 py-2 text-sm ${
+                className={`inline-flex items-center justify-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded-lg transition-colors ${
                   isExportDisabled
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-800"
-                } text-white rounded-lg transition-colors shadow-sm`}
+                    ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                }`}
               >
+                <FileDown size={14} />
                 {loading
-                  ? "Loading charts..."
+                  ? "Loading..."
                   : exporting
                   ? "Exporting..."
                   : chartsLoading
-                  ? "Charts loading..."
+                  ? "Loading..."
                   : "Export All"}
               </button>
             </div>
-
-            {batters.length === 0 ? (
-              <div className="text-center py-10">
-                <div className="bg-white-50 p-6 rounded-xl inline-flex flex-col items-center">
-                  <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
-                    <ArrowLeft size={24} />
-                  </div>
-                  <p className="text-gray-800 text-lg font-medium">
-                    No batters in this report
-                  </p>
-                  <p className="text-gray-500 mt-2">
-                    Return to the report and add batters to generate spray
-                    charts
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {batters.map((batter) => (
-                  <div
-                    key={batter.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white"
-                  >
-                    <div
-                      className="aspect-square bg-white"
-                      data-player-id={batter.playerId}
-                    >
-                      <SprayChart
-                        width={300}
-                        height={300}
-                        playerId={batter.playerId}
-                        year={report.year || 2024}
-                        division={report.division || 3}
-                      />
-                    </div>
-
-                    <div className="p-4 border-t border-gray-100">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <h3 className="font-bold text-gray-800">
-                            {batter.name}
-                          </h3>
-                          <div className="text-sm text-gray-500 flex items-center gap-2">
-                            <span>{batter.position}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2 mt-3 mb-4 text-center">
-                        <div className="bg-gray-50 p-2 rounded">
-                          <div className="text-lg font-semibold text-gray-800">
-                            {batter.keyStats?.avg || ".---"}
-                          </div>
-                          <div className="text-xs text-gray-500">AVG</div>
-                        </div>
-                        <div className="bg-gray-50 p-2 rounded">
-                          <div className="text-lg font-semibold text-gray-800">
-                            {batter.keyStats?.obp || ".---"}
-                          </div>
-                          <div className="text-xs text-gray-500">OBP</div>
-                        </div>
-                        <div className="bg-gray-50 p-2 rounded">
-                          <div className="text-lg font-semibold text-gray-800">
-                            {batter.keyStats?.slg || ".---"}
-                          </div>
-                          <div className="text-xs text-gray-500">SLG</div>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleExportSingle(batter)}
-                        disabled={isExportDisabled}
-                        className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-sm ${
-                          isExportDisabled
-                            ? "bg-gray-200 text-gray-400 cursor-not-allowed"
-                            : "bg-gray-100 text-gray-800 hover:bg-gray-200"
-                        } rounded-lg transition-colors`}
-                      >
-                        <FileDown size={16} />
-                        {exporting
-                          ? "Exporting..."
-                          : chartsLoading
-                          ? "Chart loading..."
-                          : "Export Spray Chart"}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
+
+          {batters.length === 0 ? (
+                <div className="text-center py-10">
+                  <div className="bg-blue-50 p-6 rounded-xl inline-flex flex-col items-center">
+                    <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                      <BarChart3 size={24} />
+                    </div>
+                    <p className="text-gray-800 text-lg font-medium">
+                      No batters in this report
+                    </p>
+                    <p className="text-gray-500 mt-2">
+                      Return to the report and add batters to generate spray charts
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {batters.map((batter) => (
+                    <div
+                      key={batter.id}
+                      className="border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow bg-white"
+                    >
+                      <div
+                        className="aspect-square bg-white"
+                        data-player-id={batter.playerId}
+                      >
+                        <SprayChart
+                          width={300}
+                          height={300}
+                          playerId={batter.playerId}
+                          year={report.year || 2024}
+                          division={report.division || 3}
+                        />
+                      </div>
+
+                      <div className="p-4 border-t border-gray-100">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <h3 className="font-bold text-gray-800">
+                              {batter.name}
+                            </h3>
+                            <div className="text-sm text-gray-500 flex items-center gap-2">
+                              <span>{batter.position}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 mt-3 mb-4 text-center">
+                          <div className="bg-gray-50 p-2 rounded">
+                            <div className="text-lg font-semibold text-gray-800">
+                              {batter.keyStats?.avg || ".---"}
+                            </div>
+                            <div className="text-xs text-gray-500">AVG</div>
+                          </div>
+                          <div className="bg-gray-50 p-2 rounded">
+                            <div className="text-lg font-semibold text-gray-800">
+                              {batter.keyStats?.obp || ".---"}
+                            </div>
+                            <div className="text-xs text-gray-500">OBP</div>
+                          </div>
+                          <div className="bg-gray-50 p-2 rounded">
+                            <div className="text-lg font-semibold text-gray-800">
+                              {batter.keyStats?.slg || ".---"}
+                            </div>
+                            <div className="text-xs text-gray-500">SLG</div>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleExportSingle(batter)}
+                          disabled={isExportDisabled}
+                          className={`w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-sm ${
+                            isExportDisabled
+                              ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                              : "bg-gray-100 text-gray-800 hover:bg-gray-200"
+                          } rounded-lg transition-colors`}
+                        >
+                          <FileDown size={16} />
+                          {exporting
+                            ? "Exporting..."
+                            : chartsLoading
+                            ? "Chart loading..."
+                            : "Export Spray Chart"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
         </div>
       </div>
     </div>

@@ -18,7 +18,7 @@ export const getErrorMessage = (error, context = {}) => {
   
   if (error.status === 403) {
     if (division === 1 || division === 2) {
-      return "Premium subscription required to access Division 1 and 2 data. Please upgrade your subscription or switch to Division 3.";
+      return "Division 1 and 2 data access is currently limited. Please switch to Division 3 for full access.";
     } else {
       return "Access denied. You don't have permission to view this data.";
     }
@@ -40,16 +40,6 @@ export const getErrorMessage = (error, context = {}) => {
   return error.message || "An unexpected error occurred. Please try again.";
 };
 
-/**
- * Check if an error is related to premium access restrictions
- * @param {Error} error - The error object
- * @returns {boolean} True if it's a premium access error
- */
-export const isPremiumAccessError = (error) => {
-  return error.status === 403 && 
-         (error.message?.includes("Premium subscription required") || 
-          error.message?.includes("Access denied"));
-};
 
 /**
  * Check if an error is related to authentication
@@ -81,10 +71,9 @@ export const isNetworkError = (error) => {
 /**
  * Get error type for UI styling
  * @param {Error} error - The error object
- * @returns {string} Error type ('premium', 'auth', 'server', 'network', 'other')
+ * @returns {string} Error type ('auth', 'server', 'network', 'other')
  */
 export const getErrorType = (error) => {
-  if (isPremiumAccessError(error)) return 'premium';
   if (isAuthenticationError(error)) return 'auth';
   if (isServerError(error)) return 'server';
   if (isNetworkError(error)) return 'network';
@@ -98,16 +87,6 @@ export const getErrorType = (error) => {
  */
 export const getErrorStyling = (errorType) => {
   const styles = {
-    premium: {
-      icon: (
-        <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-        </svg>
-      ),
-      bgColor: "bg-yellow-100",
-      textColor: "text-yellow-600",
-      title: "Premium Access Required"
-    },
     auth: {
       icon: (
         <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

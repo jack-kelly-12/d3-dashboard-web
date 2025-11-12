@@ -1,35 +1,42 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { BaseballTable } from "../tables/BaseballTable";
-import { getDataColumns } from "../../config/tableColumns";
+import { getBattingColumns } from "../../config/battingColumns";
+import { getPitchingColumns } from "../../config/pitchingColumns";
+import { columnsBaserunningLeaderboardForStatTable } from "../../config/baserunningColumns";
+import { columnsBattedBallForStatTable } from "../../config/battedBallColumns";
+import { columnsSituationalBattersForStatTable } from "../../config/situationalColumns";
+import { columnsSituationalPitchers } from "../../config/situationalPitcherColumns";
+import { columnsSplitsBattersForStatTable } from "../../config/splitsColumns";
+import { columnsSplitsPitchers } from "../../config/splitsPitcherColumns";
 
 const StatTable = ({ stats, type }) => {
-  const getColumns = () => {
+  const columns = useMemo(() => {
     switch (type) {
       case "batting":
-        return getDataColumns("player_hitting");
+        return getBattingColumns(true);
       case "pitching":
-        return getDataColumns("player_pitching");
+        return getPitchingColumns(true);
       case "baserunning":
-        return getDataColumns("baserunning");
+        return columnsBaserunningLeaderboardForStatTable;
       case "batted_ball":
-        return getDataColumns("batted_ball");
+        return columnsBattedBallForStatTable;
       case "situational":
-        return getDataColumns("situational");
+        return columnsSituationalBattersForStatTable;
       case "situational_pitcher":
-        return getDataColumns("situational_pitcher");
+        return columnsSituationalPitchers;
       case "splits":
-        return getDataColumns("splits");
+        return columnsSplitsBattersForStatTable;
       case "splits_pitcher":
-        return getDataColumns("splits_pitcher");
+        return columnsSplitsPitchers;
       default:
         return [];
     }
-  };
+  }, [type]);
 
   return (
     <BaseballTable
       data={stats}
-      columns={getColumns()}
+      columns={columns}
       filename={`player_${type}_stats.csv`}
     />
   );

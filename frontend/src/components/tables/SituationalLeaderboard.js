@@ -2,18 +2,11 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
 import { fetchAPI } from "../../config/api";
 import { Search, FileBox } from "lucide-react";
-import TeamLogo from "../data/TeamLogo";
 import debounce from "lodash/debounce";
-import AuthManager from "../../managers/AuthManager";
-import SubscriptionManager from "../../managers/SubscriptionManager";
-import {
-  columnsSituational,
-  columnsSituationalPitcher,
-} from "../../config/tableColumns";
+import { columnsSituationalBatters, columnsSituationalPitchers } from "../../config/situationalColumns";
 import ExportButton from "../buttons/ExportButton";
 
 const SituationalLeaderboard = ({
-  isPremiumUserProp,
   selectedListId,
   selectedListPlayerIds,
   isLoadingPlayerList,
@@ -29,9 +22,6 @@ const SituationalLeaderboard = ({
   const [minCount, setMinCount] = useState(50);
   const [conferences, setConferences] = useState([]);
   const [division, setDivision] = useState(3);
-  const [isPremiumUser, setIsPremiumUser] = useState(
-    isPremiumUserProp || false
-  );
   const [viewType, setViewType] = useState("batters");
 
   const fetchConferences = useCallback(async () => {
@@ -46,77 +36,8 @@ const SituationalLeaderboard = ({
   }, [division, isAuthReady]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    // If isPremiumUserProp is provided, use it
-    if (isPremiumUserProp !== undefined) {
-      setIsPremiumUser(isPremiumUserProp);
-      setIsAuthReady(true);
-      return () => {
-        isMounted = false;
-      };
-    }
-
-    // Otherwise, fetch the subscription status
-    const initializeAuth = async () => {
-      const unsubscribeAuth = AuthManager.onAuthStateChanged(async (user) => {
-        if (!isMounted) return;
-
-        if (user) {
-          const initialSubscription =
-            await SubscriptionManager.getUserSubscription(user.uid);
-          if (isMounted) {
-            setIsPremiumUser(initialSubscription?.isActive || false);
-
-            if (initialSubscription?.isActive) {
-              const urlParams = new URLSearchParams(window.location.search);
-              const divisionParam = urlParams.get("division");
-              if (divisionParam) {
-                setDivision(Number(divisionParam));
-              }
-            }
-          }
-
-          SubscriptionManager.listenToSubscriptionUpdates(
-            user.uid,
-            (subscription) => {
-              if (isMounted) {
-                setIsPremiumUser(subscription?.isActive || false);
-              }
-            }
-          );
-        } else {
-          if (isMounted) {
-            setIsPremiumUser(false);
-          }
-        }
-
-        if (isMounted) {
-          setIsAuthReady(true);
-        }
-      });
-
-      return unsubscribeAuth;
-    };
-
-    const cleanup = initializeAuth();
-
-    return () => {
-      isMounted = false;
-      if (cleanup) {
-        cleanup.then((unsubscribe) => unsubscribe && unsubscribe());
-      }
-      SubscriptionManager.stopListening();
-    };
-  }, [isPremiumUserProp]);
-
-  useEffect(() => {
-    if (isPremiumUser) {
-      const url = new URL(window.location);
-      url.searchParams.set("division", division.toString());
-      window.history.replaceState({}, "", url);
-    }
-  }, [division, isPremiumUser]);
+    setIsAuthReady(true);
+  }, []);
 
   useEffect(() => {
     if (isAuthReady) {
@@ -141,37 +62,12 @@ const SituationalLeaderboard = ({
         `${endpoint}?start_year=${startYear}&end_year=${endYear}&${countParam}=${minCount}&division=${division}`
       );
 
-      const sortField = "wOBA_Overall";
+      const sortField = "woba_overall";
       const sortedData = [...rawData].sort((a, b) => {
-        return viewType === "batters"
-          ? b[sortField] - a[sortField]
-          : a[sortField] - b[sortField];
+        return viewType === "batters" ? (b[sortField] ?? 0) - (a[sortField] ?? 0) : (a[sortField] ?? 0) - (b[sortField] ?? 0);
       });
 
-      const transformedData = sortedData.map((row, index) => ({
-        ...row,
-        rank: index + 1,
-        renderedTeam: (
-          <div className="flex items-center gap-2">
-            <TeamLogo
-              teamId={row.prev_team_id}
-              conferenceId={row.conference_id}
-              teamName={row.Team}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-        renderedConference: (
-          <div className="flex items-center gap-2">
-            <TeamLogo
-              teamId={row.conference_id}
-              conferenceId={row.conference_id}
-              teamName={row.Team}
-              className="h-8 w-8"
-            />
-          </div>
-        ),
-      }));
+      const transformedData = sortedData.map((row, index) => ({ ...row, rank: index + 1 }));
 
       setData(transformedData);
     } catch (err) {
@@ -206,18 +102,14 @@ const SituationalLeaderboard = ({
   );
 
   const filteredData = useMemo(() => {
-    // First apply the standard filters (search and conference)
     let filtered = data.filter((player) => {
       const searchStr = searchTerm.toLowerCase();
-      const nameMatch = player.Player?.toLowerCase().includes(searchStr);
-      const teamMatch = player.Team?.toLowerCase().includes(searchStr);
-      const conferenceMatch = selectedConference
-        ? player.Conference === selectedConference
-        : true;
+      const nameMatch = player.player_name?.toLowerCase().includes(searchStr);
+      const teamMatch = player.team_name?.toLowerCase().includes(searchStr);
+      const conferenceMatch = selectedConference ? player.conference === selectedConference : true;
       return (nameMatch || teamMatch) && conferenceMatch;
     });
 
-    // Then apply the player list filter if selected
     if (
       selectedListId &&
       selectedListPlayerIds &&
@@ -227,8 +119,6 @@ const SituationalLeaderboard = ({
         const playerId = player.player_id || player.Player_ID;
         if (!playerId) return false;
 
-        // Check if the player ID is in the selected list
-        // Handle both string and number comparisons
         return selectedListPlayerIds.some(
           (id) =>
             id === playerId.toString() ||
@@ -266,9 +156,8 @@ const SituationalLeaderboard = ({
     [viewType]
   );
 
-  const columns =
-    viewType === "batters" ? columnsSituational : columnsSituationalPitcher;
-  const defaultSortField = "PA_Overall";
+  const columns = viewType === "batters" ? columnsSituationalBatters : columnsSituationalPitchers;
+  const defaultSortField = viewType === "batters" ? "pa_overall" : "pa_overall";
   const defaultSortAsc = viewType === "pitchers";
 
   const handleViewTypeChange = (newViewType) => {
@@ -277,7 +166,6 @@ const SituationalLeaderboard = ({
     setIsLoading(true);
   };
 
-  // Generate a filename for export that includes list information if present
   const generateFilename = () => {
     let filename = `situational_${viewType}_${startYear}`;
     if (startYear !== endYear) {
@@ -316,12 +204,9 @@ const SituationalLeaderboard = ({
         </p>
       </div>
 
-      {/* Controls */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm mb-6">
         <div className="p-4 space-y-4">
-          {/* Toggle View Type and Search */}
           <div className="flex flex-col lg:flex-row lg:items-center gap-4 mb-2">
-            {/* Toggle buttons */}
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600 font-medium">View:</span>
               <div className="inline-flex bg-gray-100 rounded-md" role="group">
@@ -350,7 +235,6 @@ const SituationalLeaderboard = ({
               </div>
             </div>
 
-            {/* Search */}
             <div className="w-full lg:w-64 relative">
               <Search
                 className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -365,14 +249,12 @@ const SituationalLeaderboard = ({
               />
             </div>
 
-            {/* Player List Filter Status */}
             {selectedListId && (
               <div className="ml-auto px-3 py-1.5 bg-blue-50 border border-blue-100 rounded-md text-xs lg:text-sm text-blue-700">
                 Showing {filteredData.length} of {data.length} players
               </div>
             )}
 
-            {/* Export Button */}
             <div className="ml-auto">
               <ExportButton
                 data={filteredData}
@@ -382,18 +264,16 @@ const SituationalLeaderboard = ({
           </div>
 
           <div className="flex flex-wrap lg:flex-nowrap items-center gap-2">
-            {isPremiumUser && (
-              <select
-                value={division}
-                onChange={(e) => setDivision(Number(e.target.value))}
-                className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
-                    focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
-              >
-                <option value={1}>Division 1</option>
-                <option value={2}>Division 2</option>
-                <option value={3}>Division 3</option>
-              </select>
-            )}
+            <select
+              value={division}
+              onChange={(e) => setDivision(Number(e.target.value))}
+              className="w-full lg:w-32 px-2 py-1.5 border border-gray-200 rounded-md text-xs lg:text-sm
+                  focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white"
+            >
+              <option value={1}>Division 1</option>
+              <option value={2}>Division 2</option>
+              <option value={3}>Division 3</option>
+            </select>
 
             <div className="flex items-center gap-2 w-full lg:w-auto">
               <select
@@ -455,7 +335,6 @@ const SituationalLeaderboard = ({
         </div>
       </div>
 
-      {/* Leaderboard Table */}
       {error ? (
         <div className="text-center py-12">
           <p className="text-red-600 text-xs lg:text-sm">{error}</p>

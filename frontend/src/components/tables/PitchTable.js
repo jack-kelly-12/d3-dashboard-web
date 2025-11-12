@@ -66,7 +66,6 @@ const PitchTable = ({
       </span>
     );
 
-  // Create action cell component
   const ActionCell = ({ row }) => (
     <button
       onClick={() => onDeletePitch?.(row.id)}
@@ -108,7 +107,7 @@ const PitchTable = ({
         name: "Intended Zone",
         selector: (row) => row.intendedZone || "—",
         sortable: true,
-        width: "7rem",
+        width: "9rem",
         center: true,
       },
       {
@@ -130,13 +129,6 @@ const PitchTable = ({
         ),
       },
       {
-        name: "Notes",
-        selector: (row) => row.note || "—",
-        sortable: true,
-        grow: 1,
-        width: "12rem",
-      },
-      {
         name: "",
         cell: (row) => <ActionCell row={row} />,
         width: "3rem",
@@ -152,19 +144,19 @@ const PitchTable = ({
         name: "Time",
         selector: (row) => formatDate(row.timestamp),
         sortable: true,
-        width: "9rem",
+        width: "10rem",
       },
       {
         name: "Pitcher",
         selector: (row) => row.pitcher?.name || "—",
         sortable: true,
-        width: "9rem",
+        width: "10rem",
       },
       {
         name: "Batter",
         selector: (row) => row.batter?.name || "—",
         sortable: true,
-        width: "9rem",
+        width: "10rem",
       },
       {
         name: "B. Side",
@@ -185,17 +177,17 @@ const PitchTable = ({
         width: "5rem",
       },
       {
-        name: "Pitch Type",
+        name: "Type",
         selector: (row) => row.type || "—",
         format: (row) => <span className="capitalize">{row.type || "—"}</span>,
         sortable: true,
-        width: "7rem",
+        width: "6rem",
       },
       {
         name: "Velo",
         cell: (row) => <VelocityCell row={row} />,
         sortable: true,
-        width: "5rem",
+        width: "6rem",
       },
       {
         name: "Result",
@@ -206,13 +198,13 @@ const PitchTable = ({
           </span>
         ),
         sortable: true,
-        width: "7rem",
+        width: "8rem",
       },
       {
         name: "Pitch X",
         selector: (row) => formatCoords(row.x, row.y).x,
         sortable: true,
-        width: "5rem",
+        width: "6rem",
         cell: (row) => (
           <span className="font-mono">{formatCoords(row.x, row.y).x}</span>
         ),
@@ -221,7 +213,7 @@ const PitchTable = ({
         name: "Pitch Z",
         selector: (row) => formatCoords(row.x, row.y).y,
         sortable: true,
-        width: "5rem",
+        width: "6rem",
         cell: (row) => (
           <span className="font-mono">{formatCoords(row.x, row.y).y}</span>
         ),
@@ -235,7 +227,7 @@ const PitchTable = ({
           </span>
         ),
         sortable: true,
-        width: "7rem",
+        width: "8rem",
       },
       {
         name: "Hit X",
@@ -244,7 +236,7 @@ const PitchTable = ({
             ? formatCoords(row.hitDetails?.x, row.hitDetails?.y).x
             : "—",
         sortable: true,
-        width: "5rem",
+        width: "6rem",
         cell: (row) => (
           <span className="font-mono">
             {formatCoords(row.hitDetails?.x, row.hitDetails?.y).x}
@@ -258,19 +250,12 @@ const PitchTable = ({
             ? formatCoords(row.hitDetails?.x, row.hitDetails?.y).y
             : "—",
         sortable: true,
-        width: "5rem",
+        width: "6rem",
         cell: (row) => (
           <span className="font-mono">
             {formatCoords(row.hitDetails?.x, row.hitDetails?.y).y}
           </span>
         ),
-      },
-      {
-        name: "Notes",
-        selector: (row) => row.note || "—",
-        sortable: true,
-        grow: 1,
-        width: "12rem",
       },
       {
         name: "",
