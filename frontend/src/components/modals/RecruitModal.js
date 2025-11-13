@@ -59,11 +59,11 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
         gpa: editingRecruit.gpa || "",
         phone: editingRecruit.phone || "",
         email: editingRecruit.email || "",
-        socialMedia: {
+    socialMedia: {
           twitter: editingRecruit.socialMedia?.twitter || "",
           instagram: editingRecruit.socialMedia?.instagram || "",
-        },
-        measurables: {
+    },
+    measurables: {
           exitVelocity: editingRecruit.measurables?.exitVelocity || "",
           infieldVelocity: editingRecruit.measurables?.infieldVelocity || "",
           outfieldVelocity: editingRecruit.measurables?.outfieldVelocity || "",
@@ -71,7 +71,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
           sixtyYardDash: editingRecruit.measurables?.sixtyYardDash || "",
           height: editingRecruit.measurables?.height || "",
           weight: editingRecruit.measurables?.weight || "",
-        },
+    },
         coachWriteUps: editingRecruit.coachWriteUps || [],
         newWriteUp: "",
         newCoachName: "",
@@ -85,7 +85,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
         datesSeen: editingRecruit.datesSeen || (editingRecruit.dateSeen ? [{ date: editingRecruit.dateSeen, tag: "" }] : []),
         tag: editingRecruit.tag || "",
         graduationYear: editingRecruit.graduationYear || "",
-      });
+  });
     } else {
       resetForm();
     }
@@ -476,36 +476,36 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
                   <label className="block text-xs text-gray-600 mb-1">Twitter</label>
                   <div className="flex items-center">
                     <span className="px-3 py-2 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">@</span>
-                    <input
-                      type="text"
+                <input
+                  type="text"
                       value={formData.socialMedia.twitter.replace(/^@/, '')}
                       onChange={(e) => {
                         const value = e.target.value.replace(/^@/g, '');
                         setFormData(prev => ({
-                          ...prev,
+                    ...prev,
                           socialMedia: { ...prev.socialMedia, twitter: value }
                         }));
                       }}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 text-sm"
-                    />
+                />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs text-gray-600 mb-1">Instagram</label>
                   <div className="flex items-center">
                     <span className="px-3 py-2 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-600 text-sm">@</span>
-                    <input
-                      type="text"
+                <input
+                  type="text"
                       value={formData.socialMedia.instagram.replace(/^@/, '')}
                       onChange={(e) => {
                         const value = e.target.value.replace(/^@/g, '');
                         setFormData(prev => ({
-                          ...prev,
+                    ...prev,
                           socialMedia: { ...prev.socialMedia, instagram: value }
                         }));
                       }}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-r-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 text-sm"
-                    />
+                />
                   </div>
                 </div>
               </div>
@@ -527,7 +527,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
                     const value = handleNumberInput(e.target.value, true);
                     if (value !== null) {
                       setFormData(prev => ({
-                        ...prev,
+                    ...prev,
                         measurables: { ...prev.measurables, height: value }
                       }));
                     }
@@ -545,7 +545,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
                     const value = handleNumberInput(e.target.value);
                     if (value !== null) {
                       setFormData(prev => ({
-                        ...prev,
+                    ...prev,
                         measurables: { ...prev.measurables, weight: value }
                       }));
                     }
@@ -565,7 +565,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
                   const value = handleNumberInput(e.target.value, true);
                   if (value !== null) {
                     setFormData(prev => ({
-                      ...prev,
+                  ...prev,
                       measurables: { ...prev.measurables, sixtyYardDash: value }
                     }));
                   }
@@ -584,7 +584,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
                   const value = handleNumberInput(e.target.value);
                   if (value !== null) {
                     setFormData(prev => ({
-                      ...prev,
+                  ...prev,
                       measurables: { ...prev.measurables, exitVelocity: value }
                     }));
                   }
@@ -603,7 +603,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
                   const value = handleNumberInput(e.target.value);
                   if (value !== null) {
                     setFormData(prev => ({
-                      ...prev,
+                  ...prev,
                       measurables: { ...prev.measurables, infieldVelocity: value }
                     }));
                   }
@@ -641,7 +641,7 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
                   const value = handleNumberInput(e.target.value);
                   if (value !== null) {
                     setFormData(prev => ({
-                      ...prev,
+                  ...prev,
                       measurables: { ...prev.measurables, moundVelocity: value }
                     }));
                   }
@@ -714,24 +714,24 @@ const RecruitModal = ({ isOpen, onClose, onSubmit, editingRecruit = null, initia
             <div className="border-t border-gray-200 pt-4">
               <h4 className="text-sm font-semibold text-gray-900 mb-3">Add New Write-Up</h4>
               <div className="space-y-3">
-                <div>
+            <div>
                   <label className="block text-xs text-gray-600 mb-1">Coach Name</label>
-                  <input
-                    type="text"
+              <input
+                type="text"
                     value={formData.newCoachName}
                     onChange={(e) => setFormData(prev => ({ ...prev, newCoachName: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 text-sm"
-                  />
-                </div>
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 text-sm"
+              />
+            </div>
 
-                <div>
+            <div>
                   <label className="block text-xs text-gray-600 mb-1">Write-Up</label>
-                  <textarea
+              <textarea
                     value={formData.newWriteUp}
                     onChange={(e) => setFormData(prev => ({ ...prev, newWriteUp: e.target.value }))}
                     rows={6}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 resize-none text-sm"
-                  />
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 resize-none text-sm"
+              />
                 </div>
 
                 <div className="border-t border-gray-200 pt-3">

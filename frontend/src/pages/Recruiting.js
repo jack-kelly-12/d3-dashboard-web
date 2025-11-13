@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search, Filter } from "lucide-react";
 import toast from "react-hot-toast";
 import RecruitModal from "../components/modals/RecruitModal";
 import TransferPortalModal from "../components/modals/TransferPortalModal";
 import WriteupsViewerModal from "../components/modals/WriteupsViewerModal";
 import ConfirmDeleteModal from "../components/modals/ConfirmDeleteModal";
+import FilterModal from "../components/modals/FilterModal";
+import PasswordModal from "../components/modals/PasswordModal";
 import StatsCards from "../components/recruitment/StatsCards";
 import RecruitCard from "../components/recruitment/RecruitCard";
 import StatusDropdown from "../components/recruitment/StatusDropdown";
 import EmptyState from "../components/recruitment/EmptyState";
 import InfoBanner from "../components/data/InfoBanner";
 import RecruitManager from "../managers/RecruitManager";
+import RecruitPasswordManager from "../managers/RecruitPasswordManager";
+import FeatureFlagManager from "../managers/FeatureFlagManager";
 import AuthManager from "../managers/AuthManager";
 import { LoadingState } from "../components/alerts/Alerts";
 
@@ -30,6 +34,26 @@ const Recruitment = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isPasswordSetup, setIsPasswordSetup] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [hasFeatureAccess, setHasFeatureAccess] = useState(false);
+  const [filters, setFilters] = useState({
+    tags: [],
+    schools: [],
+    years: [],
+    positions: [],
+    gpa: { min: 0, max: 4.0 },
+    exitVelocity: { min: 50, max: 120 },
+    infieldVelocity: { min: 50, max: 100 },
+    outfieldVelocity: { min: 60, max: 100 },
+    moundVelocity: { min: 60, max: 100 },
+    sixtyYardDash: { min: 5.5, max: 8.0 },
+    height: { min: 60, max: 80 },
+    weight: { min: 100, max: 300 }
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -50,9 +74,32 @@ const Recruitment = () => {
           }
 
           if (currentUser) {
-            const userRecruits = await RecruitManager.getUserRecruits();
-            if (isMounted) {
-              setRecruits(userRecruits);
+            const featureAccess = await FeatureFlagManager.hasAccessToFeature("recruiting");
+            
+            if (!featureAccess) {
+              if (isMounted) {
+                setHasFeatureAccess(false);
+                setLoading(false);
+                setIsAuthReady(true);
+              }
+              return;
+            }
+
+            setHasFeatureAccess(true);
+            const hasActiveAccess = await RecruitPasswordManager.hasActiveAccess();
+            
+            if (hasActiveAccess) {
+              const userRecruits = await RecruitManager.getUserRecruits();
+              if (isMounted) {
+                setRecruits(userRecruits);
+                setHasAccess(true);
+              }
+            } else {
+              const hasPassword = await RecruitPasswordManager.hasPassword();
+              if (isMounted) {
+                setIsPasswordSetup(!hasPassword);
+                setIsPasswordModalOpen(true);
+              }
             }
           }
         } catch (err) {
@@ -76,6 +123,19 @@ const Recruitment = () => {
       cleanup.then((unsubscribe) => unsubscribe());
     };
   }, []);
+
+  const handlePasswordSuccess = async () => {
+    setIsPasswordModalOpen(false);
+    setHasAccess(true);
+    
+    try {
+      const userRecruits = await RecruitManager.getUserRecruits();
+      setRecruits(userRecruits);
+    } catch (err) {
+      console.error("Error loading recruits:", err);
+      toast.error("Failed to load recruits");
+    }
+  };
 
   const handleCreateRecruit = async (recruitData) => {
     if (!user || !isAuthReady) {
@@ -276,10 +336,156 @@ const Recruitment = () => {
     return <LoadingState />;
   }
 
+  if (!hasFeatureAccess) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center p-8">
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">Access Restricted</h1>
+          <p className="text-gray-600">You don&apos;t have access to the recruiting feature.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasAccess) {
+    return (
+      <PasswordModal
+        isOpen={isPasswordModalOpen}
+        onSuccess={handlePasswordSuccess}
+        isSetup={isPasswordSetup}
+      />
+    );
+  }
+
   const currentRecruit = recruits.find(r => r.id === quickEditRecruit);
-  const displayedRecruits = activeView === "transfer" 
+  
+  const filterRecruits = (recruitsList) => {
+    let filtered = recruitsList;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(recruit => {
+        const name = (recruit.name || "").toLowerCase();
+        return name.includes(query);
+      });
+    }
+
+    if (filters.tags.length > 0) {
+      filtered = filtered.filter(recruit => {
+        const tag = recruit.tag || "";
+        return filters.tags.includes(tag);
+      });
+    }
+
+    if (filters.schools.length > 0) {
+      filtered = filtered.filter(recruit => {
+        const school = recruit.highSchool || "";
+        return filters.schools.includes(school);
+      });
+    }
+
+    if (filters.years.length > 0) {
+      filtered = filtered.filter(recruit => {
+        const year = recruit.graduationYear || "";
+        return filters.years.includes(String(year));
+      });
+    }
+
+    if (filters.positions.length > 0) {
+      filtered = filtered.filter(recruit => {
+        const recruitPositions = recruit.positions || [];
+        return filters.positions.some(pos => recruitPositions.includes(pos));
+      });
+    }
+
+    if (filters.gpa && (filters.gpa.min !== 0 || filters.gpa.max !== 4.0)) {
+      filtered = filtered.filter(recruit => {
+        const gpa = parseFloat(recruit.gpa);
+        if (isNaN(gpa)) return false;
+        return gpa >= filters.gpa.min && gpa <= filters.gpa.max;
+      });
+    }
+
+    if (filters.exitVelocity && (filters.exitVelocity.min !== 50 || filters.exitVelocity.max !== 120)) {
+      filtered = filtered.filter(recruit => {
+        const vel = parseFloat(recruit.measurables?.exitVelocity);
+        if (!vel || isNaN(vel)) return false;
+        return vel >= filters.exitVelocity.min && vel <= filters.exitVelocity.max;
+      });
+    }
+
+    if (filters.infieldVelocity && (filters.infieldVelocity.min !== 50 || filters.infieldVelocity.max !== 100)) {
+      filtered = filtered.filter(recruit => {
+        const vel = parseFloat(recruit.measurables?.infieldVelocity);
+        if (!vel || isNaN(vel)) return false;
+        return vel >= filters.infieldVelocity.min && vel <= filters.infieldVelocity.max;
+      });
+    }
+
+    if (filters.outfieldVelocity && (filters.outfieldVelocity.min !== 60 || filters.outfieldVelocity.max !== 100)) {
+      filtered = filtered.filter(recruit => {
+        const vel = parseFloat(recruit.measurables?.outfieldVelocity);
+        if (!vel || isNaN(vel)) return false;
+        return vel >= filters.outfieldVelocity.min && vel <= filters.outfieldVelocity.max;
+      });
+    }
+
+    if (filters.moundVelocity && (filters.moundVelocity.min !== 60 || filters.moundVelocity.max !== 100)) {
+      filtered = filtered.filter(recruit => {
+        const vel = parseFloat(recruit.measurables?.moundVelocity);
+        if (!vel || isNaN(vel)) return false;
+        return vel >= filters.moundVelocity.min && vel <= filters.moundVelocity.max;
+      });
+    }
+
+    if (filters.sixtyYardDash && (filters.sixtyYardDash.min !== 5.5 || filters.sixtyYardDash.max !== 8.0)) {
+      filtered = filtered.filter(recruit => {
+        const time = parseFloat(recruit.measurables?.sixtyYardDash);
+        if (!time || isNaN(time)) return false;
+        return time >= filters.sixtyYardDash.min && time <= filters.sixtyYardDash.max;
+      });
+    }
+
+    if (filters.height && (filters.height.min !== 60 || filters.height.max !== 80)) {
+      filtered = filtered.filter(recruit => {
+        const heightStr = recruit.measurables?.height;
+        if (!heightStr) return false;
+        let heightInches = 0;
+        if (typeof heightStr === 'number') {
+          heightInches = heightStr;
+        } else {
+          const match = heightStr.toString().match(/(\d+)['"](\d+)/);
+          if (match) {
+            heightInches = parseInt(match[1]) * 12 + parseInt(match[2]);
+          } else {
+            heightInches = parseFloat(heightStr);
+          }
+        }
+        if (isNaN(heightInches)) return false;
+        return heightInches >= filters.height.min && heightInches <= filters.height.max;
+      });
+    }
+
+    if (filters.weight && (filters.weight.min !== 100 || filters.weight.max !== 300)) {
+      filtered = filtered.filter(recruit => {
+        const weight = parseFloat(recruit.measurables?.weight);
+        if (!weight || isNaN(weight)) return false;
+        return weight >= filters.weight.min && weight <= filters.weight.max;
+      });
+    }
+
+    return filtered;
+  };
+  
+  const baseRecruits = activeView === "transfer" 
     ? recruits.filter(r => r.isTransferPortal === true)
     : recruits.filter(r => !r.isTransferPortal);
+  
+  const displayedRecruits = filterRecruits(baseRecruits);
+
+  const handleApplyFilters = (newFilters) => {
+    setFilters(newFilters);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
@@ -302,9 +508,26 @@ const Recruitment = () => {
         </div>
 
         <div className="relative z-10 mb-6">
-          <div className="flex gap-2 border-b border-gray-200">
+          <div className="flex gap-2 border-b border-gray-200 mb-4">
             <button
-              onClick={() => setActiveView("recruiting")}
+              onClick={() => {
+                setActiveView("recruiting");
+                setSearchQuery("");
+                setFilters({
+                  tags: [],
+                  schools: [],
+                  years: [],
+                  positions: [],
+                  gpa: { min: 0, max: 4.0 },
+                  exitVelocity: { min: 50, max: 120 },
+                  infieldVelocity: { min: 50, max: 100 },
+                  outfieldVelocity: { min: 60, max: 100 },
+                  moundVelocity: { min: 60, max: 100 },
+                  sixtyYardDash: { min: 5.5, max: 8.0 },
+                  height: { min: 60, max: 80 },
+                  weight: { min: 100, max: 300 }
+                });
+              }}
               className={`px-4 py-2 font-medium text-sm transition-colors ${
                 activeView === "recruiting"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -314,7 +537,24 @@ const Recruitment = () => {
               HS/JUCO
             </button>
             <button
-              onClick={() => setActiveView("transfer")}
+              onClick={() => {
+                setActiveView("transfer");
+                setSearchQuery("");
+                setFilters({
+                  tags: [],
+                  schools: [],
+                  years: [],
+                  positions: [],
+                  gpa: { min: 0, max: 5.0 },
+                  exitVelocity: { min: 50, max: 120 },
+                  infieldVelocity: { min: 50, max: 100 },
+                  outfieldVelocity: { min: 60, max: 100 },
+                  moundVelocity: { min: 60, max: 100 },
+                  sixtyYardDash: { min: 5.5, max: 8.0 },
+                  height: { min: 60, max: 80 },
+                  weight: { min: 100, max: 300 }
+                });
+              }}
               className={`px-4 py-2 font-medium text-sm transition-colors ${
                 activeView === "transfer"
                   ? "text-blue-600 border-b-2 border-blue-600"
@@ -322,6 +562,59 @@ const Recruitment = () => {
               }`}
             >
               Transfer Portal
+            </button>
+          </div>
+          
+          <div className="flex gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Search by player name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 text-sm"
+              />
+            </div>
+            <button
+              onClick={() => setIsFilterModalOpen(true)}
+              className={`px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:bg-gray-50 flex items-center gap-2 ${
+                (filters.tags.length > 0 || filters.schools.length > 0 || filters.years.length > 0 || filters.positions.length > 0 ||
+                 (filters.gpa && (filters.gpa.min !== 0 || filters.gpa.max !== 4.0)) ||
+                 (filters.exitVelocity && (filters.exitVelocity.min !== 50 || filters.exitVelocity.max !== 120)) ||
+                 (filters.infieldVelocity && (filters.infieldVelocity.min !== 50 || filters.infieldVelocity.max !== 100)) ||
+                 (filters.outfieldVelocity && (filters.outfieldVelocity.min !== 60 || filters.outfieldVelocity.max !== 100)) ||
+                 (filters.moundVelocity && (filters.moundVelocity.min !== 60 || filters.moundVelocity.max !== 100)) ||
+                 (filters.sixtyYardDash && (filters.sixtyYardDash.min !== 5.5 || filters.sixtyYardDash.max !== 8.0)) ||
+                 (filters.height && (filters.height.min !== 60 || filters.height.max !== 80)) ||
+                 (filters.weight && (filters.weight.min !== 100 || filters.weight.max !== 300)))
+                  ? "border-blue-500 bg-blue-50"
+                  : ""
+              }`}
+            >
+              <Filter className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">Filters</span>
+              {(() => {
+                const activeFilterCount = 
+                  filters.tags.length + 
+                  filters.schools.length + 
+                  filters.years.length +
+                  filters.positions.length +
+                  (filters.gpa && (filters.gpa.min !== 0 || filters.gpa.max !== 4.0) ? 1 : 0) +
+                  (filters.exitVelocity && (filters.exitVelocity.min !== 50 || filters.exitVelocity.max !== 120) ? 1 : 0) +
+                  (filters.infieldVelocity && (filters.infieldVelocity.min !== 50 || filters.infieldVelocity.max !== 100) ? 1 : 0) +
+                  (filters.outfieldVelocity && (filters.outfieldVelocity.min !== 60 || filters.outfieldVelocity.max !== 100) ? 1 : 0) +
+                  (filters.moundVelocity && (filters.moundVelocity.min !== 60 || filters.moundVelocity.max !== 100) ? 1 : 0) +
+                  (filters.sixtyYardDash && (filters.sixtyYardDash.min !== 5.5 || filters.sixtyYardDash.max !== 8.0) ? 1 : 0) +
+                  (filters.height && (filters.height.min !== 60 || filters.height.max !== 80) ? 1 : 0) +
+                  (filters.weight && (filters.weight.min !== 100 || filters.weight.max !== 300) ? 1 : 0);
+                
+                return activeFilterCount > 0 && (
+                  <span className="bg-blue-600 text-white text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                    {activeFilterCount}
+                  </span>
+                );
+              })()}
             </button>
           </div>
         </div>
@@ -403,6 +696,20 @@ const Recruitment = () => {
           title="Delete Recruit"
           message={`Are you sure you want to delete ${deleteConfirm.recruitName}? This action cannot be undone.`}
           loading={deleting}
+        />
+
+        <FilterModal
+          isOpen={isFilterModalOpen}
+          onClose={() => setIsFilterModalOpen(false)}
+          recruits={baseRecruits}
+          onApplyFilters={handleApplyFilters}
+          currentFilters={filters}
+        />
+
+        <PasswordModal
+          isOpen={isPasswordModalOpen && !hasAccess}
+          onSuccess={handlePasswordSuccess}
+          isSetup={isPasswordSetup}
         />
       </div>
     </div>

@@ -11,6 +11,7 @@ const TransferPortalModal = ({ isOpen, onClose, onSubmit, editingRecruit = null,
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [selectedTeam, setSelectedTeam] = useState("");
   const [divisionFilter, setDivisionFilter] = useState("1");
+  const [playerTypeFilter, setPlayerTypeFilter] = useState("all");
   const [teams, setTeams] = useState([]);
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [loadingTeams, setLoadingTeams] = useState(false);
@@ -53,19 +54,47 @@ const TransferPortalModal = ({ isOpen, onClose, onSubmit, editingRecruit = null,
     player_id: null,
   });
 
-  const loadPlayersForTeam = useCallback(async (teamName, division) => {
+  const loadPlayersForTeam = useCallback(async (teamName, division, playerType = "all") => {
     setLoadingPlayers(true);
     try {
       const currentYear = new Date().getFullYear();
-      const data = await fetchAPI(`/api/players_batting/${encodeURIComponent(teamName)}?division=${division}&year=${currentYear}`);
-      const transformedPlayers = (data || []).map(player => ({
-        player_id: player.player_id,
-        player_name: player.player_name,
-        position: player.position,
-        team_name: teamName,
-        division: parseInt(division)
-      }));
-      setPlayers(transformedPlayers);
+      const allPlayers = [];
+
+      if (playerType === "all" || playerType === "batters") {
+        try {
+          const battingData = await fetchAPI(`/api/players_batting/${encodeURIComponent(teamName)}?division=${division}&year=${currentYear}`);
+          const transformedBatters = (battingData || []).map(player => ({
+            player_id: player.player_id,
+            player_name: player.player_name,
+            position: player.position,
+            team_name: teamName,
+            division: parseInt(division),
+            type: "batter"
+          }));
+          allPlayers.push(...transformedBatters);
+        } catch (err) {
+          console.error("Error loading batters:", err);
+        }
+      }
+
+      if (playerType === "all" || playerType === "pitchers") {
+        try {
+          const pitchingData = await fetchAPI(`/api/players_pitching/${encodeURIComponent(teamName)}?division=${division}&year=${currentYear}`);
+          const transformedPitchers = (pitchingData || []).map(player => ({
+            player_id: player.player_id,
+            player_name: player.player_name,
+            position: player.position || "P",
+            team_name: teamName,
+            division: parseInt(division),
+            type: "pitcher"
+          }));
+          allPlayers.push(...transformedPitchers);
+        } catch (err) {
+          console.error("Error loading pitchers:", err);
+        }
+      }
+
+      setPlayers(allPlayers);
     } catch (err) {
       console.error("Error loading players:", err);
       toast.error("Failed to load players");
@@ -131,14 +160,19 @@ const TransferPortalModal = ({ isOpen, onClose, onSubmit, editingRecruit = null,
     setSelectedPlayer(null);
     setSelectedTeam("");
     setDivisionFilter("1");
+    setPlayerTypeFilter("all");
   }, []);
 
   const handlePlayerSelect = (player) => {
     setSelectedPlayer(player);
+    let position = player.position || "";
+    if (player.type === "pitcher" && position !== "P") {
+      position = "P";
+    }
     setFormData(prev => ({
       ...prev,
       name: player.player_name || "",
-      positions: player.position ? [player.position] : [],
+      positions: position ? [position] : [],
       highSchool: player.team_name || "",
       player_id: player.player_id || null,
     }));
@@ -204,11 +238,11 @@ const TransferPortalModal = ({ isOpen, onClose, onSubmit, editingRecruit = null,
 
   useEffect(() => {
     if (isOpen && selectedTeam && divisionFilter) {
-      loadPlayersForTeam(selectedTeam, divisionFilter);
+      loadPlayersForTeam(selectedTeam, divisionFilter, playerTypeFilter);
     } else if (isOpen && !selectedTeam) {
       setPlayers([]);
     }
-  }, [selectedTeam, divisionFilter, isOpen, loadPlayersForTeam]);
+  }, [selectedTeam, divisionFilter, playerTypeFilter, isOpen, loadPlayersForTeam]);
 
   useEffect(() => {
     if (editingRecruit) {
@@ -379,7 +413,7 @@ const TransferPortalModal = ({ isOpen, onClose, onSubmit, editingRecruit = null,
               <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <h3 className="font-semibold text-gray-900 mb-3">Select Player</h3>
                 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-gray-900 mb-1.5">Division</label>
                     <select
@@ -407,6 +441,19 @@ const TransferPortalModal = ({ isOpen, onClose, onSubmit, editingRecruit = null,
                           {team}
                         </option>
                       ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-1.5">Player Type</label>
+                    <select
+                      value={playerTypeFilter}
+                      onChange={(e) => setPlayerTypeFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400 text-sm"
+                    >
+                      <option value="all">All Players</option>
+                      <option value="batters">Batters</option>
+                      <option value="pitchers">Pitchers</option>
                     </select>
                   </div>
                 </div>

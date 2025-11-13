@@ -530,8 +530,6 @@ const processPitchData = (pitches) => {
         ? ((data.chasePitchesRHH / data.countRHH) * 100).toFixed(1)
         : "0.0";
 
-    console.log(data);
-
     return acc;
   }, {});
 };
