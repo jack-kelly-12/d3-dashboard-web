@@ -16,6 +16,7 @@ import {
   CalendarCheck,
   Trophy,
   User2,
+  User,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import GlobalPlayerSearch from "./GlobalPlayerSearch";
@@ -210,6 +211,7 @@ const Sidebar = () => {
     { icon: Database, path: "/data", label: "Data" },
     { icon: LineChart, path: "/charting", label: "Charting" },
     { icon: Binoculars, path: "/scouting", label: "Scouting" },
+    { icon: User, path: "/recruiting", label: "Recruiting" },
     { icon: Activity, path: "/guts", label: "Guts" },
     { icon: Trophy, path: "/leaderboards", label: "Leaderboards" },
     { icon: CalendarCheck, path: "/scoreboard", label: "Scoreboard" },

@@ -6,6 +6,7 @@ import Scouting from "./pages/Scouting";
 import Guts from "./pages/Guts";
 import Data from "./pages/Data";
 import Charting from "./pages/Charting";
+import Recruiting from "./pages/Recruiting";
 import SignIn from "./pages/SignIn";
 import HomePage from "./pages/HomePage";
 import { Toaster } from "react-hot-toast";
@@ -67,6 +68,12 @@ function App() {
                 path="/scouting"
                 element={
                     <Scouting />
+                }
+              />
+              <Route
+                path="/recruiting"
+                element={
+                    <Recruiting />
                 }
               />
               <Route
