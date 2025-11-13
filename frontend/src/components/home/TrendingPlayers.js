@@ -33,31 +33,45 @@ const TrendingPlayers = ({ compact = false, limit }) => {
     const fetchTrending = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const data = await getTopPlayersByVisits(limit || (compact ? 5 : 10));
         
         if (data && data.length > 0) {
-          // Fetch detailed player data for headshots
-          const enrichedData = await Promise.all(
-            data.map(async (player) => {
-              try {
-                const playerDetails = await fetchAPI(`/api/player/${encodeURIComponent(player.playerId)}`);
-                return {
-                  ...player,
-                  headshot_url: playerDetails?.headshot_url,
-                  current_team: playerDetails?.current_team,
-                };
-              } catch (err) {
-                return player;
-              }
-            })
-          );
+          // Fetch detailed player data for headshots using Promise.allSettled
+          // to prevent one failed request from breaking the entire list
+          const enrichmentPromises = data.map(async (player) => {
+            try {
+              const playerDetails = await Promise.race([
+                fetchAPI(`/api/player/${encodeURIComponent(player.playerId)}`),
+                new Promise((_, reject) => 
+                  setTimeout(() => reject(new Error('Timeout')), 5000)
+                )
+              ]);
+              return {
+                ...player,
+                headshot_url: playerDetails?.headshot_url,
+                current_team: playerDetails?.current_team,
+              };
+            } catch (err) {
+              // Return player without enrichment if fetch fails
+              console.warn(`Failed to enrich player ${player.playerId}:`, err);
+              return player;
+            }
+          });
           
-          setTrendingPlayers(enrichedData);
+          const enrichedData = await Promise.allSettled(enrichmentPromises);
+          const successfulData = enrichedData
+            .map((result) => result.status === 'fulfilled' ? result.value : null)
+            .filter(Boolean);
+          
+          setTrendingPlayers(successfulData.length > 0 ? successfulData : data);
+        } else {
+          setTrendingPlayers([]);
         }
-        setError(null);
       } catch (err) {
         console.error("Error fetching trending players:", err);
         setError("Failed to load trending players");
+        setTrendingPlayers([]);
       } finally {
         setIsLoading(false);
       }

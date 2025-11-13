@@ -44,12 +44,10 @@ export const trackPlayerPageVisit = async (playerId, playerName) => {
 
 export const getTopPlayersByVisits = async (limit = 10) => {
   try {
-    const response = await fetch(`${process.env.REACT_APP_API_BASE_URL || "http://localhost:8000"}/api/trending-players?limit=${limit}`);
-    if (!response.ok) throw new Error("Failed to fetch trending players");
-    return await response.json();
+    return await fetchAPI(`/trending-players?limit=${limit}`);
   } catch (err) {
     console.error("Error fetching trending players:", err);
-    return [];
+    throw err;
   }
 };
 

@@ -168,14 +168,20 @@ def get_trending_players():
         
         trending = []
         for doc in docs:
-            data = doc.to_dict()
-            trending.append({
-                'playerId': data.get('playerId'),
-                'playerName': data.get('playerName'),
-                'visitCount': data.get('visitCount', 0),
-                'lastVisitedAt': data.get('lastVisitedAt'),
-            })
+            try:
+                data = doc.to_dict()
+                if data and data.get('playerId'):
+                    trending.append({
+                        'playerId': data.get('playerId'),
+                        'playerName': data.get('playerName', 'Unknown'),
+                        'visitCount': data.get('visitCount', 0),
+                        'lastVisitedAt': data.get('lastVisitedAt'),
+                    })
+            except Exception as doc_error:
+                print(f"Error processing document {doc.id}: {doc_error}")
+                continue
         
         return jsonify(trending)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"Error fetching trending players: {e}")
+        return jsonify({"error": "Failed to fetch trending players. Please try again later."}), 500
