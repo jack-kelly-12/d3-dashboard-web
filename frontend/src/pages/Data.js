@@ -293,9 +293,6 @@ const Data = () => {
               onApplyFilters={fetchData}
               currentData={filteredData}
               columns={columns}
-              onAddToPlayerList={(listId, playerIds) => {
-                console.log(`Added ${playerIds.length} players to list ${listId}`);
-              }}
             />
         </div>
         

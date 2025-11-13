@@ -245,9 +245,6 @@ export const exportAllSprayCharts = async (report) => {
     const fileName = `${teamName}_spray_charts_${year}.zip`;
 
     saveAs(zipBlob, fileName);
-    console.log(
-      `Successfully exported ${batters.length} spray charts to ${fileName}`
-    );
   } catch (error) {
     console.error("Error exporting spray charts:", error);
     throw error;
@@ -307,7 +304,6 @@ const exportBatterToZip = async (batter, zip, year, division) => {
                   .replace(/[^a-z0-9]/gi, "_")
                   .toLowerCase();
                 zip.file(`${safeFileName}_spray_chart.jpg`, blob);
-                console.log(`Successfully added ${batter.name} to zip`);
               }
 
               root.unmount();

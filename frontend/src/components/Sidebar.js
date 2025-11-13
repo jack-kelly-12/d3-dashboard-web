@@ -16,8 +16,10 @@ import {
   CalendarCheck,
   Trophy,
   User2,
+  User,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
+import FeatureFlagManager from "../managers/FeatureFlagManager";
 import GlobalPlayerSearch from "./GlobalPlayerSearch";
 
 
@@ -167,17 +169,25 @@ const Sidebar = () => {
     isAuthenticated: false,
     isAnonymous: false,
   });
+  const [hasRecruitingAccess, setHasRecruitingAccess] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const unsubscribeAuth = AuthManager.onAuthStateChanged((currentUser) => {
+    const unsubscribeAuth = AuthManager.onAuthStateChanged(async (currentUser) => {
       setUser(currentUser);
       setAuthState({
         isAuthenticated: !!currentUser,
         isAnonymous: currentUser?.isAnonymous || false,
       });
+
+      if (currentUser) {
+        const access = await FeatureFlagManager.hasAccessToFeature("recruiting");
+        setHasRecruitingAccess(access);
+      } else {
+        setHasRecruitingAccess(false);
+      }
     });
 
     return () => unsubscribeAuth();
@@ -210,10 +220,16 @@ const Sidebar = () => {
     { icon: Database, path: "/data", label: "Data" },
     { icon: LineChart, path: "/charting", label: "Charting" },
     { icon: Binoculars, path: "/scouting", label: "Scouting" },
+    { icon: User, path: "/recruiting", label: "Recruiting", requiresFeatureFlag: "recruiting" },
     { icon: Activity, path: "/guts", label: "Guts" },
     { icon: Trophy, path: "/leaderboards", label: "Leaderboards" },
     { icon: CalendarCheck, path: "/scoreboard", label: "Scoreboard" },
-  ];
+  ].filter((item) => {
+    if (item.requiresFeatureFlag === "recruiting") {
+      return hasRecruitingAccess;
+    }
+    return true;
+  });
 
   const sidebarClasses = `
     ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
