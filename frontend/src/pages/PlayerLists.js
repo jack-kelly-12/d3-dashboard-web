@@ -7,7 +7,6 @@ import { fetchAPI } from "../config/api";
 import toast from "react-hot-toast";
 import InfoBanner from "../components/data/InfoBanner";
 
-// Minimal inline modal (no external deps)
 const DeleteModal = ({ open, onClose, onConfirm, listName, loading }) => {
   if (!open) return null;
 
@@ -32,7 +31,7 @@ const DeleteModal = ({ open, onClose, onConfirm, listName, loading }) => {
             <button
               onClick={onConfirm}
               disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-md transition-colors"
             >
               {loading ? "Deleting..." : "Delete"}
             </button>
@@ -208,11 +207,11 @@ const PlayerLists = () => {
   }, [players, filter]);
 
   const columns = useMemo(() => [
-    { name: "Player", selector: row => row.player_name, sortable: true, width: "300px", cell: row => <span className="font-medium text-sm">{row.player_name}</span> },
-    { name: "Team", selector: row => row.team_name, sortable: true, cell: row => <span className="text-sm">{row.team_name || "N/A"}</span> },
-    { name: "Position", selector: row => row.position, sortable: true, cell: row => <span className="text-sm">{row.position || "N/A"}</span> },
-    { name: "Years", selector: row => `${row.min_year ?? "N/A"} - ${row.max_year ?? "N/A"}`, sortable: true, cell: row => <span className="text-sm whitespace-nowrap">{row.min_year ?? "N/A"} - {row.max_year ?? "N/A"}</span> },
-    { name: "", minWidth: "40px", cell: row => (<button onClick={() => handleRemovePlayer(row.player_id)} className="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded" title="Remove"><Trash2 size={16} /></button>) }
+    { name: "Player", selector: row => row.player_name, sortable: true, minWidth: "150px", cell: row => <span className="font-medium text-sm truncate block">{row.player_name}</span> },
+    { name: "Team", selector: row => row.team_name, sortable: true, minWidth: "180px", cell: row => <span className="text-sm truncate block">{row.team_name || "N/A"}</span> },
+    { name: "Position", selector: row => row.position, sortable: true, width: "80px", cell: row => <span className="text-sm whitespace-nowrap">{row.position || "N/A"}</span> },
+    { name: "Years", selector: row => `${row.min_year ?? "N/A"} - ${row.max_year ?? "N/A"}`, sortable: true, width: "110px", cell: row => <span className="text-sm whitespace-nowrap">{row.min_year ?? "N/A"} - {row.max_year ?? "N/A"}</span> },
+    { name: "", width: "50px", cell: row => (<button onClick={() => handleRemovePlayer(row.player_id)} className="p-1 text-gray-400 hover:text-red-600 rounded transition-colors" title="Remove"><Trash2 size={14} /></button>) }
   ], [handleRemovePlayer]);
 
   const filteredSearch = useMemo(() => {
@@ -254,138 +253,188 @@ const PlayerLists = () => {
             />
           </div>
 
-          <div className="relative z-10 bg-white p-3 sm:p-4 md:p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <aside className="lg:col-span-5 sticky top-8 h-fit">
-              <div className="bg-white border border-gray-200 rounded-lg">
-                <div className="p-4 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={newListName}
-                      onChange={(e) => setNewListName(e.target.value)}
-                      placeholder="New list name"
-                      className="flex-1 px-2 py-1 border border-gray-300 rounded-md text-sm"
-                    />
-                    <button
-                      onClick={handleCreateList}
-                      disabled={!newListName.trim() || saving}
-                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-xs"
-                      aria-label="Create list"
-                    >
-                      <Plus size={14} />
-                    </button>
+          <div className="relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <aside className="lg:col-span-4">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 sticky top-8">
+                  <div className="px-5 pt-5 pb-4 border-b border-gray-200">
+                    <h2 className="text-base font-semibold text-gray-900 mb-3">Your Lists</h2>
+                    <div className="flex items-center gap-2.5">
+                      <input
+                        type="text"
+                        value={newListName}
+                        onChange={(e) => setNewListName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleCreateList()}
+                        placeholder="New list..."
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400 bg-white transition-all"
+                      />
+                      <button
+                        onClick={handleCreateList}
+                        disabled={!newListName.trim() || saving}
+                        className="px-3 py-2 bg-gray-900 hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center flex-shrink-0 mr-0.5"
+                        aria-label="Create list"
+                      >
+                        <Plus size={16} strokeWidth={2.25} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-[calc(100vh-240px)] overflow-y-auto">
+                    {loadingLists ? (
+                      <div className="py-12 text-center text-gray-500">
+                        <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-gray-400"></div>
+                        <p className="mt-2 text-xs">Loading...</p>
+                      </div>
+                    ) : lists.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <Users className="mx-auto text-gray-300 mb-3" size={24} />
+                        <p className="text-xs text-gray-500">No lists yet</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {lists.map((list) => (
+                          <div
+                            key={list.id}
+                            onClick={() => setSelectedListId(list.id)}
+                            className={`px-4 py-3 flex justify-between items-center cursor-pointer transition-colors ${
+                              selectedListId === list.id 
+                                ? "bg-gray-50 border-l-4 border-l-gray-900" 
+                                : "hover:bg-gray-50"
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm text-gray-900 truncate mb-1">{list.name}</div>
+                              <div className="text-xs text-gray-500">
+                                {list.playerIds.length} {list.playerIds.length === 1 ? "player" : "players"}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteModal(list);
+                              }}
+                              className="ml-3 text-gray-400 hover:text-red-600 p-1.5 rounded transition-colors flex-shrink-0"
+                              aria-label={`Delete ${list.name}`}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="max-h-[60vh] overflow-y-auto divide-y">
-                  {loadingLists ? (
-                    <div className="py-8 text-center text-gray-500">Loading...</div>
-                  ) : lists.length === 0 ? (
-                    <div className="py-8 text-center text-gray-400">No lists yet</div>
-                  ) : (
-                    lists.map((list) => (
-                      <div
-                        key={list.id}
-                        onClick={() => setSelectedListId(list.id)}
-                        className={`px-4 py-3 flex justify-between items-center cursor-pointer ${
-                          selectedListId === list.id ? "bg-blue-50" : "hover:bg-gray-50"
-                        }`}
-                      >
-                        <div>
-                          <div className="font-medium">{list.name}</div>
-                          <div className="text-xs text-gray-500">{list.playerIds.length} players</div>
-                        </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openDeleteModal(list);
-                          }}
-                          className="text-gray-400 hover:text-red-600 p-1 rounded-md"
-                          aria-label={`Delete ${list.name}`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </aside>
+              </aside>
 
-            <main className="lg:col-span-7">
+            <main className="lg:col-span-8">
               {!selectedListId ? (
-                <div className="bg-white border border-gray-200 rounded-lg py-16 flex flex-col items-center">
-                  <Users className="text-blue-400 mb-3" size={40} />
-                  <div className="font-medium text-gray-800 mb-1">No list selected</div>
-                  <div className="text-sm text-gray-500">Select or create a list to get started.</div>
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm py-16 flex flex-col items-center justify-center">
+                  <div className="bg-blue-100 rounded-full p-3 mb-3">
+                    <Users className="text-blue-600" size={32} />
+                  </div>
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">No list selected</h3>
+                  <p className="text-xs text-gray-500 text-center max-w-sm">
+                    Select a list from the sidebar or create a new one to get started.
+                  </p>
                 </div>
               ) : (
-                <div className="bg-white border border-gray-200 rounded-lg">
-                  <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
-                    <div className="font-semibold text-gray-900">{selectedList?.name}</div>
-                    <div />
-                  </div>
-
-                  <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-3 border-b border-gray-200">
-                    <div className="relative">
-                      <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
-                      <input
-                        type="text"
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                        placeholder="Filter current list"
-                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm"
-                      />
-                    </div>
-                    <div ref={searchRef} className="relative">
-                      <Search size={16} className="absolute left-3 top-2.5 text-gray-400" />
-                      <input
-                        type="text"
-                        onFocus={() => {
-                          setShowSearch(true);
-                          ensureAllPlayersLoaded();
-                        }}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="Add player by search"
-                        className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm"
-                      />
-                      {showSearch && searchTerm && (
-                        <div className="absolute mt-2 bg-white border border-gray-200 rounded-md shadow w-full max-h-64 overflow-y-auto z-50">
-                          {loadingSearch ? (
-                            <div className="p-3 text-sm text-gray-500">Loading...</div>
-                          ) : filteredSearch.length === 0 ? (
-                            <div className="p-3 text-sm text-gray-500">No matches</div>
-                          ) : (
-                            filteredSearch.map((p) => (
-                              <button
-                                key={p.player_id}
-                                onClick={() => handleAddPlayer(p)}
-                                className="w-full text-left p-3 hover:bg-blue-50 flex justify-between items-center"
-                              >
-                                <span className="text-sm">{p.player_name}</span>
-                                <span className="text-xs text-gray-500">{p.team_name}</span>
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
+                <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col h-[calc(100vh-240px)]">
+                  <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-blue-50 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold text-gray-900">{selectedList?.name}</h2>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {players.length} {players.length === 1 ? "player" : "players"}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  {loadingPlayers ? (
-                    <div className="flex flex-col items-center py-10 text-gray-500">Loading players...</div>
-                  ) : tableData.length === 0 ? (
-                    <div className="p-10 text-center text-gray-500">No players in this list</div>
-                  ) : (
-                    <div className="p-5">
-                      <BaseballTable
-                        data={tableData}
-                        columns={columns}
-                        filename={`${selectedList?.name || "player_list"}.csv`}
-                      />
+                  <div className="px-4 py-3 border-b border-gray-200 bg-white flex-shrink-0">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="relative">
+                        <Search size={16} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={filter}
+                          onChange={(e) => setFilter(e.target.value)}
+                          placeholder="Filter list..."
+                          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400"
+                        />
+                      </div>
+                      <div ref={searchRef} className="relative">
+                        <Search size={16} className="absolute left-2.5 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          onFocus={() => {
+                            setShowSearch(true);
+                            ensureAllPlayersLoaded();
+                          }}
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Add players..."
+                          className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white hover:border-gray-400"
+                        />
+                        {showSearch && searchTerm && (
+                          <div className="absolute mt-1 bg-white border border-gray-200 rounded-lg shadow-lg w-full max-h-64 overflow-y-auto z-50">
+                            {loadingSearch ? (
+                              <div className="p-3 text-xs text-gray-500 text-center">
+                                <div className="inline-block animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-2"></div>
+                                Loading...
+                              </div>
+                            ) : filteredSearch.length === 0 ? (
+                              <div className="p-3 text-xs text-gray-500 text-center">No matches</div>
+                            ) : (
+                              <div className="py-1">
+                                {filteredSearch.map((p) => (
+                                  <button
+                                    key={p.player_id}
+                                    onClick={() => handleAddPlayer(p)}
+                                    className="w-full text-left px-3 py-2 hover:bg-blue-50 flex justify-between items-center transition-colors border-b border-gray-100 last:border-b-0 text-sm"
+                                  >
+                                    <span className="font-medium text-gray-900 truncate">{p.player_name}</span>
+                                    <span className="text-xs text-gray-500 ml-2 truncate">{p.team_name}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="flex-1 overflow-auto min-h-0">
+                    {loadingPlayers ? (
+                      <div className="flex flex-col items-center justify-center py-12">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mb-2"></div>
+                        <p className="text-xs text-gray-500">Loading...</p>
+                      </div>
+                    ) : tableData.length === 0 ? (
+                      <div className="p-12 text-center">
+                        {filter ? (
+                          <>
+                            <Search className="mx-auto text-gray-300 mb-2" size={24} />
+                            <p className="text-xs font-medium text-gray-900 mb-1">No matches</p>
+                            <p className="text-xs text-gray-500">Adjust your filter</p>
+                          </>
+                        ) : (
+                          <>
+                            <Users className="mx-auto text-gray-300 mb-2" size={24} />
+                            <p className="text-xs font-medium text-gray-900 mb-1">No players</p>
+                            <p className="text-xs text-gray-500">Add players above</p>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="p-4">
+                        <BaseballTable
+                          data={tableData}
+                          columns={columns}
+                          filename={`${selectedList?.name || "player_list"}.csv`}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </main>

@@ -16,7 +16,7 @@ import {
   CalendarCheck,
   Trophy,
   User2,
-  User,
+  Users,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import FeatureFlagManager from "../managers/FeatureFlagManager";
@@ -220,7 +220,7 @@ const Sidebar = () => {
     { icon: Database, path: "/data", label: "Data" },
     { icon: LineChart, path: "/charting", label: "Charting" },
     { icon: Binoculars, path: "/scouting", label: "Scouting" },
-    { icon: User, path: "/recruiting", label: "Recruiting", requiresFeatureFlag: "recruiting" },
+    { icon: Users, path: "/recruiting", label: "Recruiting", requiresFeatureFlag: "recruiting" },
     { icon: Activity, path: "/guts", label: "Guts" },
     { icon: Trophy, path: "/leaderboards", label: "Leaderboards" },
     { icon: CalendarCheck, path: "/scoreboard", label: "Scoreboard" },
