@@ -105,7 +105,7 @@ const FeedbackModal = ({ isOpen, onClose }) => {
 						/>
 						<span className="ml-2.5 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
 							<span className="font-medium">Make this feedback public</span>
-							<span className="block text-xs text-gray-500 mt-0.5">Help others by sharing your feedback with the community</span>
+							<span className="block text-xs text-gray-500 mt-0.5">Can we use this feedback as a testimonial for the product?</span>
 						</span>
 					</label>
 				</div>
