@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import FeatureFlagManager from "../managers/FeatureFlagManager";
-import GlobalPlayerSearch from "./GlobalPlayerSearch";
+import PlayerSearch from "./PlayerSearch";
 
 
 const MenuItem = ({
@@ -273,7 +273,7 @@ const Sidebar = () => {
 
         <div className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           <div className="mb-4">
-            <GlobalPlayerSearch collapsed={collapsed && !mobileOpen} />
+            <PlayerSearch collapsed={collapsed && !mobileOpen} />
           </div>
           {navigationItems.map((item) => (
             <MenuItem

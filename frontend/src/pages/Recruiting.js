@@ -17,6 +17,7 @@ import RecruitPasswordManager from "../managers/RecruitPasswordManager";
 import FeatureFlagManager from "../managers/FeatureFlagManager";
 import AuthManager from "../managers/AuthManager";
 import { LoadingState } from "../components/alerts/Alerts";
+import BigBoard from "../components/recruitment/BigBoard";
 
 const Recruitment = () => {
   const [activeView, setActiveView] = useState("recruiting");
@@ -476,10 +477,13 @@ const Recruitment = () => {
 
     return filtered;
   };
-  
-  const baseRecruits = activeView === "transfer" 
-    ? recruits.filter(r => r.isTransferPortal === true)
-    : recruits.filter(r => !r.isTransferPortal);
+
+  const baseRecruits =
+    activeView === "transfer"
+      ? recruits.filter((r) => r.isTransferPortal === true)
+      : activeView === "bigBoard"
+      ? recruits
+      : recruits.filter((r) => !r.isTransferPortal);
   
   const displayedRecruits = filterRecruits(baseRecruits);
 
@@ -499,10 +503,19 @@ const Recruitment = () => {
       <div className="container max-w-6xl mx-auto px-8 sm:px-12 lg:px-16 py-16">
         <div className="relative z-10 mb-6">
           <InfoBanner
-            title={activeView === "transfer" ? "Transfer Portal" : "Recruiting"}
-            description={activeView === "transfer" 
-              ? "Track players in the transfer portal with comprehensive profiles, measurables, and coach write-ups."
-              : "Track and evaluate potential recruits with comprehensive profiles, measurables, and coach write-ups."
+            title={
+              activeView === "transfer"
+                ? "Transfer Portal"
+                : activeView === "bigBoard"
+                  ? "Big Board"
+                  : "Recruiting"
+            }
+            description={
+              activeView === "transfer"
+                ? "Track players in the transfer portal with comprehensive profiles, measurables, and coach write-ups."
+                : activeView === "bigBoard"
+                  ? "Rank and organize your recruits on a dedicated big board with drag-and-drop ordering."
+                  : "Track and evaluate potential recruits with comprehensive profiles, measurables, and coach write-ups."
             }
           />
         </div>
@@ -563,6 +576,33 @@ const Recruitment = () => {
             >
               Transfer Portal
             </button>
+            <button
+              onClick={() => {
+                setActiveView("bigBoard");
+                setSearchQuery("");
+                setFilters({
+                  tags: [],
+                  schools: [],
+                  years: [],
+                  positions: [],
+                  gpa: { min: 0, max: 4.0 },
+                  exitVelocity: { min: 50, max: 120 },
+                  infieldVelocity: { min: 50, max: 100 },
+                  outfieldVelocity: { min: 60, max: 100 },
+                  moundVelocity: { min: 60, max: 100 },
+                  sixtyYardDash: { min: 5.5, max: 8.0 },
+                  height: { min: 60, max: 80 },
+                  weight: { min: 100, max: 300 }
+                });
+              }}
+              className={`px-4 py-2 font-medium text-sm transition-colors ${
+                activeView === "bigBoard"
+                  ? "text-blue-600 border-b-2 border-blue-600"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Big Board
+            </button>
           </div>
           
           <div className="flex gap-3">
@@ -619,7 +659,7 @@ const Recruitment = () => {
           </div>
         </div>
 
-        {displayedRecruits.length > 0 && (
+        {activeView !== "bigBoard" && displayedRecruits.length > 0 && (
           <div className="relative z-10 mb-6">
             <StatsCards recruits={displayedRecruits} />
           </div>
@@ -633,28 +673,32 @@ const Recruitment = () => {
           <Plus className="w-6 h-6" />
         </button>
 
-        <div className="relative z-10">
-          {displayedRecruits.length === 0 ? (
-            <EmptyState onAddRecruit={() => activeView === "transfer" ? setIsTransferModalOpen(true) : setIsModalOpen(true)} />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {displayedRecruits.map((recruit) => (
-                <RecruitCard
-                  key={recruit.id}
-                  recruit={recruit}
-                  onEdit={handleEditRecruit}
-                  onDelete={handleDeleteClick}
-                  onStatusClick={handleQuickTag}
-                  onViewWriteups={handleViewWriteups}
-                  onAddWriteup={(recruit) => {
-                    handleEditRecruit(recruit);
-                    setInitialTab("writeup");
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        {activeView === "bigBoard" ? (
+          <BigBoard recruits={displayedRecruits} onRecruitsChange={setRecruits} />
+        ) : (
+          <div className="relative z-10">
+            {displayedRecruits.length === 0 ? (
+              <EmptyState onAddRecruit={() => activeView === "transfer" ? setIsTransferModalOpen(true) : setIsModalOpen(true)} />
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {displayedRecruits.map((recruit) => (
+                  <RecruitCard
+                    key={recruit.id}
+                    recruit={recruit}
+                    onEdit={handleEditRecruit}
+                    onDelete={handleDeleteClick}
+                    onStatusClick={handleQuickTag}
+                    onViewWriteups={handleViewWriteups}
+                    onAddWriteup={(recruit) => {
+                      handleEditRecruit(recruit);
+                      setInitialTab("writeup");
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <RecruitModal
           isOpen={isModalOpen}

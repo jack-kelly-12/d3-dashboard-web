@@ -3,7 +3,7 @@ import { Search, Loader2, ChevronRight, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { fetchAPI } from "../config/api";
 
-const GlobalPlayerSearch = ({ collapsed = false, className = "" }) => {
+const PlayerSearch = ({ collapsed = false, className = "" }) => {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -268,7 +268,7 @@ const GlobalPlayerSearch = ({ collapsed = false, className = "" }) => {
   );
 };
 
-export default GlobalPlayerSearch;
+export default PlayerSearch;
 
 
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import GlobalPlayerSearch from "./GlobalPlayerSearch";
+import PlayerSearch from "./PlayerSearch";
 
 const Header = ({ title, showSearch = true, className = "" }) => {
   return (
@@ -13,7 +13,7 @@ const Header = ({ title, showSearch = true, className = "" }) => {
         {showSearch && (
           <div className="flex items-center space-x-4">
             <div className="w-80">
-              <GlobalPlayerSearch />
+              <PlayerSearch />
             </div>
             <Link
               to="/"

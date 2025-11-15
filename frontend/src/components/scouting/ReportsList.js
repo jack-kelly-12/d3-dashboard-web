@@ -115,7 +115,6 @@ const ReportsList = ({
     setOpenDropdownId(null);
 
     if (reportType === "spraychart") {
-      console.log(report);
       navigate(`/scouting/reports/${report.id}/spraycharts`);
     } else {
       const reportTypeMap = {
@@ -126,7 +125,6 @@ const ReportsList = ({
       toast.success(
         `Generating ${reportTypeMap[reportType]} for ${report.teamName}`
       );
-      console.log(`Generate ${reportType} for team ${report.teamName}`);
     }
   };
 
