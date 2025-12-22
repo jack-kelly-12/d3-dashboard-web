@@ -1,12 +1,18 @@
 import { Trash2 } from "lucide-react";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { BaseballTable } from "./BaseballTable";
+import {
+  calculateZoneFromLocation,
+  calculateZoneCenter,
+  isPitchInZone,
+} from "../../utils/zoneUtils";
 
 const PitchTable = ({
   pitches,
   onDeletePitch,
   onUpdatePitch,
   isBullpen = false,
+  zoneType = "standard",
 }) => {
   const [editingVelocity, setEditingVelocity] = useState(null);
   const [velocityValue, setVelocityValue] = useState("");
@@ -42,6 +48,48 @@ const PitchTable = ({
       y: y.toFixed(1),
     };
   };
+
+  const getActualZone = useCallback(
+    (x, y) => {
+      if (x === null || x === undefined || y === null || y === undefined) {
+        return null;
+      }
+      return calculateZoneFromLocation(x, y, zoneType);
+    },
+    [zoneType]
+  );
+
+  const calculateMissDistance = useCallback(
+    (pitch) => {
+      if (
+        !pitch.intendedZone ||
+        pitch.x === null ||
+        pitch.x === undefined ||
+        pitch.y === null ||
+        pitch.y === undefined
+      ) {
+        return null;
+      }
+      const pitchZoneType = pitch.zoneType || zoneType;
+      const center = calculateZoneCenter(pitch.intendedZone, pitchZoneType);
+
+      if (
+        isPitchInZone(
+          pitch.x,
+          pitch.y,
+          pitch.intendedZone,
+          pitchZoneType
+        )
+      ) {
+        return 0;
+      }
+
+      return Math.sqrt(
+        Math.pow(pitch.x - center.x, 2) + Math.pow(pitch.y - center.y, 2)
+      );
+    },
+    [zoneType]
+  );
 
   const VelocityCell = ({ row }) =>
     editingVelocity === row.id ? (
@@ -111,6 +159,30 @@ const PitchTable = ({
         center: true,
       },
       {
+        name: "Zone",
+        selector: (row) => getActualZone(row.x, row.y) || "—",
+        sortable: true,
+        width: "5rem",
+        center: true,
+      },
+      {
+        name: "Miss Distance",
+        selector: (row) => {
+          const missDist = calculateMissDistance(row);
+          return missDist !== null ? missDist.toFixed(2) : "—";
+        },
+        sortable: true,
+        width: "7rem",
+        cell: (row) => {
+          const missDist = calculateMissDistance(row);
+          return (
+            <span className="font-mono">
+              {missDist !== null ? missDist.toFixed(2) + " in." : "—"}
+            </span>
+          );
+        },
+      },
+      {
         name: "Pitch X",
         selector: (row) => formatCoords(row.x, row.y).x,
         sortable: true,
@@ -135,7 +207,7 @@ const PitchTable = ({
         button: true,
       },
     ],
-    []
+    [getActualZone, calculateMissDistance]
   );
 
   const gameColumns = useMemo(
@@ -188,6 +260,13 @@ const PitchTable = ({
         cell: (row) => <VelocityCell row={row} />,
         sortable: true,
         width: "6rem",
+      },
+      {
+        name: "Zone",
+        selector: (row) => getActualZone(row.x, row.y) || "—",
+        sortable: true,
+        width: "5rem",
+        center: true,
       },
       {
         name: "Result",
@@ -264,7 +343,7 @@ const PitchTable = ({
         button: true,
       },
     ],
-    []
+    [getActualZone]
   );
 
   return (
