@@ -14,7 +14,7 @@ export const BullpenPitchCounter = ({ pitches = [] }) => {
           <>
             <span className="text-gray-300">|</span>
             <span className="text-gray-600 text-sm">
-              {lastPitch.type} • {lastPitch.velocity} mph
+              {lastPitch.type.charAt(0).toUpperCase() + lastPitch.type.slice(1)} • {lastPitch.velocity} mph
             </span>
           </>
         )}

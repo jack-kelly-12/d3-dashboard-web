@@ -10,6 +10,7 @@ import PitchTable from "../tables/PitchTable";
 import PlayerModal from "../modals/PlayerModal";
 import ChartManager from "../../managers/ChartManager";
 import { BullpenPitchCounter, GamePitchCounter } from "./PitchCounter";
+import { calculateZoneFromLocation } from "../../utils/zoneUtils";
 
 export const ChartingView = ({ chart, onSave, onBack }) => {
   const [isPlayerModalOpen, setIsPlayerModalOpen] = useState(false);
@@ -201,9 +202,13 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
   const handlePlotPitch = (location) => {
     setShouldResetPlot(false);
     if (isStrikeZone) {
+      const calculatedZone = location
+        ? calculateZoneFromLocation(location.x, location.y, zoneType)
+        : null;
       setCurrentPitch((prev) => ({
         ...prev,
         location,
+        ...(calculatedZone !== null && { zone: calculatedZone }),
       }));
     } else {
       setCurrentHit((prev) => ({
@@ -360,6 +365,8 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         result: "",
         location: null,
         note: "",
+        ...(isBullpen && { intendedZone: null }),
+        zone: null,
       });
 
       setCurrentHit({
@@ -399,6 +406,8 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
         result: "",
         location: null,
         note: "",
+        ...(isBullpen && { intendedZone: null }),
+        zone: null,
       });
     } else {
       setCurrentHit({
@@ -511,6 +520,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   onDeletePitch={handleDeletePitch}
                   onUpdatePitch={handleUpdatePitch}
                   isBullpen={true}
+                  zoneType={zoneType}
                 />
               </div>
             </div>
@@ -658,6 +668,7 @@ export const ChartingView = ({ chart, onSave, onBack }) => {
                   onUpdatePitch={handleUpdatePitch}
                   showBatter={true}
                   isBullpen={isBullpen}
+                  zoneType={zoneType}
                 />
               </div>
             </div>
