@@ -1,3 +1,5 @@
+import { YEARS as YEAR_VALUES, DIVISIONS as DIVISION_VALUES } from "./constants";
+
 export const DATA_TYPES = [
   { id: "scoreboard", label: "Scoreboard" },
   { id: "player_batting", label: "Player Batting" },
@@ -15,13 +17,12 @@ export const DATA_TYPES = [
   { id: "rolling", label: "Rolling" },
 ];
 
-export const DIVISIONS = [
-  { label: "Division 1", value: 1 },
-  { label: "Division 2", value: 2 },
-  { label: "Division 3", value: 3 },
-];
+export const DIVISIONS = DIVISION_VALUES.map(d => ({
+  label: `Division ${d}`,
+  value: d,
+}));
 
-export const YEARS = [2025, 2024, 2023, 2022, 2021];
+export const YEARS = YEAR_VALUES;
 
 export const DATA_TYPE_CONFIG = {
   scoreboard: {

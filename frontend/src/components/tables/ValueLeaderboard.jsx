@@ -5,6 +5,7 @@ import { Search, FileBox } from "lucide-react";
 import debounce from "lodash/debounce";
 import { columnsValueLeaderboard } from "../../config/valueColumns";
 import ExportButton from "../buttons/ExportButton";
+import { DEFAULT_YEAR, DEFAULT_DIVISION } from "../../config/constants";
 
 const ValueLeaderboard = ({
   selectedListId,
@@ -16,11 +17,11 @@ const ValueLeaderboard = ({
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [startYear, setStartYear] = useState(2025);
-  const [endYear, setEndYear] = useState(2025);
+  const [startYear, setStartYear] = useState(DEFAULT_YEAR);
+  const [endYear, setEndYear] = useState(DEFAULT_YEAR);
   const [selectedConference, setSelectedConference] = useState("");
   const [conferences, setConferences] = useState([]);
-  const [division, setDivision] = useState(3);
+  const [division, setDivision] = useState(DEFAULT_DIVISION);
 
   const fetchConferences = useCallback(async () => {
     if (!isAuthReady) return;

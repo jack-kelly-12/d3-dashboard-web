@@ -9,6 +9,7 @@ import ScoutingReportManager from "../managers/ScoutingReportsManager";
 import AuthManager from "../managers/AuthManager";
 import { fetchAPI } from "../config/api";
 import { LoadingState } from "../components/alerts/Alerts";
+import { DEFAULT_DIVISION } from "../config/constants";
 
 const useScoutingState = () => {
   const [state, setState] = useState({
@@ -17,7 +18,7 @@ const useScoutingState = () => {
     availableTeams: [],
     selectedReport: null,
     currentView: "list",
-    selectedDivision: 3,
+    selectedDivision: DEFAULT_DIVISION,
     isLoading: true,
     isCreateModalOpen: false,
     isAddPlayerModalOpen: false,

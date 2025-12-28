@@ -1,5 +1,7 @@
+import { YEARS } from "../../config/constants";
+
 const YearSelector = ({ selectedYears, onChange }) => {
-  const years = [2025, 2024, 2023, 2022, 2021];
+  const years = YEARS;
 
   return (
     <div className="flex flex-wrap gap-2">

@@ -4,6 +4,7 @@ import { Calendar } from "lucide-react";
 import { fetchAPI } from "../config/api";
 import DataControls from "../components/data/DataControls";
 import AuthManager from "../managers/AuthManager";
+import { DEFAULT_DIVISION } from "../config/constants";
 
 const TeamLogo = ({ teamId, teamName }) => (
   <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100">
@@ -94,7 +95,7 @@ const Scoreboard = () => {
     isLoading: true,
     error: null,
     currentDate: new Date(searchParams.get("date") || Date.now()),
-    division: Number(searchParams.get("division")) || 3,
+    division: Number(searchParams.get("division")) || DEFAULT_DIVISION,
   });
 
   useEffect(() => {

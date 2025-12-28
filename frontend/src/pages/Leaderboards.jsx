@@ -15,10 +15,9 @@ import { BaseballTable } from "../components/tables/BaseballTable";
 import DataControls from "../components/data/DataControls";
 import ErrorDisplay from "../components/alerts/ErrorDisplay";
 import debounce from "lodash/debounce";
+import { DEFAULT_YEAR, DEFAULT_DIVISION } from "../config/constants";
 
-const DEFAULT_YEAR = 2025;
 const DEFAULT_MIN_PA = 50;
-const DEFAULT_DIVISION = 3;
 
 const LEADERBOARD_TYPES = [
   { id: "value", label: "Value" },

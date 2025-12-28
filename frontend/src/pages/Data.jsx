@@ -12,10 +12,9 @@ import { getTeamBattingColumns } from "../config/teamBattingColumns";
 import { getTeamPitchingColumns } from "../config/teamPitchingColumns";
 import PlayerListManager from "../managers/PlayerListManager";
 import { getErrorMessage } from "../utils/errorUtils";
+import { DEFAULT_YEAR, DEFAULT_DIVISION } from "../config/constants";
 
-const DEFAULT_YEAR = 2025;
 const DEFAULT_MIN_PA = 50;
-const DEFAULT_DIVISION = 3;
 
 const ENDPOINT_MAP = {
   player_batting: "/api/batting",

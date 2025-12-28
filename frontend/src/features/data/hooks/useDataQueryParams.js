@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import debounce from "lodash/debounce";
+import { DEFAULT_YEAR, DEFAULT_DIVISION } from "../../../config/constants";
 
 export function useDataQueryParams() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -9,12 +10,12 @@ export function useDataQueryParams() {
     () => ({
       dataType: searchParams.get("dataType") || "player_hitting",
       selectedYears:
-        searchParams.get("years")?.split(",").map(Number) || [2025],
+        searchParams.get("years")?.split(",").map(Number) || [DEFAULT_YEAR],
       searchTerm: searchParams.get("search") || "",
       minPA: Number(searchParams.get("minPA")) || 50,
       minIP: Number(searchParams.get("minIP")) || 10,
       selectedConference: searchParams.get("conference") || "",
-      division: Number(searchParams.get("division")) || 3,
+      division: Number(searchParams.get("division")) || DEFAULT_DIVISION,
       selectedListId: searchParams.get("listId") || "",
     }),
     [searchParams]

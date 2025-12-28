@@ -10,8 +10,7 @@ import { getGutsColumns } from "../config/gutsColumns";
 import { getParkFactorsColumns } from "../config/parkFactorsColumns";
 import { getExpectedRunsColumns } from "../config/expectedRunsColumns";
 import { getErrorMessage } from "../utils/errorUtils";
-
-const DEFAULT_DIVISION = 3;
+import { DEFAULT_YEAR, DEFAULT_DIVISION } from "../config/constants";
 
 const ENDPOINT_MAP = {
   guts: "/api/guts",
@@ -29,7 +28,7 @@ const Guts = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [dataType, setDataType] = useState(searchParams.get("dataType") || "guts");
-  const [selectedYears, setSelectedYears] = useState([2025]);
+  const [selectedYears, setSelectedYears] = useState([DEFAULT_YEAR]);
   const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [division, setDivision] = useState(Number(searchParams.get("division")) || DEFAULT_DIVISION);
 

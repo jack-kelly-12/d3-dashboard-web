@@ -12,12 +12,16 @@ const SprayChart = ({ width = 600, height = 240, playerId, year, division }) => 
     playerData,
     aggregates,
     loading,
+    isTransitioning,
     error,
     selectedZones,
     setSelectedZones,
     handFilter,
     setHandFilter,
     clearZones,
+    availableYears,
+    selectedYear,
+    setSelectedYear,
   } = useSprayChartData(playerId, year, division);
 
   useEffect(() => {
@@ -75,8 +79,14 @@ const SprayChart = ({ width = 600, height = 240, playerId, year, division }) => 
     <div className="w-full max-w-4xl mx-auto">
       <div
         ref={containerRef}
-        className="border border-blue-200 rounded-lg shadow-md bg-blue-50/30 overflow-hidden"
+        className="border border-blue-200 rounded-lg shadow-md bg-blue-50/30 overflow-hidden relative"
       >
+        {isTransitioning && (
+          <div className="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-[1px] transition-opacity duration-200">
+            <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          </div>
+        )}
+        
         <ChartHeader
           playerData={playerData}
           filterText={filterText}
@@ -84,9 +94,12 @@ const SprayChart = ({ width = 600, height = 240, playerId, year, division }) => 
           handFilter={handFilter}
           setHandFilter={setHandFilter}
           containerRef={containerRef}
+          availableYears={availableYears}
+          selectedYear={selectedYear}
+          setSelectedYear={setSelectedYear}
         />
 
-        <div className="px-3 py-2">
+        <div className={`px-3 py-2 transition-opacity duration-200 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
           <svg
             ref={svgRef}
             width="100%"
@@ -105,7 +118,7 @@ const SprayChart = ({ width = 600, height = 240, playerId, year, division }) => 
   );
 };
 
-const ChartHeader = ({ playerData, filterText, clearZones, handFilter, setHandFilter, containerRef }) => {
+const ChartHeader = ({ playerData, filterText, clearZones, handFilter, setHandFilter, containerRef, availableYears, selectedYear, setSelectedYear }) => {
   const exportChart = async () => {
     const container = containerRef.current;
     if (!container) return;
@@ -154,33 +167,49 @@ const ChartHeader = ({ playerData, filterText, clearZones, handFilter, setHandFi
         </div>
       </div>
 
-      <div className="px-4 py-2 border-t border-blue-200 bg-white/50 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-600">Filter:</span>
-          {['All', 'RHP', 'LHP'].map((label) => {
-            const isActive =
-              (label === 'All' && handFilter.L && handFilter.R) ||
-              (label === 'RHP' && handFilter.R && !handFilter.L) ||
-              (label === 'LHP' && handFilter.L && !handFilter.R);
-
-            return (
-              <button
-                key={label}
-                onClick={() => {
-                  if (label === 'All') setHandFilter({ L: true, R: true });
-                  else if (label === 'RHP') setHandFilter({ L: false, R: true });
-                  else setHandFilter({ L: true, R: false });
-                }}
-                className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
+      <div className="px-4 py-2 border-t border-blue-200 bg-white/50 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-4">
+          {availableYears.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-600">Year:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                className="px-2 py-1 text-sm font-medium rounded border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {label}
-              </button>
-            );
-          })}
+                {availableYears.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-600">vs:</span>
+            {['All', 'RHP', 'LHP'].map((label) => {
+              const isActive =
+                (label === 'All' && handFilter.L && handFilter.R) ||
+                (label === 'RHP' && handFilter.R && !handFilter.L) ||
+                (label === 'LHP' && handFilter.L && !handFilter.R);
+
+              return (
+                <button
+                  key={label}
+                  onClick={() => {
+                    if (label === 'All') setHandFilter({ L: true, R: true });
+                    else if (label === 'RHP') setHandFilter({ L: false, R: true });
+                    else setHandFilter({ L: true, R: false });
+                  }}
+                  className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+                    isActive
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <button
@@ -358,4 +387,4 @@ const getHeatColor = (percentage, type) => {
   return "#FFE4E1";
 };
 
-export default SprayChart;
+export default React.memo(SprayChart);

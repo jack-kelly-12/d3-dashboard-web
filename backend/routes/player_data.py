@@ -52,21 +52,21 @@ def get_player_rolling_data(player_id):
 
         query = f"""
             WITH player_pas AS (
-    SELECT 
-        date,
-                contest_id,
-        woba,
-        ROW_NUMBER() OVER (
-            ORDER BY 
-                        substr(date, 7, 4), -- year part (YYYY)
-                substr(date, 1, 2), -- Month part (MM)
-                substr(date, 4, 2), -- Day part (DD)
-                        contest_id
-        ) as pa_number
-    FROM pbp
-    WHERE {id_field} = ?
-    AND woba IS NOT NULL
-    ORDER BY 
+                SELECT 
+                    date,
+                            contest_id,
+                    woba,
+                    ROW_NUMBER() OVER (
+                        ORDER BY 
+                                    substr(date, 7, 4), -- year part (YYYY)
+                            substr(date, 1, 2), -- Month part (MM)
+                            substr(date, 4, 2), -- Day part (DD)
+                                    contest_id
+                    ) as pa_number
+                FROM pbp
+                WHERE {id_field} = ?
+                AND woba IS NOT NULL
+                ORDER BY 
                 substr(date, 7, 4), -- year part (YYYY)
         substr(date, 1, 2), -- Month part (MM)
         substr(date, 4, 2), -- Day part (DD)
@@ -613,6 +613,14 @@ def get_spraychart_data(player_id):
                 'is_pa': play.get('woba') is not None,
             })
 
+        cursor.execute("""
+            SELECT DISTINCT p.year
+            FROM pbp p
+            WHERE p.batter_id = ?
+            ORDER BY p.year DESC
+        """, (player_id,))
+        available_years = [row['year'] for row in cursor.fetchall()]
+
         response_data = {
             "counts": hit_counts,
             "player_id": player_id,
@@ -621,6 +629,7 @@ def get_spraychart_data(player_id):
             "bats": bats,
             "year": year,
             "events": events,
+            "available_years": available_years,
         }
 
         return jsonify(response_data)

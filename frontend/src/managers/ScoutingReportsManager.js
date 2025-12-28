@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import AuthManager from "../managers/AuthManager";
+import { DEFAULT_YEAR, DEFAULT_DIVISION } from "../config/constants";
 
 class ScoutingReportManager {
   constructor() {
@@ -25,8 +26,8 @@ class ScoutingReportManager {
 
       const report = {
         ...reportData,
-        division: reportData.division || 3,
-        year: reportData.year || 2024,
+        division: reportData.division || DEFAULT_DIVISION,
+        year: reportData.year || DEFAULT_YEAR,
         userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -55,7 +56,6 @@ class ScoutingReportManager {
 
       const reportData = reportSnap.data();
 
-      // Verify the user has permission to access this report
       if (reportData.userId !== userId) {
         throw new Error("Unauthorized access to report");
       }
@@ -63,8 +63,8 @@ class ScoutingReportManager {
       return {
         id: reportId,
         ...reportData,
-        division: reportData.division || 3,
-        year: reportData.year || 2024,
+        division: reportData.division || DEFAULT_DIVISION,
+        year: reportData.year || DEFAULT_YEAR,
       };
     } catch (error) {
       console.error("Error getting report:", error);
@@ -84,8 +84,8 @@ class ScoutingReportManager {
       return snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-        division: doc.data().division || 3,
-        year: doc.data().year || 2024,
+        division: doc.data().division || DEFAULT_DIVISION,
+        year: doc.data().year || DEFAULT_YEAR,
       }));
     } catch (error) {
       console.error("Error getting user reports:", error);
@@ -103,8 +103,8 @@ class ScoutingReportManager {
 
       await updateDoc(reportRef, {
         ...updateData,
-        division: updateData.division || 3,
-        year: updateData.year || 2024,
+        division: updateData.division || DEFAULT_DIVISION,
+        year: updateData.year || DEFAULT_YEAR,
         updatedAt: new Date().toISOString(),
       });
     } catch (error) {

@@ -12,6 +12,7 @@ import RollingChart from "../components/player/RollingChart";
 import SimilarBatters from "../components/player/SimilarBatters";
 import SimilarPitchers from "../components/player/SimilarPitchers";
 import { usePercentiles } from "../hooks/usePercentiles";
+import { DEFAULT_DIVISION } from "../config/constants";
 
 const LoadingState = () => (
   <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-hidden">
@@ -267,7 +268,7 @@ const PlayerPage = () => {
   const [isHeaderReady, setIsHeaderReady] = useState(false);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState(STAT_TYPES.BATTING);
-  const [selectedDivision, setSelectedDivision] = useState(3);
+  const [selectedDivision, setSelectedDivision] = useState(DEFAULT_DIVISION);
   const [selectedConference, setSelectedConference] = useState(null);
   const [selectedYear, setSelectedYear] = useState(null);
   const [statData, setStatData] = useState({

@@ -5,6 +5,7 @@ import { Search, Users, User, FileBox } from "lucide-react";
 import debounce from "lodash/debounce";
 import { columnsSplitsBatters, columnsSplitsPitchers } from "../../config/splitsColumns";
 import ExportButton from "../buttons/ExportButton";
+import { DEFAULT_YEAR, DEFAULT_DIVISION } from "../../config/constants";
 
 const SplitsLeaderboard = ({
   selectedListId,
@@ -16,12 +17,12 @@ const SplitsLeaderboard = ({
   const [data, setData] = useState([]);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [startYear, setStartYear] = useState(2025);
-  const [endYear, setEndYear] = useState(2025);
+  const [startYear, setStartYear] = useState(DEFAULT_YEAR);
+  const [endYear, setEndYear] = useState(DEFAULT_YEAR);
   const [selectedConference, setSelectedConference] = useState("");
   const [minCount, setMinCount] = useState(50);
   const [conferences, setConferences] = useState([]);
-  const [division, setDivision] = useState(3);
+  const [division, setDivision] = useState(DEFAULT_DIVISION);
   const [viewType, setViewType] = useState("batters");
 
   const fetchConferences = useCallback(async () => {

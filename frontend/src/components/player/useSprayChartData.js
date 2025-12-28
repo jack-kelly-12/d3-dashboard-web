@@ -1,24 +1,35 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { fetchAPI } from "../../config/api";
 
-export const useSprayChartData = (playerId, year, division) => {
+export const useSprayChartData = (playerId, initialYear, division) => {
   const [playerData, setPlayerData] = useState(null);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [error, setError] = useState(null);
   const [selectedZones, setSelectedZones] = useState([]);
   const [handFilter, setHandFilter] = useState({ L: true, R: true });
+  const [availableYears, setAvailableYears] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(initialYear);
 
   useEffect(() => {
     const fetchPlayerData = async () => {
-      setLoading(true);
+      if (!selectedYear) return;
+      
+      const isInitialLoad = !playerData;
+      if (isInitialLoad) {
+        setLoading(true);
+      } else {
+        setIsTransitioning(true);
+      }
+      
       try {
         const data = await fetchAPI(
-          `/spraychart_data/${playerId}?year=${year}&division=${division}`
+          `/spraychart_data/${playerId}?year=${selectedYear}&division=${division}`
         );
         const bats = data.bats || "-";
         const team = data.team_name || "-";
-        const playerInfo = `${bats ? bats.substring(0, 1).toUpperCase() : "-"} | ${year} | ${team}`;
+        const playerInfo = `${bats ? bats.substring(0, 1).toUpperCase() : "-"} | ${selectedYear} | ${team}`;
 
         setEvents(Array.isArray(data.events) ? data.events : []);
         setPlayerData({
@@ -26,17 +37,22 @@ export const useSprayChartData = (playerId, year, division) => {
           playerInfo,
           counts: data.counts || {},
         });
+        
+        const years = data.available_years || [];
+        setAvailableYears(years);
+        
         setError(null);
       } catch (err) {
         console.error("Error fetching player data:", err);
         setError(err.message);
       } finally {
         setLoading(false);
+        setIsTransitioning(false);
       }
     };
 
     fetchPlayerData();
-  }, [division, playerId, year]);
+  }, [division, playerId, selectedYear]);
 
   const filteredEvents = useMemo(() => {
     if (!events.length) return [];
@@ -183,7 +199,7 @@ export const useSprayChartData = (playerId, year, division) => {
     };
   }, [events, filteredEvents]);
 
-  const clearZones = () => setSelectedZones([]);
+  const clearZones = useCallback(() => setSelectedZones([]), []);
 
   return {
     playerData,
@@ -191,12 +207,16 @@ export const useSprayChartData = (playerId, year, division) => {
     filteredEvents,
     aggregates,
     loading,
+    isTransitioning,
     error,
     selectedZones,
     setSelectedZones,
     handFilter,
     setHandFilter,
     clearZones,
+    availableYears,
+    selectedYear,
+    setSelectedYear,
   };
 };
 
