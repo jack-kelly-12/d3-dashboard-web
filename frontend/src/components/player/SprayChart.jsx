@@ -347,14 +347,14 @@ const drawOutfield = (field, { centerX, centerY, arcRadius, infieldRadius, outfi
 
 const getHeatColor = (percentage, type) => {
   if (type === 'infield') {
-    if (percentage >= 40) return "#FF9999";
-    if (percentage >= 25) return "#FFCCCC";
+    if (percentage >= 15) return "#FF9999";
+    if (percentage >= 10) return "#FFCCCC";
     if (percentage > 0) return "#FFE4E1";
     return "#FFFFFF";
   }
-  if (percentage >= 50) return "#FF6666";
-  if (percentage >= 33) return "#FF9999";
-  if (percentage >= 17) return "#FFCCCC";
+  if (percentage >= 28) return "#FF6666";
+  if (percentage >= 22) return "#FF9999";
+  if (percentage >= 15) return "#FFCCCC";
   return "#FFE4E1";
 };
 
