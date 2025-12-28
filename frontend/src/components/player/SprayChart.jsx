@@ -72,7 +72,7 @@ const SprayChart = ({ width = 600, height = 240, playerId, year, division }) => 
   const filterText = handText ? `${zoneText} • ${handText}` : zoneText;
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto">
       <div
         ref={containerRef}
         className="border border-blue-200 rounded-lg shadow-md bg-blue-50/30 overflow-hidden"
