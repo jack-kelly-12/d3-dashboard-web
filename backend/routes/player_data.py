@@ -546,6 +546,10 @@ def get_spraychart_data(player_id):
                 zone_key = classify_zone(desc)
 
             display_zone = map_zone_to_display(zone_key) if zone_key else None
+            
+            is_hr = 'homered' in desc
+            if is_hr and display_zone and not display_zone.endswith("-hr"):
+                display_zone = display_zone + "-hr"
 
             is_ground = bool(bb_type_patterns['is_ground'].search(desc))
             is_fly = bool(bb_type_patterns['is_fly'].search(desc))
@@ -579,7 +583,6 @@ def get_spraychart_data(player_id):
             is_single = 'singled' in desc
             is_double = 'doubled' in desc
             is_triple = 'tripled' in desc
-            is_hr = 'homered' in desc
             is_bb = 'walked' in desc or 'intentional walk' in desc
             is_hbp = 'hit by pitch' in desc
             is_sf = 'sacrifice fly' in desc

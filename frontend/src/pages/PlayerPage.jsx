@@ -203,8 +203,6 @@ const PlayerContent = memo(
             playerId={playerId}
             year={currentYear}
             division={selectedDivision}
-            height={600}
-            width={700}
           />
         )}
 

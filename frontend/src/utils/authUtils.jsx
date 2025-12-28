@@ -1,4 +1,3 @@
-// src/utils/authErrors.js
 export const getAuthErrorMessage = (error) => {
   const errorMap = {
     "auth/popup-closed-by-user": "Sign in was cancelled. Please try again.",

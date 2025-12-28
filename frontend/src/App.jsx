@@ -11,12 +11,12 @@ import SignIn from "./pages/SignIn";
 import HomePage from "./pages/HomePage";
 import { Toaster } from "react-hot-toast";
 import SprayChart from "./components/charting/SprayChart";
-import PlayerPage from "./pages/PlayerPage.js";
-import Leaderboards from "./pages/Leaderboards.js";
-import GamePage from "./pages/GamePage.js";
-import Scoreboard from "./pages/Scoreboard.js";
-import PlayerLists from "./pages/PlayerLists.js";
-import SprayChartsPage from "./pages/SprayChartsPage.js";
+import PlayerPage from "./pages/PlayerPage";
+import Leaderboards from "./pages/Leaderboards";
+import GamePage from "./pages/GamePage";
+import Scoreboard from "./pages/Scoreboard";
+import PlayerLists from "./pages/PlayerLists";
+import SprayChartsPage from "./pages/SprayChartsPage";
 import WhatsNewModal from "./components/modals/WhatsNewModal";
 import AuthManager from "./managers/AuthManager";
 
