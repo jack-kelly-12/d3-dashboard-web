@@ -39,11 +39,6 @@ const PlansAndFeatures = () => {
       type: "feature"
     },
     {
-      title: "API access",
-      description: "Developer API with Swagger documentation",
-      type: "feature"
-    },
-    {
       date: "January-February",
       title: "Projections",
       description: "Player projections and predictive modeling, for 2026 season. Waiting on rosters to be finalized.",

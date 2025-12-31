@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Calendar, ChevronLeft, Zap, TrendingUp, Award } from "lucide-react";
+import { Calendar, ChevronLeft, Zap, TrendingUp, Award, Flame } from "lucide-react";
 import WinExpectancyChart from "../components/game/WinExpectancyChart";
 import GameLog from "../components/game/GameLog";
 import { fetchAPI } from "../config/api";
@@ -57,16 +57,31 @@ const calculateGameStats = (gameData) => {
     if (lastLeader && currentLeader !== "tie" && currentLeader !== lastLeader) leadChanges++;
     if (currentLeader !== "tie") lastLeader = currentLeader;
   });
-  return { homeScore, awayScore, biggestPlay, mvp, leadChanges };
+  
+  // Leverage-Weighted Excitement Index
+  // EI_LI = Σ |WE_i - WE_{i-1}| × LI_i
+  const excitementIndex = gameData.plays.reduce((sum, play) => {
+    const wpaAbs = Math.abs(play.wpa || 0);
+    const li = play.li || 1;
+    return sum + (wpaAbs * li);
+  }, 0);
+  
+  return { homeScore, awayScore, biggestPlay, mvp, leadChanges, excitementIndex };
 };
 
-const KPIChip = ({ icon: Icon, label, value, color }) => (
-  <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm">
-    <Icon className={`w-4 h-4 ${color}`} />
+const KPIChip = ({ icon: Icon, label, value, color, tooltip }) => (
+  <div className="relative group flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white shadow-sm cursor-default">
+    <Icon className="w-4 h-4" style={{ color }} />
     <div className="flex items-center gap-2">
       <span className="text-xs text-gray-600">{label}:</span>
       <span className="text-sm font-semibold text-gray-900">{value}</span>
     </div>
+    {tooltip && (
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-lg">
+        {tooltip}
+        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+      </div>
+    )}
   </div>
 );
 
@@ -151,26 +166,40 @@ const GameHeader = ({ gameData, onBack, fallbackHomeId, fallbackAwayId }) => {
 const KPIChips = ({ gameData }) => {
   const stats = calculateGameStats(gameData);
   if (!stats) return null;
+  
+  const getExcitementColor = (ei) => {
+    if (ei >= 2.5) return "#dc2626";    // red-600 - Instant classic
+    if (ei >= 1.5) return "#f97316";    // orange-500 - Exciting
+    if (ei >= 1.0) return "#f59e0b";    // amber-500 - Competitive
+    return "#9ca3af";                    // gray-400 - Routine
+  };
+  
   return (
     <div className="mb-6">
       <div className="flex flex-wrap gap-2">
         <KPIChip
+          icon={Flame}
+          label="Excitement"
+          value={stats.excitementIndex.toFixed(2)}
+          color={getExcitementColor(stats.excitementIndex)}
+        />
+        <KPIChip
           icon={Zap}
           label="Biggest Play"
           value={stats.biggestPlay ? `${stats.biggestPlay.batter_name || "Unknown"} · ${(stats.biggestPlay.wpa * 100).toFixed(1)}%` : "N/A"}
-          color="text-purple-500"
+          color="#a855f7"
         />
         <KPIChip
           icon={Award}
           label="Game MVP"
           value={stats.mvp ? `${stats.mvp[0]} · ${(stats.mvp[1] * 100).toFixed(1)}%` : "N/A"}
-          color="text-green-600"
+          color="#16a34a"
         />
         <KPIChip
           icon={TrendingUp}
           label="Lead Changes"
           value={stats.leadChanges}
-          color="text-rose-600"
+          color="#e11d48"
         />
       </div>
     </div>

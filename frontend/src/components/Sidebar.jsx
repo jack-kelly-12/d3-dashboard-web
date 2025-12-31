@@ -17,6 +17,7 @@ import {
   Trophy,
   User2,
   Users,
+  Key,
 } from "lucide-react";
 import AuthManager from "../managers/AuthManager";
 import FeatureFlagManager from "../managers/FeatureFlagManager";
@@ -106,6 +107,17 @@ const UserSection = ({
     </div>
 
 
+      <Link
+        to="/api-keys"
+        className={`w-full flex items-center h-10 px-3 text-gray-600 hover:bg-gray-100 hover:text-gray-800 rounded-lg transition-all duration-200 ${
+          collapsed && !mobileOpen ? "justify-center" : ""
+        }`}
+      >
+        <Key className="w-4 h-4" strokeWidth={1.5} />
+        {(!collapsed || mobileOpen) && (
+          <span className="ml-2 text-sm font-medium">API Keys</span>
+        )}
+      </Link>
       <button
         onClick={onSignOut}
         className={`w-full flex items-center h-10 px-3 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg transition-all duration-200 ${

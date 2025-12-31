@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { TrendingUp } from "lucide-react";
 import { getTopPlayersByVisits } from "../../services/dataService";
 import { fetchAPI } from "../../config/api";
+import AuthManager from "../../managers/AuthManager";
 
 const SkeletonRow = () => (
   <tr className="border-b border-gray-100">
@@ -34,6 +35,7 @@ const TrendingPlayers = ({ compact = false, limit }) => {
       try {
         setIsLoading(true);
         setError(null);
+        await AuthManager.ensureUser("trending");
         const data = await getTopPlayersByVisits(limit || (compact ? 5 : 10));
         
         if (data && data.length > 0) {

@@ -1,14 +1,54 @@
 from flask import Blueprint, jsonify, request
 from config import MIN_YEAR, MAX_YEAR
 from db import get_db_connection
+from middleware import require_api_auth, cache_response
 
 
 bp = Blueprint('pitching', __name__, url_prefix='/api')
 
 
 @bp.get('/pitching')
+@require_api_auth
+@cache_response(ttl=300)
 def get_pitching():
-    years_param = request.args.get('years', 'MAX_YEAR')
+    """
+    Get pitching leaderboard
+    ---
+    tags:
+      - Pitching
+    description: |
+      Returns pitching statistics for all qualified players.
+      
+      **cURL:**
+      
+          curl -H "X-API-Key: YOUR_KEY" "https://d3-dashboard.com/api/pitching?years=2024&division=3"
+      
+      **Python:**
+      
+          import requests
+          requests.get("https://d3-dashboard.com/api/pitching", 
+                       headers={"X-API-Key": "YOUR_KEY"}, 
+                       params={"years": "2024", "division": 3})
+    parameters:
+      - in: query
+        name: years
+        schema:
+          type: string
+        description: Single year or comma-separated years (e.g., "2024" or "2023,2024")
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+        description: NCAA division
+    responses:
+      200:
+        description: Pitching leaderboard with WAR, ERA, FIP, K%, BB%, and more
+      400:
+        description: Invalid parameters
+    """
+    years_param = request.args.get('years', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
 
     if division not in [1, 2, 3]:
@@ -46,8 +86,34 @@ def get_pitching():
 
 
 @bp.get('/pitching_team')
+@require_api_auth
+@cache_response(ttl=300)
 def get_pitching_team():
-    years_param = request.args.get('years', 'MAX_YEAR')
+    """
+    Get team pitching statistics
+    ---
+    tags:
+      - Pitching
+    parameters:
+      - in: query
+        name: years
+        schema:
+          type: string
+        description: Single year or comma-separated years (e.g., '2024' or '2023,2024')
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+        description: NCAA division
+    responses:
+      200:
+        description: Team pitching statistics
+      400:
+        description: Invalid parameters
+    """
+    years_param = request.args.get('years', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
 
     if division not in [1, 2, 3]:

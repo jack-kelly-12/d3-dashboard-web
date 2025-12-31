@@ -1,4 +1,5 @@
 import { getAuth } from "firebase/auth";
+import AuthManager from "../managers/AuthManager";
 
 const getBaseUrl = () => {
   if (process.env.NODE_ENV === "development") {
@@ -15,9 +16,12 @@ export const fetchAPI = async (endpoint, options = {}) => {
     : `/api${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
 
   const url = `${API_BASE_URL}${normalizedEndpoint}`;
+  
+  await AuthManager.waitForAuth();
+  
   const auth = getAuth();
-
   let authToken = "";
+  
   if (auth.currentUser) {
     try {
       authToken = await auth.currentUser.getIdToken();
@@ -25,13 +29,22 @@ export const fetchAPI = async (endpoint, options = {}) => {
       console.warn("Failed to get auth token:", error);
       authToken = "";
     }
+  } else {
+    await AuthManager.ensureUser("api");
+    if (auth.currentUser) {
+      try {
+        authToken = await auth.currentUser.getIdToken();
+      } catch (error) {
+        console.warn("Failed to get auth token:", error);
+      }
+    }
   }
 
   const defaultOptions = {
     mode: "cors",
     headers: {
       "Content-Type": "application/json",
-      Authorization: authToken ? `Bearer ${authToken}` : "",
+      ...(authToken && { Authorization: `Bearer ${authToken}` }),
     },
   };
 

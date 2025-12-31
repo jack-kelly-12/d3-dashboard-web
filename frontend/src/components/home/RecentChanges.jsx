@@ -5,6 +5,18 @@ const RecentChanges = () => {
 
   const changes = [
     {
+      date: "2025-12-30",
+      title: "API access",
+      description: "Developer API with Swagger documentation",
+      type: "feature"
+    },
+    {
+      date: "2025-10-12",
+      title: "Game-by-game lineups",
+      description: "Lineups for each game are now available for all games, to be displayed on game pages soon, potentially modeled/aggregated to be able to see a team's most used lineup/cleanup hitter/etc on reports. Currently used to map player ids in play by play data.",
+      type: "feature"
+    },
+    {
       date: "2025-10-12",
       title: "Player IDs",
       description: "Built new full coverage player id system for D1-D3 players",

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { fetchAPI } from "../../config/api";
 
 export const useSprayChartData = (playerId, initialYear, division) => {
@@ -11,13 +11,19 @@ export const useSprayChartData = (playerId, initialYear, division) => {
   const [handFilter, setHandFilter] = useState({ L: true, R: true });
   const [availableYears, setAvailableYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState(initialYear);
+  const hasFetchedRef = useRef(false);
+  const lastPlayerIdRef = useRef(playerId);
 
   useEffect(() => {
-    const fetchPlayerData = async () => {
+    if (lastPlayerIdRef.current !== playerId) {
+      hasFetchedRef.current = false;
+      lastPlayerIdRef.current = playerId;
+    }
+
+    const fetchData = async () => {
       if (!selectedYear) return;
       
-      const isInitialLoad = !playerData;
-      if (isInitialLoad) {
+      if (!hasFetchedRef.current) {
         setLoading(true);
       } else {
         setIsTransitioning(true);
@@ -42,6 +48,7 @@ export const useSprayChartData = (playerId, initialYear, division) => {
         setAvailableYears(years);
         
         setError(null);
+        hasFetchedRef.current = true;
       } catch (err) {
         console.error("Error fetching player data:", err);
         setError(err.message);
@@ -51,7 +58,7 @@ export const useSprayChartData = (playerId, initialYear, division) => {
       }
     };
 
-    fetchPlayerData();
+    fetchData();
   }, [division, playerId, selectedYear]);
 
   const filteredEvents = useMemo(() => {

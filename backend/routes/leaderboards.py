@@ -3,36 +3,72 @@ import logging
 import sqlite3
 from db import get_db_connection
 from config import MIN_YEAR, MAX_YEAR
+from middleware import require_api_auth, cache_response
 
 bp = Blueprint('leaderboards', __name__, url_prefix='/api/leaderboards')
 
 
 @bp.get('/value')
-def get_value_leaderboard():
+@bp.get('/value/<string:player_id>')
+@require_api_auth
+@cache_response(ttl=300)
+def get_value_leaderboard(player_id=None):
     """
-    Combined batting+pitching value leaderboard
+    Get combined batting + pitching value stats
     ---
     tags:
       - Leaderboards
+    description: |
+      Returns combined value statistics including WAR, WPA, REA, and Clutch.
+      
+      **cURL (all players):**
+      
+          curl -H "X-API-Key: YOUR_KEY" "https://d3-dashboard.com/api/leaderboards/value?division=3"
+      
+      **cURL (single player):**
+      
+          curl -H "X-API-Key: YOUR_KEY" "https://d3-dashboard.com/api/leaderboards/value/PLAYER_ID"
+      
+      **Python:**
+      
+          import requests
+          requests.get("https://d3-dashboard.com/api/leaderboards/value", 
+                       headers={"X-API-Key": "YOUR_KEY"}, 
+                       params={"division": 3, "start_year": 2024, "end_year": 2024})
     parameters:
+      - in: path
+        name: player_id
+        schema:
+          type: string
+        required: false
+        description: Optional player ID for single player stats
       - in: query
         name: start_year
-        schema: { type: integer }
+        schema:
+          type: integer
+        description: Start year (default current year)
       - in: query
         name: end_year
-        schema: { type: integer }
+        schema:
+          type: integer
+        description: End year (default current year)
       - in: query
         name: division
-        schema: { type: integer, enum: [1,2,3] }
+        schema:
+          type: integer
+          enum: [1, 2, 3]
         default: 3
+        description: NCAA division
     responses:
       200:
-        description: Leaderboard rows
+        description: Value stats (WAR, WPA, REA, Clutch)
       400:
         description: Invalid parameters
+      404:
+        description: Player not found
     """
-    start_year = request.args.get('start_year', 'MAX_YEAR')
-    end_year = request.args.get('end_year', 'MAX_YEAR')
+    start_year = request.args.get('start_year', str(MAX_YEAR))
+    end_year = request.args.get('end_year', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
 
     if division not in [1, 2, 3]:
@@ -51,7 +87,14 @@ def get_value_leaderboard():
     cursor = conn.cursor()
 
     try:
-        cursor.execute("""
+        player_filter = ""
+        params = [division, start_year, end_year, division, start_year, end_year]
+        
+        if player_id:
+            player_filter = "WHERE player_id = ?"
+            params.append(player_id)
+
+        cursor.execute(f"""
             WITH batting_data AS (
                 SELECT
                     player_id,
@@ -139,10 +182,15 @@ def get_value_leaderboard():
                 PERCENT_RANK() OVER (PARTITION BY year ORDER BY pitching_war) * 100 as pitching_war_percentile,
                 PERCENT_RANK() OVER (PARTITION BY year ORDER BY ROUND(batting_war + pitching_war, 1)) * 100 as total_war_percentile
             FROM combined
+            {player_filter}
             ORDER BY total_war DESC
-        """, (division, start_year, end_year, division, start_year, end_year))
+        """, params)
 
         results = [dict(row) for row in cursor.fetchall()]
+        
+        if player_id and not results:
+            return jsonify({"error": "Player not found"}), 404
+            
         return jsonify(results)
 
     except sqlite3.Error as e:
@@ -154,9 +202,45 @@ def get_value_leaderboard():
 
 @bp.get('/baserunning')
 @bp.get('/baserunning/<string:player_id>')
+@require_api_auth
+@cache_response(ttl=300)
 def get_player_baserunning(player_id=None):
-    start_year = request.args.get('start_year', 'MIN_YEAR')
-    end_year = request.args.get('end_year', 'MAX_YEAR')
+    """
+    Get baserunning statistics
+    ---
+    tags:
+      - Leaderboards
+    parameters:
+      - in: path
+        name: player_id
+        schema:
+          type: string
+        required: false
+        description: Optional player ID for single player stats
+      - in: query
+        name: start_year
+        schema:
+          type: integer
+        description: Start year for date range
+      - in: query
+        name: end_year
+        schema:
+          type: integer
+        description: End year for date range
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+    responses:
+      200:
+        description: Baserunning stats including SB, CS, wSB, wGDP, wTEB
+      400:
+        description: Invalid parameters
+    """
+    start_year = request.args.get('start_year', str(MIN_YEAR))
+    end_year = request.args.get('end_year', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
 
     if division not in [1, 2, 3]:
@@ -370,9 +454,48 @@ def get_rolling_leaderboard():
 
 @bp.get('/situational')
 @bp.get('/situational/<string:player_id>')
+@require_api_auth
+@cache_response(ttl=300)
 def get_player_situational(player_id=None):
-    start_year = request.args.get('start_year', 'MIN_YEAR')
-    end_year = request.args.get('end_year', 'MAX_YEAR')
+    """
+    Get situational batting statistics
+    ---
+    tags:
+      - Leaderboards
+    parameters:
+      - in: path
+        name: player_id
+        schema:
+          type: string
+        required: false
+      - in: query
+        name: start_year
+        schema:
+          type: integer
+      - in: query
+        name: end_year
+        schema:
+          type: integer
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+      - in: query
+        name: min_pa
+        schema:
+          type: integer
+        default: 50
+        description: Minimum plate appearances
+    responses:
+      200:
+        description: Situational stats (RISP, high/low leverage, clutch)
+      400:
+        description: Invalid parameters
+    """
+    start_year = request.args.get('start_year', str(MIN_YEAR))
+    end_year = request.args.get('end_year', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
     min_pa = request.args.get('min_pa', type=int, default=50)
     count_alias = request.args.get('count', type=int)
@@ -502,9 +625,48 @@ def get_player_situational(player_id=None):
 
 @bp.get('/situational_pitcher')
 @bp.get('/situational_pitcher/<string:player_id>')
+@require_api_auth
+@cache_response(ttl=300)
 def get_player_situational_pitcher(player_id=None):
-    start_year = request.args.get('start_year', 'MIN_YEAR')
-    end_year = request.args.get('end_year', 'MAX_YEAR')
+    """
+    Get situational pitching statistics
+    ---
+    tags:
+      - Leaderboards
+    parameters:
+      - in: path
+        name: player_id
+        schema:
+          type: string
+        required: false
+      - in: query
+        name: start_year
+        schema:
+          type: integer
+      - in: query
+        name: end_year
+        schema:
+          type: integer
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+      - in: query
+        name: min_bf
+        schema:
+          type: integer
+        default: 100
+        description: Minimum batters faced
+    responses:
+      200:
+        description: Situational pitching stats (RISP, high/low leverage, clutch)
+      400:
+        description: Invalid parameters
+    """
+    start_year = request.args.get('start_year', str(MIN_YEAR))
+    end_year = request.args.get('end_year', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
     min_bf = request.args.get('min_bf', type=int, default=100)
     count_alias = request.args.get('count', type=int)
@@ -634,9 +796,47 @@ def get_player_situational_pitcher(player_id=None):
 
 @bp.get('/splits')
 @bp.get('/splits/<string:player_id>')
+@require_api_auth
+@cache_response(ttl=300)
 def get_player_splits(player_id=None):
-    start_year = request.args.get('start_year', 'MIN_YEAR')
-    end_year = request.args.get('end_year', 'MAX_YEAR')
+    """
+    Get batting splits (vs LHP/RHP)
+    ---
+    tags:
+      - Leaderboards
+    parameters:
+      - in: path
+        name: player_id
+        schema:
+          type: string
+        required: false
+      - in: query
+        name: start_year
+        schema:
+          type: integer
+      - in: query
+        name: end_year
+        schema:
+          type: integer
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+      - in: query
+        name: min_pa
+        schema:
+          type: integer
+        default: 50
+    responses:
+      200:
+        description: Batting splits vs left/right-handed pitchers
+      400:
+        description: Invalid parameters
+    """
+    start_year = request.args.get('start_year', str(MIN_YEAR))
+    end_year = request.args.get('end_year', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
     min_pa = request.args.get('min_pa', type=int, default=50)
     count_alias = request.args.get('count', type=int)
@@ -730,9 +930,47 @@ def get_player_splits(player_id=None):
 
 @bp.get('/splits_pitcher')
 @bp.get('/splits_pitcher/<string:player_id>')
+@require_api_auth
+@cache_response(ttl=300)
 def get_player_splits_pitcher(player_id=None):
-    start_year = request.args.get('start_year', 'MIN_YEAR')
-    end_year = request.args.get('end_year', 'MAX_YEAR')
+    """
+    Get pitching splits (vs LHH/RHH)
+    ---
+    tags:
+      - Leaderboards
+    parameters:
+      - in: path
+        name: player_id
+        schema:
+          type: string
+        required: false
+      - in: query
+        name: start_year
+        schema:
+          type: integer
+      - in: query
+        name: end_year
+        schema:
+          type: integer
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+      - in: query
+        name: min_bf
+        schema:
+          type: integer
+        default: 100
+    responses:
+      200:
+        description: Pitching splits vs left/right-handed hitters
+      400:
+        description: Invalid parameters
+    """
+    start_year = request.args.get('start_year', str(MIN_YEAR))
+    end_year = request.args.get('end_year', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
     min_bf = request.args.get('min_bf', type=int, default=100)
     count_alias = request.args.get('count', type=int)
@@ -826,9 +1064,48 @@ def get_player_splits_pitcher(player_id=None):
 
 @bp.get('/batted_ball')
 @bp.get('/batted_ball/<string:player_id>')
+@require_api_auth
+@cache_response(ttl=300)
 def get_player_batted_ball(player_id=None):
-    start_year = request.args.get('start_year', 'MIN_YEAR')
-    end_year = request.args.get('end_year', 'MAX_YEAR')
+    """
+    Get batted ball profile statistics
+    ---
+    tags:
+      - Leaderboards
+    parameters:
+      - in: path
+        name: player_id
+        schema:
+          type: string
+        required: false
+      - in: query
+        name: start_year
+        schema:
+          type: integer
+      - in: query
+        name: end_year
+        schema:
+          type: integer
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+      - in: query
+        name: min_bb
+        schema:
+          type: integer
+        default: 100
+        description: Minimum batted balls
+    responses:
+      200:
+        description: Batted ball profile (GB%, FB%, LD%, Pull%, Oppo%, etc.)
+      400:
+        description: Invalid parameters
+    """
+    start_year = request.args.get('start_year', str(MIN_YEAR))
+    end_year = request.args.get('end_year', str(MAX_YEAR))
     division = request.args.get('division', type=int, default=3)
     min_bb = request.args.get('min_bb', type=int, default=100)
 

@@ -5,11 +5,13 @@ import re
 import sqlite3
 from db import get_db_connection
 from config import MIN_YEAR, MAX_YEAR
+from middleware import require_api_auth
 
 bp = Blueprint('player_data', __name__, url_prefix='/api')
 app = bp
 
 @app.route('/rolling/<string:player_id>', methods=['GET'])
+@require_api_auth
 def get_player_rolling_data(player_id):
     window = request.args.get('window', type=int, default=25)
     player_type = request.args.get('player_type', default='batter')
@@ -143,6 +145,7 @@ def get_player_rolling_data(player_id):
 
 
 @app.route('/similar-batters/<string:player_id>', methods=['GET'])
+@require_api_auth
 def get_similar_batters(player_id):
     year = request.args.get('year', type=int, default=MAX_YEAR)
     division = request.args.get('division', type=int, default=3)
@@ -264,6 +267,7 @@ def get_similar_batters(player_id):
 
 
 @app.route('/similar-pitchers/<string:player_id>', methods=['GET'])
+@require_api_auth
 def get_similar_pitchers(player_id):
     year = request.args.get('year', type=int, default=MAX_YEAR)
     division = request.args.get('division', type=int, default=3)
@@ -396,6 +400,7 @@ def get_similar_pitchers(player_id):
         conn.close()
 
 @app.route('/player-years/<string:player_id>/<int:division>', methods=['GET'])
+@require_api_auth
 def get_player_years(player_id, division):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -431,11 +436,15 @@ def get_player_years(player_id, division):
 
 
 @app.route('/spraychart_data/<player_id>', methods=['GET'])
+@require_api_auth
 def get_spraychart_data(player_id):
     try:
-        year = int(request.args.get('year', 'MAX_YEAR'))    
+        from config import MAX_YEAR
+        year = int(request.args.get('year', str(MAX_YEAR)))
     except ValueError:
         return jsonify({"error": "Invalid year format"}), 400
+    
+    division = request.args.get('division', type=int)
 
     FIELD_PATTERNS = {
         "to_lf": [r'to left', r'to lf', r'left field', r'lf line', r'by lf'],
@@ -458,12 +467,17 @@ def get_spraychart_data(player_id):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("""
+        roster_query = """
             SELECT r.player_name, r.team_name, r.bats 
             FROM rosters r
             WHERE r.player_id = ? AND r.year = ?    
-            LIMIT 1
-        """, (player_id, year))
+        """
+        roster_params = [player_id, year]
+        if division:
+            roster_query += " AND r.division = ?"
+            roster_params.append(division)
+        roster_query += " LIMIT 1"
+        cursor.execute(roster_query, roster_params)
 
         player_info = cursor.fetchone()
         if not player_info:
@@ -474,7 +488,7 @@ def get_spraychart_data(player_id):
         team_name = player_info_dict["team_name"]
         bats = player_info_dict.get("bats", "R")
 
-        cursor.execute("""
+        pbp_query = """
             SELECT 
                 p.description,
                 p.pitcher_id,
@@ -488,7 +502,12 @@ def get_spraychart_data(player_id):
                 AND p.year = rp.year
                 AND p.division = rp.division
             WHERE p.batter_id = ? AND p.year = ? 
-        """, (player_id, year))
+        """
+        pbp_params = [player_id, year]
+        if division:
+            pbp_query += " AND p.division = ?"
+            pbp_params.append(division)
+        cursor.execute(pbp_query, pbp_params)
 
         pbp_rows = cursor.fetchall()
         pbp_data = [dict(row) for row in pbp_rows]
@@ -643,20 +662,35 @@ def get_spraychart_data(player_id):
 
 
 @app.route('/player/<string:player_id>', methods=['GET'])
+@require_api_auth
 def get_player_stats(player_id):
     """
-    Player profile
+    Get player profile and career stats
     ---
     tags:
       - Players
+    description: |
+      Returns player profile info and career batting/pitching statistics.
+      
+      **cURL:**
+      
+          curl -H "X-API-Key: YOUR_KEY" "https://d3-dashboard.com/api/player/PLAYER_ID"
+      
+      **Python:**
+      
+          import requests
+          requests.get("https://d3-dashboard.com/api/player/PLAYER_ID", 
+                       headers={"X-API-Key": "YOUR_KEY"})
     parameters:
       - in: path
         name: player_id
-        schema: { type: string }
+        schema:
+          type: string
         required: true
+        description: The player ID
     responses:
       200:
-        description: Player profile and stats
+        description: Player profile with batting and pitching stats by year
       404:
         description: Player not found
     """
@@ -751,7 +785,37 @@ def get_player_stats(player_id):
         conn.close()
 
 @app.route('/search/players', methods=['GET'])
+@require_api_auth
 def search_players():
+    """
+    Search for players by name
+    ---
+    tags:
+      - Players
+    description: |
+      Search for players by name. Returns up to 8 matching results.
+      
+      **cURL:**
+      
+          curl -H "X-API-Key: YOUR_KEY" "https://d3-dashboard.com/api/search/players?q=smith"
+      
+      **Python:**
+      
+          import requests
+          requests.get("https://d3-dashboard.com/api/search/players", 
+                       headers={"X-API-Key": "YOUR_KEY"}, 
+                       params={"q": "smith"})
+    parameters:
+      - in: query
+        name: q
+        schema:
+          type: string
+        required: true
+        description: Search query (player name)
+    responses:
+      200:
+        description: List of matching players (max 8 results)
+    """
     query = request.args.get('q', '').strip()
     if not query:
         return jsonify([])
@@ -801,6 +865,7 @@ def search_players():
         conn.close()
 
 @app.route('/players')
+@require_api_auth
 def get_players():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -844,7 +909,7 @@ def get_players():
             try:
                 if isinstance(player_dict.get('years'), str):
                     player_dict['years'] = json.loads(player_dict['years'])
-            except:
+            except (json.JSONDecodeError, TypeError):
                 player_dict['years'] = [
                     player_dict['min_year'], player_dict['max_year']]
 
@@ -861,6 +926,7 @@ def get_players():
         conn.close()
 
 @app.route('/player-percentiles/<string:player_id>/<int:year>/<int:division>', methods=['GET'])
+@require_api_auth
 def get_player_percentiles(player_id, year, division):
     conn = get_db_connection()
     cursor = conn.cursor()

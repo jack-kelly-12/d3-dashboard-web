@@ -17,6 +17,7 @@ import GamePage from "./pages/GamePage";
 import Scoreboard from "./pages/Scoreboard";
 import PlayerLists from "./pages/PlayerLists";
 import SprayChartsPage from "./pages/SprayChartsPage";
+import ApiKeys from "./pages/ApiKeys";
 import WhatsNewModal from "./components/modals/WhatsNewModal";
 import AuthManager from "./managers/AuthManager";
 
@@ -39,6 +40,10 @@ function App() {
     });
     return () => unsubscribe();
   }, [getStorageKey]);
+
+  useEffect(() => {
+    AuthManager.ensureUser("api");
+  }, []);
 
   const handleCloseWhatsNew = () => {
     const key = getStorageKey;
@@ -128,6 +133,12 @@ function App() {
                 path="/player-lists"
                 element={
                   <PlayerLists />
+                }
+              />
+              <Route
+                path="/api-keys"
+                element={
+                  <ApiKeys />
                 }
               />
             </Routes>

@@ -1,18 +1,43 @@
 from flask import Blueprint, jsonify, request
 from config import MIN_YEAR, MAX_YEAR
 from db import get_db_connection
+from middleware import require_api_auth
 
 
 bp = Blueprint('conferences', __name__, url_prefix='/api')
 
 
 @bp.get('/conferences')
+@require_api_auth
 def get_conferences():
+    """
+    Get list of conferences
+    ---
+    tags:
+      - Reference
+    parameters:
+      - in: query
+        name: division
+        schema:
+          type: integer
+          enum: [1, 2, 3]
+        default: 3
+      - in: query
+        name: years
+        schema:
+          type: string
+        description: Single year or comma-separated years
+    responses:
+      200:
+        description: List of conference names
+      400:
+        description: Invalid parameters
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
     division = request.args.get('division', default=3, type=int)
-    years_param = request.args.get('years', 'MAX_YEAR')
+    years_param = request.args.get('years', str(MAX_YEAR))
 
     if division not in [1, 2, 3]:
         return jsonify({"error": "Invalid division. Must be 1, 2, or 3"}), 400

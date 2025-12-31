@@ -2,12 +2,36 @@ from flask import Blueprint, jsonify, request
 import sqlite3
 from db import get_db_connection
 from config import MIN_YEAR
+from middleware import require_api_auth
 
 bp = Blueprint('games', __name__, url_prefix='/api')
 
 
 @bp.get('/games/<int:year>/<contest_id>')
+@require_api_auth
 def get_game(year, contest_id):
+    """
+    Get detailed game data with play-by-play
+    ---
+    tags:
+      - Games
+    parameters:
+      - in: path
+        name: year
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: contest_id
+        schema:
+          type: string
+        required: true
+    responses:
+      200:
+        description: Game info with all plays, win expectancy, leverage index
+      404:
+        description: Game not found
+    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -91,32 +115,53 @@ def get_game(year, contest_id):
 
 
 @bp.get('/games')
+@require_api_auth
 def get_games_by_date():
     """
-    Games by date
+    Get games by date
     ---
     tags:
       - Games
+    description: |
+      Returns all games for a specific date.
+      
+      **cURL:**
+      
+          curl -H "X-API-Key: YOUR_KEY" "https://d3-dashboard.com/api/games?month=03&day=15&year=2024&division=3"
+      
+      **Python:**
+      
+          import requests
+          requests.get("https://d3-dashboard.com/api/games", 
+                       headers={"X-API-Key": "YOUR_KEY"}, 
+                       params={"month": "03", "day": "15", "year": 2024, "division": 3})
     parameters:
       - in: query
         name: month
-        schema: { type: string }
+        schema:
+          type: string
         required: true
+        description: Month (e.g., "03" for March)
       - in: query
         name: day
-        schema: { type: string }
+        schema:
+          type: string
         required: true
+        description: Day (e.g., "15")
       - in: query
         name: year
-        schema: { type: integer }
+        schema:
+          type: integer
         required: true
       - in: query
         name: division
-        schema: { type: integer, enum: [1,2,3] }
+        schema:
+          type: integer
+          enum: [1, 2, 3]
         default: 3
     responses:
       200:
-        description: List of games
+        description: List of games with scores and team info
       400:
         description: Invalid parameters
     """

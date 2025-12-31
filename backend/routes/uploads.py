@@ -4,11 +4,13 @@ import pandas as pd
 from io import StringIO
 import traceback
 
+from middleware import require_api_auth_write
 
 bp = Blueprint('uploads', __name__, url_prefix='/api/upload')
 
 @bp.route('/rapsodo', methods=['POST', 'OPTIONS'])
 @cross_origin(supports_credentials=True)
+@require_api_auth_write
 def upload_rapsodo():
     if request.method == 'OPTIONS':
         response = current_app.make_default_options_response()
@@ -72,7 +74,7 @@ def upload_rapsodo():
                 }
                 processed_pitches.append(pitch)
 
-            except Exception as e:
+            except Exception:
                 continue
 
         if not processed_pitches:
@@ -92,6 +94,7 @@ def upload_rapsodo():
 
 @bp.route('/trackman', methods=['POST', 'OPTIONS'])
 @cross_origin(supports_credentials=True)
+@require_api_auth_write
 def upload_trackman():
     if request.method == 'OPTIONS':
         response = current_app.make_default_options_response()
@@ -149,6 +152,7 @@ def upload_trackman():
 
 @bp.route('/d3', methods=['POST', 'OPTIONS'])
 @cross_origin(supports_credentials=True)
+@require_api_auth_write
 def upload_d3():
     if request.method == 'OPTIONS':
         response = current_app.make_default_options_response()

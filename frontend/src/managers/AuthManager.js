@@ -122,7 +122,7 @@ class AuthManager {
   }
 
   isAnonymousAllowed(feature) {
-    const anonymousFeatures = ["charts", "reports"];
+    const anonymousFeatures = ["api", "charts", "reports", "trending"];
     return anonymousFeatures.includes(feature);
   }
 
