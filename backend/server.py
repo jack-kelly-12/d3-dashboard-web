@@ -135,6 +135,10 @@ app.register_blueprint(guts_bp)
 app.register_blueprint(games_bp)
 app.register_blueprint(api_keys_bp)
 
+@app.get("/api/health")
+def api_health():
+    return {"ok": True}, 200
+
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 8000))
     
