@@ -13,14 +13,11 @@ import {
 } from "recharts";
 import { TrendingUp, ChevronsUpDown } from "lucide-react";
 
-// TeamLogo component was unused; remove to satisfy linter.
-
 const WinExpectancyChart = ({ homeTeam, awayTeam, plays, homeTeamId, awayTeamId }) => {
   const [windowWidth, setWindowWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : 1200
   );
 
-  // Track window size for responsive design
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, memo } from "react";
 import { fetchAPI } from "../../config/api";
+import { TeamLogo } from "../shared/TeamLogo";
 
 const SimilarBatters = memo(({ playerId, year, division }) => {
   const [similarPlayers, setSimilarPlayers] = useState([]);
@@ -7,7 +8,6 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
   const [player, setPlayer] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState(null);
-  const teamFallback = "https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png";
 
 
   useEffect(() => {
@@ -21,13 +21,11 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
           )}?year=${year}&division=${division}`
         );
         
-        // Check if we got data for the correct player
         if (response.target_player && response.target_player.player_id === playerId) {
           setPlayer(response.target_player.player_name || "");
           setSimilarPlayers(response.similar_players || []);
           setNote(response.note || "");
         } else {
-          // If we didn't get data for the correct player, don't show anything
           setError("No data available for this player");
           setSimilarPlayers([]);
         }
@@ -60,9 +58,6 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {similarPlayers.slice(0, 5).map((p) => {
-          const logoUrl = p?.org_id
-            ? `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/${p.org_id}.png`
-            : teamFallback;
           return (
           <a
             key={`${p.player_id}-${p.year}`}
@@ -70,15 +65,7 @@ const SimilarBatters = memo(({ playerId, year, division }) => {
             className="flex items-center p-2 hover:bg-blue-50 rounded-lg transition-colors"
           >
             <div className="h-8 w-8 flex-shrink-0 mr-2 bg-gray-100 rounded-full overflow-hidden">
-              <img
-                src={logoUrl}
-                alt={p.team_name}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.currentTarget.onerror = null;
-                  e.currentTarget.src = teamFallback;
-                }}
-              />
+              <TeamLogo teamId={p.org_id} teamName={p.team_name} />
             </div>
             <span className="text-xs truncate">
               {p.year} - {p.player_name}

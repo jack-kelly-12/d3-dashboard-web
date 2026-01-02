@@ -5,20 +5,7 @@ import { fetchAPI } from "../config/api";
 import DataControls from "../components/data/DataControls";
 import AuthManager from "../managers/AuthManager";
 import { DEFAULT_DIVISION } from "../config/constants";
-
-const TeamLogo = ({ teamId, teamName }) => (
-  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-100">
-    <img
-      src={teamId ? `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/${teamId}.png` : `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`}
-      alt={teamName}
-      className="w-full h-full object-cover"
-      onError={(e) => {
-        e.currentTarget.onerror = null;
-        e.currentTarget.src = `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`;
-      }}
-    />
-  </div>
-);
+import { TeamLogo } from "../components/shared/TeamLogo";
 
 const GameCard = ({ game }) => {
   const navigate = useNavigate();

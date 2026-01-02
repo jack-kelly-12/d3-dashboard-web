@@ -4,6 +4,7 @@ import { Calendar, ChevronLeft, Zap, TrendingUp, Award, Flame } from "lucide-rea
 import WinExpectancyChart from "../components/game/WinExpectancyChart";
 import GameLog from "../components/game/GameLog";
 import { fetchAPI } from "../config/api";
+import { TeamLogo } from "../components/shared/TeamLogo";
 
 const LoadingSkeleton = () => (
   <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
@@ -82,20 +83,6 @@ const KPIChip = ({ icon: Icon, label, value, color, tooltip }) => (
         <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
       </div>
     )}
-  </div>
-);
-
-const TeamLogo = ({ teamId, teamName }) => (
-  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
-    <img
-      src={teamId ? `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/${teamId}.png` : `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`}
-      alt={teamName}
-      className="w-full h-full object-cover"
-      onError={(e) => {
-        e.currentTarget.onerror = null;
-        e.currentTarget.src = `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`;
-      }}
-    />
   </div>
 );
 

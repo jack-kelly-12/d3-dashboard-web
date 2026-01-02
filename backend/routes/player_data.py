@@ -712,8 +712,10 @@ def get_player_stats(player_id):
                 r.high_school,
                 r.position,
                 r.year,
-                r.img_url as headshot_url
+                r.img_url as headshot_url,
+                ti.colors_hex
             FROM rosters r
+            LEFT JOIN team_information ti ON r.org_id = ti.org_id
             WHERE r.player_id = ?
             ORDER BY r.year DESC
             LIMIT 1
@@ -725,6 +727,30 @@ def get_player_stats(player_id):
 
         player_info_dict = dict(player_info)
         current_year = player_info_dict['year']
+
+        cursor.execute("""
+            SELECT r.img_url
+            FROM rosters r
+            WHERE r.player_id = ?
+              AND r.img_url IS NOT NULL
+              AND TRIM(r.img_url) <> ''
+              AND LOWER(TRIM(r.img_url)) NOT IN ('-', 'nan', 'none', 'null')
+            ORDER BY r.year DESC
+            LIMIT 1
+        """, (player_id,))
+
+        headshot_row = cursor.fetchone()
+        if headshot_row and headshot_row[0]:
+            player_info_dict["headshot_url"] = headshot_row[0]
+        else:
+            player_info_dict["headshot_url"] = None
+        
+        colors_hex = player_info_dict.get('colors_hex') or ''
+        color_parts = [c.strip() for c in colors_hex.split(';') if c.strip()]
+        team_colors = {
+            'primary': color_parts[0] if len(color_parts) > 0 else None,
+            'secondary': color_parts[1] if len(color_parts) > 1 else None,
+        }
 
         cursor.execute("""
             SELECT 
@@ -763,6 +789,7 @@ def get_player_stats(player_id):
             "conference": player_info_dict["conference"],
             "division": player_info_dict["division"],
             "org_id": player_info_dict["org_id"],
+            "team_colors": team_colors,
             "is_pitcher": is_pitcher,
             "is_active": is_active,
             "height": player_info_dict["height"],

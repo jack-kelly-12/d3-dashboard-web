@@ -7,23 +7,7 @@ import {
   ChevronUp,
   FileBox,
 } from "lucide-react";
-
-const TeamLogo = memo(({ teamId, teamName }) => (
-  <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-100 border border-gray-200">
-    <img
-      src={teamId ? `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/${teamId}.png` : `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`}
-      alt={teamName}
-      className="w-full h-full object-cover"
-      loading="lazy"
-      onError={(e) => {
-        e.currentTarget.onerror = null;
-        e.currentTarget.src = `https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png`;
-      }}
-    />
-  </div>
-));
-
-TeamLogo.displayName = 'TeamLogo';
+import { TeamLogo } from "../shared/TeamLogo";
 
 const LeaderboardSection = memo(({
   window,
@@ -189,7 +173,7 @@ const LeaderboardSection = memo(({
                 className="grid grid-cols-12 items-center py-2"
               >
                 <div className="flex items-center gap-2 col-span-6">
-                  <TeamLogo teamId={player.team_org_id} teamName={player.team_name} />
+                  <TeamLogo teamId={player.org_id} teamName={player.team_name} />
                   {String(player.player_id).substring(0, 4) === "d3d-" ? (
                     <a
                       href={`/player/${player.player_id}`}

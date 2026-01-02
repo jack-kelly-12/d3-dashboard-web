@@ -9,3 +9,5 @@ export const DIVISION_LABELS = {
   3: 'D3',
 };
 
+export const TEAM_FALLBACK = "https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/0.png";
+export const PLAYER_HEADSHOT_FALLBACK = "https://d3-dashboard-kellyjc.s3.us-east-2.amazonaws.com/images/default-silhouette.png";
